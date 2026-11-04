@@ -9,7 +9,7 @@ under a small PE loader, the original `ArmyMen2.exe` itself.
 
 It also launches the original `comandos.exe` of *Commandos: Behind Enemy
 Lines* (Pyro Studios, 1998; GOG build) through a per-game PE loader
-([retrofoundry/Commandos](https://github.com/borancar/Commandos)): it runs the
+(a Commandos project that is not published yet): it runs the
 intro video and the main menu, with 16-bit RGB565 DirectDraw, mouse and
 keyboard window messages, and a registry kept in a TOML file. The layer is
 shared by both games; each has its own loader.
