@@ -232,6 +232,12 @@ stack, answers a fixed value and logs its first call.
   them for Commandos). Cinepak is simple enough to write from the format
   description (`cinepak.cpp`); an AVI's `movi` list has nested `LIST rec `
   groups.
+- **Input is window messages for a game that does not import DirectInput.**
+  Post `WM_MOUSEMOVE` (coalesced, once per pump), the button messages with
+  the button state in wParam, `WM_MOUSEWHEEL`, and key/char messages; also
+  keep `GetCursorPos` and `GetKeyState` truthful, because such games poll
+  them each frame. A scripted replay can verify hover but not clicks; have the
+  owner click by hand.
 - **The registry cannot be faked.** Implement it for real in the layer
   (`registry.cpp`) and persist it as a TOML file in the current directory
   (`registry.toml`, or `$W32L_REGISTRY`), read with tomlc99
@@ -320,3 +326,4 @@ Planned, in order. Replace each stub with what was learned:
   DirectShow multimedia streaming (`amstream.cpp`, `cinepak.cpp`) and a real
   TOML-backed registry (`registry.cpp`, `third_party/tomlc99`). Skill notes
   above ("From imports bound to the first menu").
+- 2026-11-04: mouse and keyboard window messages in the layer; confirmed by hand on the Commandos menu.
