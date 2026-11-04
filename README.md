@@ -7,6 +7,13 @@ run time. It was written for, and extracted from,
 *Army Men II* (3DO, 1999) — where it carries both the reconstructed game and,
 under a small PE loader, the original `ArmyMen2.exe` itself.
 
+It also launches the original `comandos.exe` of *Commandos: Behind Enemy
+Lines* (Pyro Studios, 1998; GOG build) through a per-game PE loader
+([retrofoundry/Commandos](https://github.com/borancar/Commandos)): it runs the
+intro video and the main menu, with 16-bit RGB565 DirectDraw, mouse and
+keyboard window messages, and a registry kept in a TOML file. The layer is
+shared by both games; each has its own loader.
+
 It is not Wine and does not try to be. It provides what that game uses, as
 faithfully as an A/B against the original needs: frame-exact rendering,
 deterministic timing on demand, and the same heap answers on every host.
@@ -18,7 +25,10 @@ deterministic timing on demand, and the same heap answers on every host.
 | `src/kernel32.cpp`, `src/kernel32crt.cpp` | files, handles, threads, events, critical sections, heaps, the command line and environment, and the import table a PE loader asks by module and name (`w32l_export_lookup`) |
 | `src/user32.cpp` | windows, the message queue, focus, cursor, `MessageBoxA` (to stderr) |
 | `src/gdi32.cpp` | device contexts, palettes (with the 20 Windows static colours under `SYSPAL_STATIC`), fonts drawn with stb_truetype |
-| `src/ddraw.cpp` | DirectDraw: 8-bit surfaces, palettes, Blt/BltFast with colour keys, Flip paced to 60 Hz |
+| `src/ddraw.cpp` | DirectDraw: 8-bit palettised or 16-bit RGB565 surfaces (`w32l_display_bpp`), palettes, clipper, Blt/BltFast with colour keys, Flip paced to 60 Hz |
+| `src/amstream.cpp`, `src/cinepak.cpp` | DirectShow multimedia streaming for a game that plays AVI films through `CLSID_AMMultiMediaStream`: an AVI reader, a Cinepak decoder, MS-ADPCM sound |
+| `src/registry.cpp` | the Windows registry, persisted as `registry.toml` in the current directory (tomlc99 in `third_party/`) |
+| `src/stubs.cpp` | zero-answering stand-ins for whole modules (`mss32`, `wsock32`) a program imports but whose real implementation is not here |
 | `src/dsound.cpp` | DirectSound buffers mixed by one host mixer; winmm's `mmio` and multimedia timers |
 | `src/dinput.cpp` | DirectInput keyboard and buffered mouse |
 | `src/dplay.cpp` | DirectPlay, enough to answer "no session" |
