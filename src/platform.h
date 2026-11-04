@@ -210,6 +210,10 @@ void w32l_window_on_close(void);
 void w32l_window_on_focus(int32_t gained);
 void w32l_window_on_char(uint32_t ch);
 void w32l_window_on_key(int32_t down, uint32_t vk);
+/* A mouse message at logical (client) x,y: WM_MOUSEMOVE, WM_*BUTTON*, or
+ * WM_MOUSEWHEEL (`wheel` the delta, 120 a notch). The key flags in wParam
+ * come from the buttons the program has been told are down. */
+void w32l_window_on_mouse(uint32_t msg, int32_t x, int32_t y, int32_t wheel);
 void w32l_window_on_moved(int32_t x, int32_t y);
 
 /* ---- input (dinput.cpp) ---------------------------------------------------- */

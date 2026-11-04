@@ -662,6 +662,9 @@ static void w32l_frame_record32(const uint32_t *rgb, int32_t w, int32_t h)
     } else if (at && *at && to && *to && (uint32_t)atoi(at) == w32l_present_count) {
         dest = to;
     }
+    if (!dest && w32l_framedump_path[0]) {
+        dest = w32l_framedump_path;      /* a scripted `dump` */
+    }
     if (dest) {
         FILE *fh = fopen(dest, "wb");
         if (fh) {
@@ -676,6 +679,7 @@ static void w32l_frame_record32(const uint32_t *rgb, int32_t w, int32_t h)
                 }
             fclose(fh);
             w32l_plat_log("frame %u written to %s", (unsigned)w32l_present_count, dest);
+            w32l_framedump_path[0] = 0;
         }
     }
     w32l_present_count++;
@@ -1131,11 +1135,19 @@ static void w32l_step_host_apply(const char *w, int32_t echo)
             w32l_step_note_host("host char %d", a);
     } else if (!strcmp(verb, "motion")) {
         w32l_mouse_moved(a, b);
+        w32l_window_on_mouse(WM_MOUSEMOVE, a, b, 0);
         if (echo)
             w32l_step_note_host("host motion %d %d", a, b);
     } else if (!strcmp(verb, "button")) {
         w32l_mouse_flush();
         w32l_mouse_button(a, b);
+        if (a >= 0 && a < 3) {
+            static const uint32_t down[3] = { WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN };
+            int32_t  hx, hy;
+            uint32_t hb;
+            w32l_host_mouse_state(&hx, &hy, &hb);
+            w32l_window_on_mouse(b ? down[a] : down[a] + 1, hx, hy, 0);
+        }
         if (echo)
             w32l_step_note_host("host button %d %d", a, b);
     } else if (!strcmp(verb, "wheel")) {
@@ -1361,6 +1373,13 @@ void w32l_host_pump(void)
                 w32l_window_on_close();
         return;
     }
+    /* A replay script also drives a free-running pump (W32L_REPLAY=<file>),
+     * its line numbers counting pumps. Events a script injects reach the game
+     * the way real ones do. */
+    if (getenv("W32L_REPLAY")) {
+        w32l_pump_count++;
+        w32l_replay_apply();
+    }
     while (SDL_PollEvent(&ev)) {
         switch (ev.type) {
         case SDL_EVENT_QUIT:
@@ -1435,22 +1454,40 @@ void w32l_host_pump(void)
               : ev.button.button == SDL_BUTTON_RIGHT ? 1
               : ev.button.button == SDL_BUTTON_MIDDLE ? 2 : -1;
             w32l_mouse_flush();             /* the press is at the pointer */
-            if (b >= 0)
+            if (b >= 0) {
+                static const uint32_t down[3] = { WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN };
                 w32l_mouse_button(b, ev.button.down);
+                /* Window messages for programs that read the mouse from them:
+                 * the position first, then the button, with the button's own
+                 * state in wParam. */
+                w32l_window_on_mouse(WM_MOUSEMOVE, lx, ly, 0);
+                w32l_window_on_mouse(ev.button.down ? down[b] : down[b] + 1, lx, ly, 0);
+            }
             break;
         }
         case SDL_EVENT_MOUSE_WHEEL:
             w32l_mouse_flush();
-            if (ev.wheel.y != 0)
+            if (ev.wheel.y != 0) {
+                int32_t wx, wy;
+                uint32_t wb;
                 w32l_di_mouse_wheel((int32_t)(ev.wheel.y * 120));
+                w32l_host_mouse_state(&wx, &wy, &wb);
+                w32l_window_on_mouse(WM_MOUSEWHEEL, wx, wy, (int32_t)(ev.wheel.y * 120));
+            }
             break;
         }
     }
     w32l_mouse_flush();
     /* Windows asks the window what cursor to show whenever the pointer
      * moves over it; the game answers "none". */
-    if (moved && w32l_the_window())
+    if (moved && w32l_the_window()) {
+        int32_t  mx, my;
+        uint32_t mb;
+        /* One WM_MOUSEMOVE for all the motion of this pump, at its end. */
+        w32l_host_mouse_state(&mx, &my, &mb);
+        w32l_window_on_mouse(WM_MOUSEMOVE, mx, my, 0);
         SendMessageA(w32l_the_window(), WM_SETCURSOR, 0, 0);
+    }
 }
 
 /* ---- main --------------------------------------------------------------------------- */

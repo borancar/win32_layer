@@ -583,6 +583,20 @@ void w32l_window_on_key(int32_t down, uint32_t vk)
                        down ? 1 : (LPARAM)0xC0000001);
 }
 
+void w32l_window_on_mouse(uint32_t msg, int32_t x, int32_t y, int32_t wheel)
+{
+    int32_t  hx, hy;
+    uint32_t b, wp;
+
+    if (!w32l_window.alive)
+        return;
+    w32l_host_mouse_state(&hx, &hy, &b);
+    wp = ((b & 1) ? MK_LBUTTON : 0) | ((b & 2) ? MK_RBUTTON : 0) | ((b & 4) ? MK_MBUTTON : 0);
+    if (msg == WM_MOUSEWHEEL)
+        wp |= (uint32_t)(wheel & 0xFFFF) << 16;
+    w32l_queue_post(W32L_HWND, msg, (WPARAM)wp, MAKELONG(x, y));
+}
+
 void w32l_window_on_moved(int32_t x, int32_t y)
 {
     if (w32l_window.alive)
