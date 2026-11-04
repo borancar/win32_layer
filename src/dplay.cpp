@@ -9,6 +9,7 @@
  * emulated and none will be.
  */
 #include "platform.h"
+#include "video.h"
 #include <dplobby.h>
 
 #include <stdlib.h>
@@ -240,5 +241,5 @@ HRESULT WINAPI CoCreateInstance(REFCLSID clsid, IUnknown *outer, DWORD ctx,
         *out = l;
         return S_OK;
     }
-    return REGDB_E_CLASSNOTREG;
+    return w32l_amstream_create(clsid, iid, out);
 }
