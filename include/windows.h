@@ -564,6 +564,28 @@ LONG WINAPI RegCreateKeyExA(HKEY key, LPCSTR sub, DWORD reserved, LPSTR cls,
                             LPDWORD disposition);
 LONG WINAPI RegCloseKey(HKEY key);
 
+#define HKEY_USERS          ((HKEY)(ULONG_PTR)0x80000003u)
+#define HKEY_CURRENT_CONFIG ((HKEY)(ULONG_PTR)0x80000005u)
+#define REG_NONE      0
+#define REG_SZ        1
+#define REG_EXPAND_SZ 2
+#define REG_BINARY    3
+#define REG_DWORD     4
+#define REG_MULTI_SZ  7
+#define REG_QWORD     11
+#define ERROR_MORE_DATA 234
+LONG WINAPI RegQueryValueExA(HKEY key, LPCSTR name, LPDWORD reserved, LPDWORD type,
+                             LPBYTE data, LPDWORD dataLen);
+LONG WINAPI RegSetValueExA(HKEY key, LPCSTR name, DWORD reserved, DWORD type,
+                           const BYTE *data, DWORD dataLen);
+LONG WINAPI RegEnumKeyExA(HKEY key, DWORD index, LPSTR name, LPDWORD nameLen, LPDWORD reserved,
+                          LPSTR cls, LPDWORD clsLen, LPFILETIME lastWrite);
+LONG WINAPI RegDeleteKeyA(HKEY key, LPCSTR sub);
+LONG WINAPI RegDeleteValueA(HKEY key, LPCSTR name);
+LONG WINAPI RegFlushKey(HKEY key);
+LONG WINAPI RegOpenKeyA(HKEY key, LPCSTR sub, PHKEY out);
+LONG WINAPI RegCreateKeyA(HKEY key, LPCSTR sub, PHKEY out);
+
 /* ---- kernel32: the rest of what a CRT-based game imports ---------------- */
 
 typedef struct _OSVERSIONINFOA {

@@ -17,7 +17,7 @@ CXXFLAGS ?= -O2 -g
 FLAGS    := -m32 -Wall -Wextra -std=gnu++14 -fno-strict-aliasing \
             -fno-exceptions -fno-rtti -isystem include -include callconv.h
 SRC      := $(wildcard src/*.cpp)
-OBJ      := $(patsubst src/%.cpp,build/%.o,$(SRC))
+OBJ      := $(patsubst src/%.cpp,build/%.o,$(SRC)) build/tomlc99.o
 
 .PHONY: all clean
 all: build/libwin32_layer.a
@@ -25,6 +25,11 @@ all: build/libwin32_layer.a
 build/%.o: src/%.cpp
 	@mkdir -p build
 	$(CXX) $(FLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+# tomlc99 (MIT, third_party/tomlc99): the registry file's parser, plain C.
+build/tomlc99.o: third_party/tomlc99/toml.c
+	@mkdir -p build
+	$(CC) -m32 -O2 -g -c $< -o $@
 
 build/libwin32_layer.a: $(OBJ)
 	ar rcs $@ $^

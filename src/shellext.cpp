@@ -14,39 +14,6 @@
 
 /* ---- registry: nothing is there ---------------------------------------------------- */
 
-LONG WINAPI RegOpenKeyExA(HKEY key, LPCSTR sub, DWORD options, DWORD access, PHKEY out)
-{
-    (void)key; (void)sub; (void)options; (void)access;
-    if (out)
-        *out = NULL;
-    return ERROR_FILE_NOT_FOUND;
-}
-
-LONG WINAPI RegQueryInfoKeyA(HKEY key, LPSTR cls, LPDWORD clsLen, LPDWORD reserved,
-                             LPDWORD subKeys, LPDWORD maxSubKey, LPDWORD maxClass,
-                             LPDWORD values, LPDWORD maxValueName, LPDWORD maxValueData,
-                             LPDWORD secDesc, LPFILETIME lastWrite)
-{
-    (void)key; (void)cls; (void)reserved;
-    if (clsLen) *clsLen = 0;
-    if (subKeys) *subKeys = 0;
-    if (maxSubKey) *maxSubKey = 0;
-    if (maxClass) *maxClass = 0;
-    if (values) *values = 0;
-    if (maxValueName) *maxValueName = 0;
-    if (maxValueData) *maxValueData = 0;
-    if (secDesc) *secDesc = 0;
-    if (lastWrite) lastWrite->dwLowDateTime = lastWrite->dwHighDateTime = 0;
-    return ERROR_SUCCESS;
-}
-
-LONG WINAPI RegEnumValueA(HKEY key, DWORD index, LPSTR name, LPDWORD nameLen,
-                          LPDWORD reserved, LPDWORD type, LPBYTE data, LPDWORD dataLen)
-{
-    (void)key; (void)index; (void)name; (void)nameLen; (void)reserved;
-    (void)type; (void)data; (void)dataLen;
-    return ERROR_NO_MORE_ITEMS;
-}
 
 /* ---- shlwapi ------------------------------------------------------------------------- */
 

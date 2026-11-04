@@ -136,6 +136,10 @@ BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *out)
 #define X(mod, fn) { mod, #fn, (const void *)&fn }
 static const W32L_Export w32l_exports[] = {
     X("ADVAPI32.dll", RegCreateKeyExA), X("ADVAPI32.dll", RegCloseKey),
+    X("ADVAPI32.dll", RegQueryValueExA), X("ADVAPI32.dll", RegSetValueExA),
+    X("ADVAPI32.dll", RegEnumKeyExA), X("ADVAPI32.dll", RegDeleteKeyA),
+    X("ADVAPI32.dll", RegDeleteValueA), X("ADVAPI32.dll", RegFlushKey),
+    X("ADVAPI32.dll", RegOpenKeyA), X("ADVAPI32.dll", RegCreateKeyA),
     X("DDRAW.dll", DirectDrawCreate),
     X("DINPUT.dll", DirectInputCreateA),
     X("DSOUND.dll", DirectSoundCreate),
@@ -863,22 +867,6 @@ PVOID WINAPI AddVectoredExceptionHandler(ULONG first,
 
 /* ---- registry ----------------------------------------------------------------- */
 
-/* The game creates one key at startup and closes it; it stores nothing. */
-LONG WINAPI RegCreateKeyExA(HKEY key, LPCSTR sub, DWORD reserved, LPSTR cls,
-                            DWORD options, DWORD access,
-                            LPSECURITY_ATTRIBUTES attr, PHKEY out,
-                            LPDWORD disposition)
-{
-    (void)key; (void)sub; (void)reserved; (void)cls; (void)options;
-    (void)access; (void)attr;
-    if (out)
-        *out = (HKEY)(uintptr_t)0x5A5A0001u;
-    if (disposition)
-        *disposition = REG_OPENED_EXISTING_KEY;
-    return ERROR_SUCCESS;
-}
-
-LONG WINAPI RegCloseKey(HKEY key) { (void)key; return ERROR_SUCCESS; }
 
 /* ---- drives ---------------------------------------------------------------------- */
 
