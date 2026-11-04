@@ -93,3 +93,8 @@ Licensed under the GNU GPL v2 or (at your option) any later version. See
 [`LICENSE`](LICENSE) for the version 2 text.
 `src/stb/stb_truetype.h` is Sean Barrett's, under its own public-domain/MIT
 terms (see the end of that file).
+
+## Third-party code
+
+`third_party/tomlc99` (MIT, Cktan) parses the registry file. Its license is in
+that directory.
