@@ -651,8 +651,19 @@ static void w32l_frame_record32(const uint32_t *rgb, int32_t w, int32_t h)
                 (unsigned)w32l_pump_count, (unsigned long long)hash);
         fflush(w32l_framelog);
     }
-    if (at && *at && to && *to && (uint32_t)atoi(at) == w32l_present_count) {
-        FILE *fh = fopen(to, "wb");
+    /* W32L_FRAMEDUMP_EVERY=N with W32L_FRAMEDUMP_TO=<prefix>: every Nth frame
+     * as <prefix>NNNNN.ppm, to see a whole run in one go. */
+    const char *every = getenv("W32L_FRAMEDUMP_EVERY");
+    char        name[1100];
+    const char *dest = NULL;
+    if (every && atoi(every) > 0 && to && *to && w32l_present_count % (uint32_t)atoi(every) == 0) {
+        snprintf(name, sizeof name, "%s%05u.ppm", to, (unsigned)w32l_present_count);
+        dest = name;
+    } else if (at && *at && to && *to && (uint32_t)atoi(at) == w32l_present_count) {
+        dest = to;
+    }
+    if (dest) {
+        FILE *fh = fopen(dest, "wb");
         if (fh) {
             int32_t x, y;
             fprintf(fh, "P6\n%d %d\n255\n", w, h);
@@ -664,7 +675,7 @@ static void w32l_frame_record32(const uint32_t *rgb, int32_t w, int32_t h)
                     fputc((int)(v & 255), fh);
                 }
             fclose(fh);
-            w32l_plat_log("frame %u written to %s", (unsigned)w32l_present_count, to);
+            w32l_plat_log("frame %u written to %s", (unsigned)w32l_present_count, dest);
         }
     }
     w32l_present_count++;
