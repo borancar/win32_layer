@@ -1461,7 +1461,9 @@ void w32l_host_pump(void)
                  * the position first, then the button, with the button's own
                  * state in wParam. */
                 w32l_window_on_mouse(WM_MOUSEMOVE, lx, ly, 0);
-                w32l_window_on_mouse(ev.button.down ? down[b] : down[b] + 1, lx, ly, 0);
+                w32l_window_on_mouse(!ev.button.down ? down[b] + 1
+                                     : (ev.button.clicks >= 2 && w32l_window_wants_dblclk())
+                                           ? down[b] + 2 : down[b], lx, ly, 0);
             }
             break;
         }
@@ -1567,6 +1569,42 @@ static void w32l_audio_step(void)
     if (w32l_audio_dump)
         fwrite(w32l_audio_scratch, 2 * sizeof(float), (size_t)frames, w32l_audio_dump);
 #endif
+}
+
+void *w32l_host_pcm_open(int32_t rate, int32_t channels)
+{
+    SDL_AudioSpec    spec;
+    SDL_AudioStream *st;
+
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
+        return NULL;
+    spec.format = SDL_AUDIO_S16;
+    spec.channels = channels;
+    spec.freq = rate;
+    st = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
+    if (!st) {
+        w32l_plat_log("audio: no playback device for a stream (%s)", SDL_GetError());
+        return NULL;
+    }
+    SDL_ResumeAudioStreamDevice(st);
+    return st;
+}
+
+void w32l_host_pcm_put(void *pcm, const int16_t *samples, int32_t frames)
+{
+    SDL_AudioStream *st = (SDL_AudioStream *)pcm;
+    SDL_AudioSpec    spec;
+
+    if (!st || frames <= 0)
+        return;
+    SDL_GetAudioStreamFormat(st, &spec, NULL);
+    SDL_PutAudioStreamData(st, samples, frames * (int32_t)sizeof(int16_t) * spec.channels);
+}
+
+void w32l_host_pcm_close(void *pcm)
+{
+    if (pcm)
+        SDL_DestroyAudioStream((SDL_AudioStream *)pcm);
 }
 
 int32_t w32l_host_audio_open(int32_t rate, w32l_audio_mix_fn mix, void *ud)

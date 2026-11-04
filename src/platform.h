@@ -174,6 +174,12 @@ void w32l_host_mouse_warp(int32_t lx, int32_t ly);
  * an explicit depth changes it. */
 extern int32_t w32l_display_bpp;
 
+/* A host PCM output (signed 16-bit interleaved), for a program's own streams
+ * such as video sound. NULL when there is no audio device. */
+void *w32l_host_pcm_open(int32_t rate, int32_t channels);
+void  w32l_host_pcm_put(void *pcm, const int16_t *samples, int32_t frames);
+void  w32l_host_pcm_close(void *pcm);
+
 /* Show a 16-bit RGB565 frame (the primary of a 16-bit mode). */
 void w32l_host_present16(const uint8_t *pixels, int32_t pitch, int32_t w, int32_t h);
 
@@ -213,6 +219,7 @@ void w32l_window_on_key(int32_t down, uint32_t vk);
 /* A mouse message at logical (client) x,y: WM_MOUSEMOVE, WM_*BUTTON*, or
  * WM_MOUSEWHEEL (`wheel` the delta, 120 a notch). The key flags in wParam
  * come from the buttons the program has been told are down. */
+int32_t w32l_window_wants_dblclk(void);
 void w32l_window_on_mouse(uint32_t msg, int32_t x, int32_t y, int32_t wheel);
 void w32l_window_on_moved(int32_t x, int32_t y);
 

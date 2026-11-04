@@ -56,6 +56,11 @@ WNDPROC w32l_window_proc(HWND hwnd)
     return hwnd == W32L_HWND && w32l_window.alive ? w32l_window.proc : NULL;
 }
 
+/* Some class asked for CS_DBLCLKS: the window then gets a double-click
+ * message in place of the second press. */
+static int32_t w32l_dblclks;
+int32_t w32l_window_wants_dblclk(void) { return w32l_dblclks; }
+
 ATOM WINAPI RegisterClassA(const WNDCLASSA *wc)
 {
     W32L_WindowClass *c;
@@ -66,6 +71,8 @@ ATOM WINAPI RegisterClassA(const WNDCLASSA *wc)
     w32l_plat_debug("RegisterClass %s proc=%p style=0x%x", wc->lpszClassName, (void *)wc->lpfnWndProc, (unsigned)wc->style);
     strncpy(c->name, wc->lpszClassName, sizeof c->name - 1);
     c->proc = wc->lpfnWndProc;
+    if (wc->style & CS_DBLCLKS)
+        w32l_dblclks = 1;
     return (ATOM)w32l_class_count;
 }
 
@@ -124,6 +131,7 @@ BOOL WINAPI DestroyWindow(HWND hwnd)
 /* A hidden window shown gets WM_SHOWWINDOW and, being newly visible, a paint
  * that UpdateWindow then delivers. */
 static int32_t w32l_paint_pending;
+static int32_t w32l_announced;      /* the first activation has been sent */
 
 BOOL WINAPI ShowWindow(HWND hwnd, int32_t cmd)
 {
@@ -140,6 +148,17 @@ BOOL WINAPI ShowWindow(HWND hwnd, int32_t cmd)
     } else if (!was) {
         w32l_window.style |= WS_VISIBLE;
         w32l_call_proc(w32l_window.proc, hwnd, WM_SHOWWINDOW, TRUE, 0);
+        /* A window shown for the first time is activated and given the focus
+         * at once, and says so. A program that waits for WM_ACTIVATEAPP
+         * before it draws would otherwise sit idle until the host happened
+         * to hand over focus (a window manager that focuses on pointer
+         * entry did so only when the pointer came back). */
+        if (!w32l_announced && w32l_focused) {
+            w32l_announced = 1;
+            w32l_queue_post(hwnd, WM_ACTIVATEAPP, TRUE, 0);
+            w32l_queue_post(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
+            w32l_queue_post(hwnd, WM_SETFOCUS, 0, 0);
+        }
         w32l_paint_pending = 1;
         w32l_queue_post(hwnd, WM_PAINT, 0, 0);
     }

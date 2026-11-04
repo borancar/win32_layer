@@ -59,6 +59,11 @@ struct Avi {
     Chunk   *video;
     uint32_t nvideo;
     uint32_t cap;
+    /* The sound track, if any: MS ADPCM (format tag 2) or PCM (1). */
+    int32_t  audioStream;               /* the stream's index, -1 when none */
+    uint32_t atag, achannels, arate, ablock, abits;
+    Chunk   *audio;
+    uint32_t naudio, acap;
 };
 
 uint32_t le32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
@@ -71,6 +76,7 @@ void avi_close(Avi *a)
     if (a->fp)
         fclose(a->fp);
     free(a->video);
+    free(a->audio);
     free(a);
 }
 
@@ -86,6 +92,7 @@ Avi *avi_open(const char *path)
 
     if (!a)
         return NULL;
+    a->audioStream = -1;
     a->fp = fopen(path, "rb");
     if (!a->fp || fread(hdr, 1, 12, a->fp) != 12 || memcmp(hdr, "RIFF", 4) || memcmp(hdr + 8, "AVI ", 4)) {
         avi_close(a);
@@ -136,12 +143,22 @@ Avi *avi_open(const char *path)
                                 if (!memcmp(sh, "strh", 4) && ssize >= 36) {
                                     if (fread(body, 1, 36, a->fp) != 36)
                                         break;
+                                    if (!memcmp(body, "auds", 4))
+                                        a->audioStream = stream;
                                     if (!memcmp(body, "vids", 4)) {
                                         videoStream = stream;
                                         a->fourcc = le32(body + 4);
                                         a->scale = le32(body + 20);
                                         a->rate = le32(body + 24);
                                     }
+                                } else if (!memcmp(sh, "strf", 4) && ssize >= 16 && stream == a->audioStream) {
+                                    if (fread(body, 1, 16, a->fp) != 16)
+                                        break;
+                                    a->atag = le16(body);
+                                    a->achannels = le16(body + 2);
+                                    a->arate = le32(body + 4);
+                                    a->ablock = le16(body + 12);
+                                    a->abits = le16(body + 14);
                                 } else if (!memcmp(sh, "strf", 4) && ssize >= 16 && stream == videoStream) {
                                     if (fread(body, 1, 16, a->fp) != 16)
                                         break;
@@ -173,6 +190,20 @@ Avi *avi_open(const char *path)
                         /* A 'rec ' group: its chunks follow the 4-byte type, in line. */
                         fseek(a->fp, cat + 12, SEEK_SET);
                         continue;
+                    }
+                    if (a->audioStream >= 0 && ch[0] == (uint8_t)('0' + a->audioStream / 10) &&
+                        ch[1] == (uint8_t)('0' + a->audioStream % 10) && ch[2] == 'w' && ch[3] == 'b') {
+                        if (a->naudio == a->acap) {
+                            a->acap = a->acap ? a->acap * 2 : 1024;
+                            a->audio = (Chunk *)realloc(a->audio, a->acap * sizeof(Chunk));
+                            if (!a->audio) {
+                                avi_close(a);
+                                return NULL;
+                            }
+                        }
+                        a->audio[a->naudio].offset = (uint32_t)(cat + 8);
+                        a->audio[a->naudio].size = csize;
+                        a->naudio++;
                     }
                     if (ch[0] == want[0] && ch[1] == want[1] && ch[2] == 'd' && (ch[3] == 'c' || ch[3] == 'b')) {
                         if (a->nvideo == a->cap) {
@@ -206,6 +237,118 @@ Avi *avi_open(const char *path)
     return a;
 }
 
+/* ---- sound ------------------------------------------------------------------------ */
+
+const int32_t kAdaptTable[16] = { 230, 230, 230, 230, 307, 409, 512, 614, 768, 614, 512, 409, 307, 230, 230, 230 };
+const int32_t kCoef1[7] = { 256, 512, 0, 192, 240, 460, 392 };
+const int32_t kCoef2[7] = { 0, -256, 0, 64, 0, -208, -232 };
+
+inline int16_t s16(const uint8_t *p) { return (int16_t)(p[0] | p[1] << 8); }
+inline int16_t clamp16(int32_t v) { return (int16_t)(v < -32768 ? -32768 : v > 32767 ? 32767 : v); }
+
+/* One MS ADPCM block (1 or 2 channels) into interleaved 16-bit samples;
+ * returns the frames written. */
+int32_t adpcm_block(const uint8_t *b, uint32_t n, int32_t ch, int16_t *out, int32_t cap)
+{
+    int32_t pred[2], delta[2], s1[2], s2[2], frames = 0, c;
+    uint32_t i, hdr = 7u * (uint32_t)ch;
+
+    if (n < hdr || (ch != 1 && ch != 2))
+        return 0;
+    for (c = 0; c < ch; c++) {
+        pred[c] = b[c] > 6 ? 0 : b[c];
+        delta[c] = s16(b + ch + 2 * c);
+        s1[c] = s16(b + 3 * ch + 2 * c);
+        s2[c] = s16(b + 5 * ch + 2 * c);
+    }
+    if (cap < 2)
+        return 0;
+    for (c = 0; c < ch; c++)
+        out[c] = (int16_t)s2[c];
+    for (c = 0; c < ch; c++)
+        out[ch + c] = (int16_t)s1[c];
+    frames = 2;
+    for (i = hdr; i < n; i++) {
+        int32_t k;
+        for (k = 0; k < 2; k++) {
+            int32_t nib = k == 0 ? b[i] >> 4 : b[i] & 15;
+            int32_t signedNib = nib >= 8 ? nib - 16 : nib;
+            int32_t chan = ch == 2 ? k : 0;
+            int32_t p = (s1[chan] * kCoef1[pred[chan]] + s2[chan] * kCoef2[pred[chan]]) >> 8;
+            int32_t v = p + signedNib * delta[chan];
+            int16_t o = clamp16(v);
+            s2[chan] = s1[chan];
+            s1[chan] = o;
+            delta[chan] = (kAdaptTable[nib] * delta[chan]) >> 8;
+            if (delta[chan] < 16)
+                delta[chan] = 16;
+            if (ch == 2) {
+                if (k == 1 && frames < cap) {
+                    out[(frames) * 2] = (int16_t)s1[0];
+                    out[(frames) * 2 + 1] = (int16_t)s1[1];
+                    frames++;
+                }
+            } else if (frames < cap) {
+                out[frames++] = o;
+            }
+        }
+    }
+    return frames;
+}
+
+/* The whole sound track decoded into one buffer of interleaved 16-bit
+ * samples (a minute and a half of 22 kHz stereo is about 8 MB). */
+int16_t *decode_audio(Avi *a, int32_t *frames)
+{
+    uint32_t i;
+    int32_t  total = 0, cap = 0;
+    int16_t *out = NULL;
+
+    *frames = 0;
+    if (a->audioStream < 0 || !a->naudio || !a->achannels || a->achannels > 2)
+        return NULL;
+    for (i = 0; i < a->naudio; i++) {
+        uint8_t *buf = (uint8_t *)malloc(a->audio[i].size ? a->audio[i].size : 1);
+        int32_t  blockFrames, off = 0;
+        if (!buf)
+            break;
+        fseek(a->fp, (long)a->audio[i].offset, SEEK_SET);
+        if (fread(buf, 1, a->audio[i].size, a->fp) != a->audio[i].size) {
+            free(buf);
+            break;
+        }
+        while ((uint32_t)off < a->audio[i].size) {
+            uint32_t blk = a->atag == 2 && a->ablock ? a->ablock : a->audio[i].size - (uint32_t)off;
+            int32_t  room;
+            if (blk > a->audio[i].size - (uint32_t)off)
+                blk = a->audio[i].size - (uint32_t)off;
+            room = a->atag == 2 ? (int32_t)(blk * 2 + 4) : (int32_t)(blk / (2 * a->achannels));
+            if (total + room > cap) {
+                cap = (total + room) * 2;
+                out = (int16_t *)realloc(out, (size_t)cap * a->achannels * sizeof(int16_t));
+                if (!out) {
+                    free(buf);
+                    return NULL;
+                }
+            }
+            if (a->atag == 2) {
+                blockFrames = adpcm_block(buf + off, blk, (int32_t)a->achannels,
+                                          out + (size_t)total * a->achannels, room);
+            } else if (a->atag == 1 && a->abits == 16) {
+                memcpy(out + (size_t)total * a->achannels, buf + off, (size_t)room * a->achannels * 2);
+                blockFrames = room;
+            } else {
+                blockFrames = 0;
+            }
+            total += blockFrames;
+            off += (int32_t)blk;
+        }
+        free(buf);
+    }
+    *frames = total;
+    return out;
+}
+
 /* ---- the objects ------------------------------------------------------------------ */
 
 struct Stream;
@@ -221,6 +364,9 @@ struct MMStream {
     uint32_t     next;                  /* the next frame to deliver */
     uint64_t     startNs;               /* the clock when the stream last started */
     uint32_t     startFrame;
+    int16_t     *pcm;                   /* the decoded sound track */
+    int32_t      pcmFrames;
+    void        *out;                   /* the host's audio output while it plays */
 };
 
 struct Stream {
@@ -496,6 +642,10 @@ ULONG STDMETHODCALLTYPE MM_Release(MMStream *m)
     if (!n) {
         /* The file and decoder go; the small object stays, because streams
          * and samples the program still holds point back at it. */
+        w32l_host_pcm_close(m->out);
+        m->out = NULL;
+        free(m->pcm);
+        m->pcm = NULL;
         avi_close(m->avi);
         cinepak_close(m->cvid);
         m->avi = NULL;
@@ -523,6 +673,17 @@ HRESULT STDMETHODCALLTYPE MM_SetState(MMStream *m, DWORD state)
     if (state == STREAMSTATE_RUN && m->state != STREAMSTATE_RUN) {
         m->startNs = now_ns();
         m->startFrame = m->next;
+        /* The whole track goes to the output at once; it plays in real time
+         * from here, as the frames are paced against the same moment. */
+        if (m->pcm && m->avi && !m->out && m->next == 0) {
+            m->out = w32l_host_pcm_open((int32_t)m->avi->arate, (int32_t)m->avi->achannels);
+            if (m->out)
+                w32l_host_pcm_put(m->out, m->pcm, m->pcmFrames);
+        }
+    }
+    if (state != STREAMSTATE_RUN && m->out) {
+        w32l_host_pcm_close(m->out);
+        m->out = NULL;
     }
     m->state = state;
     return S_OK;
@@ -534,6 +695,10 @@ HRESULT STDMETHODCALLTYPE MM_Seek(MMStream *m, LONGLONG t)
     /* Only a seek to the start is supported (a Cinepak stream needs its
      * key frame); anything else restarts from the beginning. */
     (void)frame;
+    if (m->out) {
+        w32l_host_pcm_close(m->out);
+        m->out = NULL;
+    }
     m->next = 0;
     m->startFrame = 0;
     m->startNs = now_ns();
@@ -586,9 +751,12 @@ HRESULT STDMETHODCALLTYPE MM_OpenFile(MMStream *m, const uint16_t *wpath, DWORD 
     if (!m->cvid)
         return E_OUTOFMEMORY;
     m->next = 0;
-    w32l_plat_log("amstream: %s %dx%d %u/%u fps, %u frames, codec %.4s", path, (int)m->avi->width,
+    free(m->pcm);
+    m->pcm = decode_audio(m->avi, &m->pcmFrames);
+    w32l_plat_log("amstream: %s %dx%d %u/%u fps, %u frames, codec %.4s, sound %d frames at %u Hz x%u", path, (int)m->avi->width,
                   (int)m->avi->height, (unsigned)m->avi->rate, (unsigned)m->avi->scale,
-                  (unsigned)m->avi->nvideo, (const char *)&m->avi->fourcc);
+                  (unsigned)m->avi->nvideo, (const char *)&m->avi->fourcc, (int)m->pcmFrames, (unsigned)m->avi->arate,
+                  (unsigned)m->avi->achannels);
     return S_OK;
 }
 
