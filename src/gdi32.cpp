@@ -201,10 +201,10 @@ int32_t WINAPI GetDeviceCaps(HDC dc, int32_t index)
 {
     (void)dc;
     switch (index) {
-    case BITSPIXEL:   return 8;
+    case BITSPIXEL:   return w32l_display_bpp;
     case PLANES:      return 1;
-    case SIZEPALETTE: return 256;
-    case RASTERCAPS:  return RC_PALETTE;
+    case SIZEPALETTE: return w32l_display_bpp <= 8 ? 256 : 0;
+    case RASTERCAPS:  return w32l_display_bpp <= 8 ? RC_PALETTE : 0;
     }
     return 0;
 }

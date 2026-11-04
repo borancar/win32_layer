@@ -617,6 +617,98 @@ void w32l_host_mouse_warp(int32_t lx, int32_t ly)
         SDL_WarpMouseInWindow(w32l_sdl_window, wx, wy);
 }
 
+/* A 16-bit RGB565 frame. Recorded (W32L_FRAMELOG hash, W32L_FRAMEDUMP PPM)
+ * as the 32-bit picture the window shows, so a 16-bit program can be looked
+ * at and compared like an 8-bit one. */
+static uint32_t *w32l_rgb_frame;
+static size_t    w32l_rgb_cap;
+
+static uint32_t w32l_rgb_of_565(uint16_t v)
+{
+    uint32_t r = (v >> 11) & 31, g = (v >> 5) & 63, b = v & 31;
+    return 0xFF000000u | (((r << 3) | (r >> 2)) << 16) | (((g << 2) | (g >> 4)) << 8) |
+           ((b << 3) | (b >> 2));
+}
+
+static void w32l_frame_record32(const uint32_t *rgb, int32_t w, int32_t h)
+{
+    static int32_t tried;
+    const char    *at = getenv("W32L_FRAMEDUMP_AT");
+    const char    *to = getenv("W32L_FRAMEDUMP_TO");
+
+    if (!tried) {
+        const char *path = getenv("W32L_FRAMELOG");
+        tried = 1;
+        if (path && *path && !w32l_framelog)
+            w32l_framelog = !strcmp(path, "-") ? stderr : fopen(path, "w");
+    }
+    if (w32l_framelog) {
+        uint64_t hash = 1469598103934665603ULL;
+        size_t   i, n = (size_t)w * (size_t)h;
+        for (i = 0; i < n; i++)
+            hash = (hash ^ rgb[i]) * 1099511628211ULL;
+        fprintf(w32l_framelog, "%u %u %016llx\n", (unsigned)w32l_present_count,
+                (unsigned)w32l_pump_count, (unsigned long long)hash);
+        fflush(w32l_framelog);
+    }
+    if (at && *at && to && *to && (uint32_t)atoi(at) == w32l_present_count) {
+        FILE *fh = fopen(to, "wb");
+        if (fh) {
+            int32_t x, y;
+            fprintf(fh, "P6\n%d %d\n255\n", w, h);
+            for (y = 0; y < h; y++)
+                for (x = 0; x < w; x++) {
+                    uint32_t v = rgb[y * w + x];
+                    fputc((int)((v >> 16) & 255), fh);
+                    fputc((int)((v >> 8) & 255), fh);
+                    fputc((int)(v & 255), fh);
+                }
+            fclose(fh);
+            w32l_plat_log("frame %u written to %s", (unsigned)w32l_present_count, to);
+        }
+    }
+    w32l_present_count++;
+}
+
+void w32l_host_present16(const uint8_t *pixels, int32_t pitch, int32_t w, int32_t h)
+{
+    void    *dst;
+    int      dstPitch;
+    int32_t  x, y;
+    size_t   need = (size_t)w * (size_t)h;
+
+    if (need > w32l_rgb_cap) {
+        w32l_rgb_frame = (uint32_t *)realloc(w32l_rgb_frame, need * sizeof(uint32_t));
+        w32l_rgb_cap = w32l_rgb_frame ? need : 0;
+    }
+    if (!w32l_rgb_frame)
+        return;
+    for (y = 0; y < h; y++) {
+        const uint16_t *s = (const uint16_t *)(pixels + y * pitch);
+        for (x = 0; x < w; x++)
+            w32l_rgb_frame[y * w + x] = w32l_rgb_of_565(s[x]);
+    }
+    w32l_frame_record32(w32l_rgb_frame, w, h);
+    if (!w32l_sdl_renderer)
+        return;
+    w32l_texture_fit();
+    if (!w32l_sdl_texture)
+        return;
+    if (w > w32l_tex_w)
+        w = w32l_tex_w;
+    if (h > w32l_tex_h)
+        h = w32l_tex_h;
+    if (!SDL_LockTexture(w32l_sdl_texture, NULL, &dst, &dstPitch))
+        return;
+    for (y = 0; y < h; y++)
+        memcpy((uint8_t *)dst + y * dstPitch, w32l_rgb_frame + (size_t)y * (size_t)(pitch / 2 < w ? w : w),
+               (size_t)w * sizeof(uint32_t));
+    SDL_UnlockTexture(w32l_sdl_texture);
+    SDL_RenderClear(w32l_sdl_renderer);
+    SDL_RenderTexture(w32l_sdl_renderer, w32l_sdl_texture, NULL, NULL);
+    SDL_RenderPresent(w32l_sdl_renderer);
+}
+
 void (*w32l_host_frame_hook)(void);
 void (*w32l_host_hotkey)(int32_t which);
 

@@ -22,6 +22,8 @@ typedef struct W32L_Window {
     DWORD   exStyle;
     int32_t w, h;
     int32_t alive;
+    LONG    userdata, id;
+    uint8_t extra[256];     /* the class's cbWndExtra bytes, GetWindowLong(hwnd, 0..) */
 } W32L_Window;
 
 static W32L_WindowClass w32l_classes[4];
@@ -31,6 +33,18 @@ static int32_t         w32l_focused = 1;
 static int32_t         w32l_cursor_count;    /* ShowCursor's counter */
 
 #define W32L_HWND ((HWND)&w32l_window)
+
+/* Every call into the program's window procedure, traced when the layer's
+ * diagnostics are on (W32L_PLATFORM_DEBUG=1). The messages a program gets,
+ * and answers, are what drive it; this is the first thing to read when a
+ * program idles. */
+static LRESULT w32l_call_proc(WNDPROC proc, HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+    LRESULT r = proc(hwnd, msg, wp, lp);
+    w32l_plat_debug("wndproc msg 0x%04x wp=0x%x lp=0x%x -> 0x%x", (unsigned)msg,
+                    (unsigned)wp, (unsigned)lp, (unsigned)r);
+    return r;
+}
 
 HWND w32l_the_window(void)
 {
@@ -49,6 +63,7 @@ ATOM WINAPI RegisterClassA(const WNDCLASSA *wc)
     if (!wc || !wc->lpszClassName || w32l_class_count == 4)
         return 0;
     c = &w32l_classes[w32l_class_count++];
+    w32l_plat_debug("RegisterClass %s proc=%p style=0x%x", wc->lpszClassName, (void *)wc->lpfnWndProc, (unsigned)wc->style);
     strncpy(c->name, wc->lpszClassName, sizeof c->name - 1);
     c->proc = wc->lpfnWndProc;
     return (ATOM)w32l_class_count;
@@ -73,6 +88,9 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR cls, LPCSTR title,
     if (h == CW_USEDEFAULT || h <= 0)
         h = 480;
 
+    memset(w32l_window.extra, 0, sizeof w32l_window.extra);
+    w32l_window.userdata = 0;
+    w32l_window.id = (LONG)(uintptr_t)menu;
     w32l_window.proc = proc;
     w32l_window.style = style;
     w32l_window.exStyle = exStyle;
@@ -81,13 +99,13 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR cls, LPCSTR title,
     w32l_window.alive = 1;
     w32l_host_window_open(title ? title : "", w, h);
 
-    proc(W32L_HWND, WM_CREATE, 0, 0);
+    w32l_call_proc(proc, W32L_HWND, WM_CREATE, 0, 0);
     /* What Windows sends a new visible window, in this order. The game's
      * frame tick is gated on WM_ACTIVATEAPP, so a window that never got it
      * would sit on a black screen. */
-    proc(W32L_HWND, WM_ACTIVATEAPP, TRUE, 0);
-    proc(W32L_HWND, WM_ACTIVATE, WA_ACTIVE, 0);
-    proc(W32L_HWND, WM_SETFOCUS, 0, 0);
+    w32l_call_proc(proc, W32L_HWND, WM_ACTIVATEAPP, TRUE, 0);
+    w32l_call_proc(proc, W32L_HWND, WM_ACTIVATE, WA_ACTIVE, 0);
+    w32l_call_proc(proc, W32L_HWND, WM_SETFOCUS, 0, 0);
     if (style & WS_VISIBLE)
         w32l_queue_post(W32L_HWND, WM_PAINT, 0, 0);
     return W32L_HWND;
@@ -97,21 +115,45 @@ BOOL WINAPI DestroyWindow(HWND hwnd)
 {
     if (hwnd != W32L_HWND || !w32l_window.alive)
         return FALSE;
-    w32l_window.proc(W32L_HWND, WM_DESTROY, 0, 0);
+    w32l_call_proc(w32l_window.proc, W32L_HWND, WM_DESTROY, 0, 0);
     w32l_window.alive = 0;
     w32l_host_window_close();
     return TRUE;
 }
 
+/* A hidden window shown gets WM_SHOWWINDOW and, being newly visible, a paint
+ * that UpdateWindow then delivers. */
+static int32_t w32l_paint_pending;
+
 BOOL WINAPI ShowWindow(HWND hwnd, int32_t cmd)
 {
-    (void)hwnd; (void)cmd;
-    return TRUE;
+    int32_t was;
+
+    if (hwnd != W32L_HWND || !w32l_window.alive)
+        return FALSE;
+    was = (w32l_window.style & WS_VISIBLE) != 0;
+    if (cmd == SW_HIDE) {
+        if (was) {
+            w32l_window.style &= ~WS_VISIBLE;
+            w32l_call_proc(w32l_window.proc, hwnd, WM_SHOWWINDOW, FALSE, 0);
+        }
+    } else if (!was) {
+        w32l_window.style |= WS_VISIBLE;
+        w32l_call_proc(w32l_window.proc, hwnd, WM_SHOWWINDOW, TRUE, 0);
+        w32l_paint_pending = 1;
+        w32l_queue_post(hwnd, WM_PAINT, 0, 0);
+    }
+    return was;
 }
 
+/* Deliver the pending paint now, as Windows does, instead of leaving it to
+ * the queue. */
 BOOL WINAPI UpdateWindow(HWND hwnd)
 {
-    (void)hwnd;
+    if (hwnd == W32L_HWND && w32l_window.alive && w32l_paint_pending) {
+        w32l_paint_pending = 0;
+        w32l_call_proc(w32l_window.proc, hwnd, WM_PAINT, 0, 0);
+    }
     return TRUE;
 }
 
@@ -135,18 +177,34 @@ BOOL WINAPI SetWindowPos(HWND hwnd, HWND after, int32_t x, int32_t y,
         w32l_window.w = cx;
         w32l_window.h = cy;
         w32l_host_window_open(NULL, cx, cy);
-        w32l_window.proc(W32L_HWND, WM_SIZE, 0, MAKELONG(cx, cy));
+        w32l_call_proc(w32l_window.proc, W32L_HWND, WM_SIZE, 0, MAKELONG(cx, cy));
     }
     return TRUE;
 }
 
+/* Indexes 0 and up read and write the window's extra bytes: a program that
+ * keeps a pointer to its own window object there (SetWindowLong(hwnd, 0, this),
+ * the first thing a C++ window class does) gets it back in its window
+ * procedure. Without this every message reaches DefWindowProc. */
 LONG WINAPI GetWindowLongA(HWND hwnd, int32_t index)
 {
+    LONG v;
+
     if (hwnd != W32L_HWND)
         return 0;
+    if (index >= 0) {
+        if ((size_t)index + sizeof v > sizeof w32l_window.extra)
+            return 0;
+        memcpy(&v, w32l_window.extra + index, sizeof v);
+        return v;
+    }
     switch (index) {
-    case GWL_STYLE:   return (LONG)w32l_window.style;
-    case GWL_EXSTYLE: return (LONG)w32l_window.exStyle;
+    case GWL_STYLE:    return (LONG)w32l_window.style;
+    case GWL_EXSTYLE:  return (LONG)w32l_window.exStyle;
+    case GWL_USERDATA: return w32l_window.userdata;
+    case GWL_ID:       return w32l_window.id;
+    case GWL_WNDPROC:  return (LONG)(uintptr_t)w32l_window.proc;
+    case GWL_HINSTANCE: return 0x400000;
     }
     return 0;
 }
@@ -157,9 +215,17 @@ LONG WINAPI SetWindowLongA(HWND hwnd, int32_t index, LONG value)
 
     if (hwnd != W32L_HWND)
         return 0;
+    if (index >= 0) {
+        if ((size_t)index + sizeof value <= sizeof w32l_window.extra)
+            memcpy(w32l_window.extra + index, &value, sizeof value);
+        return old;
+    }
     switch (index) {
-    case GWL_STYLE:   w32l_window.style = (DWORD)value; break;
-    case GWL_EXSTYLE: w32l_window.exStyle = (DWORD)value; break;
+    case GWL_STYLE:    w32l_window.style = (DWORD)value; break;
+    case GWL_EXSTYLE:  w32l_window.exStyle = (DWORD)value; break;
+    case GWL_USERDATA: w32l_window.userdata = value; break;
+    case GWL_ID:       w32l_window.id = value; break;
+    case GWL_WNDPROC:  w32l_window.proc = (WNDPROC)(uintptr_t)value; break;
     }
     return old;
 }
@@ -457,13 +523,13 @@ LRESULT WINAPI DispatchMessageA(const MSG *msg)
 
     if (!proc)
         return 0;
-    return proc(msg->hwnd, msg->message, msg->wParam, msg->lParam);
+    return w32l_call_proc(proc, msg->hwnd, msg->message, msg->wParam, msg->lParam);
 }
 
 LRESULT WINAPI SendMessageA(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     WNDPROC proc = w32l_window_proc(hwnd);
-    return proc ? proc(hwnd, msg, wp, lp) : 0;
+    return proc ? w32l_call_proc(proc, hwnd, msg, wp, lp) : 0;
 }
 
 LRESULT WINAPI DefWindowProcA(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)

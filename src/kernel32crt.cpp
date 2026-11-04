@@ -799,7 +799,9 @@ DWORD WINAPI SetFilePointer(HANDLE h, LONG lo, PLONG hi, DWORD method)
     r = lseek64(fd, off, method == FILE_BEGIN ? SEEK_SET
                        : method == FILE_CURRENT ? SEEK_CUR : SEEK_END);
     if (r < 0) {
-        SetLastError(w32l_errno_to_error());
+        /* A seek before the start of the file: the CRT's _open expects this
+         * error from its "-1 from the end" probe of an empty file. */
+        SetLastError(errno == EINVAL ? ERROR_NEGATIVE_SEEK : w32l_errno_to_error());
         return INVALID_SET_FILE_POINTER;
     }
     if (hi)

@@ -168,6 +168,15 @@ void w32l_host_keyboard_state(uint8_t *out);
 void w32l_host_mouse_state(int32_t *x, int32_t *y, uint32_t *buttons);
 void w32l_host_mouse_warp(int32_t lx, int32_t ly);
 
+/* The colour depth the program sees (GetDeviceCaps BITSPIXEL, DirectDraw's
+ * display mode and the default surface format): 8 palettised, the default, or
+ * 16 as RGB565. A loader sets it before the program runs; SetDisplayMode with
+ * an explicit depth changes it. */
+extern int32_t w32l_display_bpp;
+
+/* Show a 16-bit RGB565 frame (the primary of a 16-bit mode). */
+void w32l_host_present16(const uint8_t *pixels, int32_t pitch, int32_t w, int32_t h);
+
 /* ---- sound and timers (sdl.cpp) ------------------------------------------- */
 
 /* Open the host's playback device at `rate` frames a second, stereo float.

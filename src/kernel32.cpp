@@ -270,6 +270,22 @@ static const W32L_Export w32l_exports[] = {
     X("USER32.dll", UnregisterClassA), X("USER32.dll", WindowFromPoint),
     X("USER32.dll", wvsprintfA),
     X("WINMM.dll", timeGetTime),
+    X("ADVAPI32.dll", RegOpenKeyExA),
+    X("ADVAPI32.dll", RegQueryInfoKeyA),
+    X("ADVAPI32.dll", RegEnumValueA),
+    X("SHLWAPI.dll", PathFileExistsA),
+    X("SHLWAPI.dll", PathAppendA),
+    X("SHELL32.dll", SHGetFolderPathA),
+    X("SHELL32.dll", SHCreateDirectoryExA),
+    X("SHELL32.dll", DragAcceptFiles),
+    X("SHELL32.dll", DragQueryFileA),
+    X("SHELL32.dll", DragFinish),
+    X("ole32.dll", CoUninitialize),
+    X("GDI32.dll", SetBkColor),
+    X("GDI32.dll", SetPixel),
+    X("GDI32.dll", ExtTextOutA),
+    X("GDI32.dll", GetTextExtentPointA),
+    X("GDI32.dll", GetStockObject),
 };
 #undef X
 

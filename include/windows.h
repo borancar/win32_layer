@@ -636,6 +636,7 @@ typedef struct tagMSG {
 #define WM_SETFOCUS      0x0007
 #define WM_KILLFOCUS     0x0008
 #define WM_PAINT         0x000F
+#define WM_SHOWWINDOW    0x0018
 #define WM_CLOSE         0x0010
 #define WM_QUIT          0x0012
 #define WM_ERASEBKGND    0x0014
@@ -720,6 +721,10 @@ typedef struct tagPAINTSTRUCT {
 
 #define GWL_STYLE   (-16)
 #define GWL_EXSTYLE (-20)
+#define GWL_USERDATA (-21)
+#define GWL_ID       (-12)
+#define GWL_WNDPROC  (-4)
+#define GWL_HINSTANCE (-6)
 
 #define SWP_NOSIZE       0x0001
 #define SWP_NOMOVE       0x0002
@@ -866,6 +871,35 @@ int32_t WINAPI GetMenuItemCount(HMENU menu);
 BOOL    WINAPI GetMenuItemInfoA(HMENU menu, UINT item, BOOL byPosition, LPMENUITEMINFOA info);
 HMENU   WINAPI GetSubMenu(HMENU menu, int32_t pos);
 BOOL    WINAPI TrackPopupMenu(HMENU menu, UINT flags, int32_t x, int32_t y, int32_t reserved, HWND hwnd, const RECT *rc);
+
+/* ---- the last of the system DLLs: advapi32 registry, shlwapi, shell32, gdi32 extras ---- */
+
+#define ERROR_NO_MORE_ITEMS 259
+#define CSIDL_PERSONAL      0x0005
+#define CSIDL_APPDATA       0x001A
+#define MAX_PATH            260
+
+LONG    WINAPI RegOpenKeyExA(HKEY key, LPCSTR sub, DWORD options, DWORD access, PHKEY out);
+LONG    WINAPI RegQueryInfoKeyA(HKEY key, LPSTR cls, LPDWORD clsLen, LPDWORD reserved,
+                                LPDWORD subKeys, LPDWORD maxSubKey, LPDWORD maxClass,
+                                LPDWORD values, LPDWORD maxValueName, LPDWORD maxValueData,
+                                LPDWORD secDesc, LPFILETIME lastWrite);
+LONG    WINAPI RegEnumValueA(HKEY key, DWORD index, LPSTR name, LPDWORD nameLen,
+                             LPDWORD reserved, LPDWORD type, LPBYTE data, LPDWORD dataLen);
+BOOL    WINAPI PathFileExistsA(LPCSTR path);
+BOOL    WINAPI PathAppendA(LPSTR path, LPCSTR more);
+HRESULT WINAPI SHGetFolderPathA(HWND hwnd, int32_t csidl, HANDLE token, DWORD flags, LPSTR out);
+int32_t WINAPI SHCreateDirectoryExA(HWND hwnd, LPCSTR path, LPSECURITY_ATTRIBUTES sa);
+void    WINAPI DragAcceptFiles(HWND hwnd, BOOL accept);
+UINT    WINAPI DragQueryFileA(HANDLE drop, UINT index, LPSTR out, UINT cch);
+void    WINAPI DragFinish(HANDLE drop);
+void    WINAPI CoUninitialize(void);
+COLORREF WINAPI SetBkColor(HDC dc, COLORREF colour);
+COLORREF WINAPI SetPixel(HDC dc, int32_t x, int32_t y, COLORREF colour);
+BOOL     WINAPI ExtTextOutA(HDC dc, int32_t x, int32_t y, UINT options, const RECT *rc,
+                            LPCSTR text, UINT n, const int32_t *dx);
+BOOL     WINAPI GetTextExtentPointA(HDC dc, LPCSTR text, int32_t n, LPSIZE out);
+HGDIOBJ  WINAPI GetStockObject(int32_t index);
 
 /* MSVC's stdio spellings, which the harness's C uses. Defined in crt.cpp. */
 int32_t _snprintf(char *out, size_t cap, const char *fmt, ...);
