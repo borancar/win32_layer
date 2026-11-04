@@ -657,6 +657,13 @@ static int32_t w32l_fd_of(HANDLE h)
     return x->fd;
 }
 
+/* The host descriptor behind a file HANDLE, or -1 (for providers that take the
+ * game's open file by handle, e.g. Miles' "\\\\<handle>" stream names). */
+int32_t w32l_handle_fd(const void *h)
+{
+    return w32l_fd_of((HANDLE)h);
+}
+
 static DWORD w32l_errno_to_error(void)
 {
     switch (errno) {

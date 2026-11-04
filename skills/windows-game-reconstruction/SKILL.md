@@ -173,6 +173,21 @@ stack, answers a fixed value and logs its first call.
   two combine, the combined binary being GPLv3. ArmyMen2 vendors a GPL-2.0 copy
   of the layer and is unaffected until it takes the new one. Do not copy
   OpenMiles code into the layer itself; link it from the game.
+  *Wiring OpenMiles into a loader (learned on Commandos, Miles 3.6F):*
+  build it for `x86-linux-gnu` as `libmss32.so` (two small Zig patches: export
+  the `AIL_*` names undecorated on x86 Linux, and an `@alignCast` in
+  `midi.zig`), `dlopen` it from the loader and bind each `_AIL_x@N` import to
+  `w32l_stdcall_adapter(dlsym("AIL_x"), N)` (`src/adapter.cpp`: re-pushes the
+  args, 16-byte aligns, saves ebx/esi/edi). **OpenMiles' `.winapi` functions
+  are real stdcall on x86 Linux (callee pops)**; a loader wrapper that calls
+  one must declare it `__attribute__((stdcall))` or its own `ret` pops the
+  wrong slot and jumps to 0. The game may carry a *static copy of Miles
+  internals* and poke the driver/sample structs when the first
+  `AIL_waveOutOpen` succeeds (Commandos: mode 1); OpenMiles' layout differs, so
+  make that first open fail and the game falls back to the pure-DLL path
+  (mode 2). `AIL_open_stream("\\\\<HANDLE>")` names an open file by its
+  Win32 handle: map it with `w32l_handle_fd` to `/proc/self/fd/<fd>`.
+  Link the loader with `-Wl,-z,now` is harmless but not needed.
 - **Smacker (`smackw32`)**: libsmacker, as ArmyMen2 does. Commandos does not
   import it (its films are `.avi`).
 
@@ -327,3 +342,4 @@ Planned, in order. Replace each stub with what was learned:
   TOML-backed registry (`registry.cpp`, `third_party/tomlc99`). Skill notes
   above ("From imports bound to the first menu").
 - 2026-11-04: mouse and keyboard window messages in the layer; confirmed by hand on the Commandos menu.
+- 2026-11-04: Commandos in-game sound through OpenMiles: calls succeed (samples, music stream started), audibility not yet confirmed by ear. Layer: `w32l_stdcall_adapter`, `w32l_handle_fd`, host PCM output.

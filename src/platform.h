@@ -174,6 +174,11 @@ void w32l_host_mouse_warp(int32_t lx, int32_t ly);
  * an explicit depth changes it. */
 extern int32_t w32l_display_bpp;
 
+/* A stdcall entry that calls the cdecl function `fn` with the same
+ * `argbytes` of arguments (adapter.cpp): how a provider built for Linux is
+ * bound to a PE import. NULL when the arguments do not fit. */
+const void *w32l_stdcall_adapter(const void *fn, uint32_t argbytes);
+
 /* A host PCM output (signed 16-bit interleaved), for a program's own streams
  * such as video sound. NULL when there is no audio device. */
 void *w32l_host_pcm_open(int32_t rate, int32_t channels);
@@ -198,6 +203,9 @@ void    w32l_host_audio_close(void);
 typedef void (*w32l_timer_fn)(void *ud);
 uint32_t w32l_host_timer_add(uint32_t ms, int32_t periodic, w32l_timer_fn fn, void *ud);
 void     w32l_host_timer_remove(uint32_t id);
+
+/* The host fd behind a file HANDLE returned by CreateFile, or -1. */
+int32_t w32l_handle_fd(const void *handle);
 
 /* crt.cpp's fopen, with the Windows path translated (see w32l_native_path). */
 FILE *w32l_fopen(const char *path, const char *mode);
