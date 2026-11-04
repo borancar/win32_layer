@@ -126,22 +126,12 @@ BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *out)
  * AI and comm timers, IntersectRect from the row layer -- so the answers have
  * to be real functions with the right convention.
  *
- * A name in a module we emulate that is not in the table gets a trap that
- * says which name it was, once, and answers 0. Most of the kernel32 list is
- * the MSVC CRT's own imports, which nothing in this tree calls. smackw32 is
- * all traps: the native port's movie.cpp calls its own smackw32 (ArmyMen2's src/game/
- * win32/smackw32.cpp, over libsmacker) by name, and the hybrid's original
- * code gets 0 from SmackOpen and so skips every film, as it always has here. */
-
-static const char *w32l_missing_names[64];
-static int32_t     w32l_missing_count;
-
-static int32_t WINAPI w32l_import_missing(void)
-{
-    w32l_plat_log("an import this build does not provide was called "
-                 "(see the names logged at startup)");
-    return 0;
-}
+ * A name in a module we emulate that is not in the table is NULL from
+ * GetProcAddress (as on Windows) and, to a PE loader, w32l_export_lookup's
+ * NULL, which the loader turns into a stub of its own that names it. Most of
+ * the kernel32 list is the MSVC CRT's own imports, which nothing in this tree
+ * calls. smackw32 has no entries: ArmyMen2's native port calls its own
+ * smackw32 (src/game/win32/smackw32.cpp, over libsmacker) by name. */
 
 #define X(mod, fn) { mod, #fn, (const void *)&fn }
 static const W32L_Export w32l_exports[] = {
@@ -229,6 +219,57 @@ static const W32L_Export w32l_exports[] = {
     X("WINMM.dll", mmioGetInfo), X("WINMM.dll", mmioClose), X("WINMM.dll", mmioSetInfo),
     X("WINMM.dll", mmioSeek), X("WINMM.dll", mmioOpenA), X("WINMM.dll", mmioAscend),
     X("ole32.dll", CoInitialize), X("ole32.dll", CoCreateInstance),
+    /* Added for Commandos: the rest of what a CRT-and-window game imports
+     * (kernel32ext.cpp, user32ext.cpp, and implementations that were already
+     * here but had no export). */
+    X("KERNEL32.dll", CopyFileA), X("KERNEL32.dll", CreateFileW),
+    X("KERNEL32.dll", DebugBreak), X("KERNEL32.dll", EnumSystemLocalesA),
+    X("KERNEL32.dll", FatalAppExitA), X("KERNEL32.dll", GetConsoleCP),
+    X("KERNEL32.dll", GetConsoleMode), X("KERNEL32.dll", GetConsoleOutputCP),
+    X("KERNEL32.dll", GetCurrentProcessId),
+    X("KERNEL32.dll", GetCurrentThread),
+    X("KERNEL32.dll", GetCurrentThreadId), X("KERNEL32.dll", GetDateFormatA),
+    X("KERNEL32.dll", GetLocaleInfoA), X("KERNEL32.dll", GetLocaleInfoW),
+    X("KERNEL32.dll", GetProcessHeap),
+    X("KERNEL32.dll", GetSystemDefaultLangID),
+    X("KERNEL32.dll", GetSystemTimeAsFileTime),
+    X("KERNEL32.dll", GetTimeFormatA), X("KERNEL32.dll", GetUserDefaultLCID),
+    X("KERNEL32.dll", GetVersionExA), X("KERNEL32.dll", IsDebuggerPresent),
+    X("KERNEL32.dll", IsValidCodePage), X("KERNEL32.dll", IsValidLocale),
+    X("KERNEL32.dll", lstrcatA), X("KERNEL32.dll", lstrcmpA),
+    X("KERNEL32.dll", lstrcmpiA), X("KERNEL32.dll", lstrcpyA),
+    X("KERNEL32.dll", lstrcpynA), X("KERNEL32.dll", OutputDebugStringA),
+    X("KERNEL32.dll", RaiseException),
+    X("KERNEL32.dll", SetConsoleCtrlHandler), X("KERNEL32.dll", TlsAlloc),
+    X("KERNEL32.dll", TlsFree), X("KERNEL32.dll", TlsGetValue),
+    X("KERNEL32.dll", TlsSetValue), X("KERNEL32.dll", WriteConsoleA),
+    X("KERNEL32.dll", WriteConsoleW),
+    X("KERNEL32.dll", DeleteCriticalSection),
+    X("KERNEL32.dll", EnterCriticalSection),
+    X("KERNEL32.dll", InitializeCriticalSection),
+    X("KERNEL32.dll", LeaveCriticalSection), X("KERNEL32.dll", SetLastError),
+    { "KERNEL32.dll", "InterlockedIncrement", (const void *)&w32l_InterlockedIncrement },
+    { "KERNEL32.dll", "InterlockedDecrement", (const void *)&w32l_InterlockedDecrement },
+    X("USER32.dll", BringWindowToTop), X("USER32.dll", CheckDlgButton),
+    X("USER32.dll", CreateDialogParamA), X("USER32.dll", DestroyMenu),
+    X("USER32.dll", DialogBoxParamA), X("USER32.dll", EndDialog),
+    X("USER32.dll", GetCursorPos), X("USER32.dll", GetDesktopWindow),
+    X("USER32.dll", GetDlgCtrlID), X("USER32.dll", GetDlgItem),
+    X("USER32.dll", GetDlgItemInt), X("USER32.dll", GetDlgItemTextA),
+    X("USER32.dll", GetForegroundWindow), X("USER32.dll", GetKeyState),
+    X("USER32.dll", GetMenuItemCount), X("USER32.dll", GetMenuItemInfoA),
+    X("USER32.dll", GetSubMenu), X("USER32.dll", InvalidateRect),
+    X("USER32.dll", IsDlgButtonChecked), X("USER32.dll", LoadMenuA),
+    X("USER32.dll", MapVirtualKeyA), X("USER32.dll", MoveWindow),
+    X("USER32.dll", RegisterClassExA), X("USER32.dll", ReleaseCapture),
+    X("USER32.dll", SendDlgItemMessageA), X("USER32.dll", SendMessageA),
+    X("USER32.dll", SetActiveWindow), X("USER32.dll", SetCapture),
+    X("USER32.dll", SetCursorPos), X("USER32.dll", SetDlgItemInt),
+    X("USER32.dll", SetDlgItemTextA), X("USER32.dll", SetWindowTextA),
+    X("USER32.dll", ShowWindow), X("USER32.dll", TrackPopupMenu),
+    X("USER32.dll", UnregisterClassA), X("USER32.dll", WindowFromPoint),
+    X("USER32.dll", wvsprintfA),
+    X("WINMM.dll", timeGetTime),
 };
 #undef X
 
@@ -289,9 +330,14 @@ FARPROC WINAPI GetProcAddress(HMODULE mod, LPCSTR name)
             !strcmp(w32l_exports[i].name, name))
             return (FARPROC)w32l_exports[i].fn;
 
-    if (w32l_missing_count < (int32_t)(sizeof w32l_missing_names / sizeof w32l_missing_names[0]))
-        w32l_missing_names[w32l_missing_count++] = name;
-    return (FARPROC)&w32l_import_missing;
+    /* What Windows does for an export the module does not have: NULL and
+     * ERROR_PROC_NOT_FOUND. A program probes for newer entries this way
+     * (the MSVC 7+ CRT asks for FlsAlloc and falls back to TlsAlloc if it is
+     * not there), so a trap here makes it believe the entry exists and call
+     * it. The layer claims Windows 98 SE (GetVersion), which has none of those. */
+    w32l_plat_debug("GetProcAddress(%s, %s): not provided", module, name);
+    SetLastError(127);   /* ERROR_PROC_NOT_FOUND */
+    return NULL;
 }
 
 /* The loader's view of the table: NULL for a name we do not provide, so it
@@ -304,7 +350,7 @@ const void *w32l_export_lookup(const char *module, const char *name)
         if (!strcasecmp(w32l_exports[i].module, module) &&
             !strcmp(w32l_exports[i].name, name))
             return w32l_exports[i].fn;
-    return NULL;
+    return w32l_stub_lookup(module, name);
 }
 
 /* The application's description of itself (platform.h). Weak: the

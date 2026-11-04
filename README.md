@@ -89,10 +89,7 @@ All read from the environment.
 
 ## License
 
-GNU General Public License, version 2 **or (at your option) any later
-version** (GPL-2.0-or-later). The version 2 text is in [`LICENSE`](LICENSE) and
-version 3 in [`COPYING.GPLv3`](COPYING.GPLv3). "Or later" is what lets this
-layer be combined with GPLv3 code (for instance OpenMiles, which Commandos
-links for `mss32`): the combined program is then distributed under GPLv3.
+Licensed under the GNU GPL v2 or (at your option) any later version. See
+[`LICENSE`](LICENSE) for the version 2 text.
 `src/stb/stb_truetype.h` is Sean Barrett's, under its own public-domain/MIT
 terms (see the end of that file).

@@ -163,6 +163,11 @@ extern const char *(*w32l_host_lua)(const char *code);
 /* Keyboard state as DirectInput scancodes, 256 bytes, 0x80 when down. */
 void w32l_host_keyboard_state(uint8_t *out);
 
+/* The pointer in logical coordinates and the buttons held (1 left, 2 right,
+ * 4 middle), and a way to move it. GetCursorPos, GetKeyState, SetCursorPos. */
+void w32l_host_mouse_state(int32_t *x, int32_t *y, uint32_t *buttons);
+void w32l_host_mouse_warp(int32_t lx, int32_t ly);
+
 /* ---- sound and timers (sdl.cpp) ------------------------------------------- */
 
 /* Open the host's playback device at `rate` frames a second, stereo float.
@@ -258,6 +263,11 @@ typedef struct W32L_Export {
 /* The table by module and name, NULL when absent. */
 const void *w32l_export_lookup(const char *module, const char *name);
 
+/* Zero-answering stand-ins for whole modules (mss32.dll, WSOCK32.dll), made on
+ * demand with the right stdcall pop size; src/stubs.cpp. NULL if not stubbed.
+ * w32l_export_lookup falls through to it. */
+const void *w32l_stub_lookup(const char *module, const char *name);
+
 /* Called on every thread CreateThread makes, before its start routine,
  * when set. The PE loader gives each thread its own TEB through it. */
 extern void (*w32l_thread_attach)(void);
@@ -268,6 +278,8 @@ void w32l_set_command_line(const char *args);
 
 /* A plain function for the IAT, where windows.h has an inline. */
 LONG WINAPI w32l_InterlockedExchange(volatile LONG *target, LONG value);
+LONG WINAPI w32l_InterlockedIncrement(volatile LONG *target);
+LONG WINAPI w32l_InterlockedDecrement(volatile LONG *target);
 
 #ifdef __cplusplus
 }

@@ -564,6 +564,58 @@ LONG WINAPI RegCreateKeyExA(HKEY key, LPCSTR sub, DWORD reserved, LPSTR cls,
                             LPDWORD disposition);
 LONG WINAPI RegCloseKey(HKEY key);
 
+/* ---- kernel32: the rest of what a CRT-based game imports ---------------- */
+
+typedef struct _OSVERSIONINFOA {
+    DWORD dwOSVersionInfoSize, dwMajorVersion, dwMinorVersion;
+    DWORD dwBuildNumber, dwPlatformId;
+    CHAR  szCSDVersion[128];
+} OSVERSIONINFOA, *LPOSVERSIONINFOA;
+#define VER_PLATFORM_WIN32_WINDOWS 1
+
+#define TLS_OUT_OF_INDEXES 0xFFFFFFFFu
+typedef BOOL (CALLBACK *LOCALE_ENUMPROCA)(LPSTR);
+typedef BOOL (WINAPI *PHANDLER_ROUTINE)(DWORD);
+
+BOOL    WINAPI CopyFileA(LPCSTR from, LPCSTR to, BOOL failIfExists);
+HANDLE  WINAPI CreateFileW(LPCWSTR path, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
+                           DWORD create, DWORD attrs, HANDLE templ);
+void    WINAPI DebugBreak(void);
+BOOL    WINAPI EnumSystemLocalesA(LOCALE_ENUMPROCA proc, DWORD flags);
+void    WINAPI FatalAppExitA(UINT action, LPCSTR message);
+UINT    WINAPI GetConsoleCP(void);
+UINT    WINAPI GetConsoleOutputCP(void);
+BOOL    WINAPI GetConsoleMode(HANDLE h, LPDWORD mode);
+BOOL    WINAPI WriteConsoleA(HANDLE h, LPCVOID buf, DWORD n, LPDWORD written, LPVOID reserved);
+BOOL    WINAPI WriteConsoleW(HANDLE h, LPCVOID buf, DWORD n, LPDWORD written, LPVOID reserved);
+BOOL    WINAPI SetConsoleCtrlHandler(PHANDLER_ROUTINE handler, BOOL add);
+DWORD   WINAPI GetCurrentProcessId(void);
+HANDLE  WINAPI GetCurrentThread(void);
+DWORD   WINAPI GetCurrentThreadId(void);
+int32_t WINAPI GetDateFormatA(LCID locale, DWORD flags, const SYSTEMTIME *t, LPCSTR fmt, LPSTR out, int32_t cch);
+int32_t WINAPI GetTimeFormatA(LCID locale, DWORD flags, const SYSTEMTIME *t, LPCSTR fmt, LPSTR out, int32_t cch);
+int32_t WINAPI GetLocaleInfoA(LCID locale, DWORD type, LPSTR out, int32_t cch);
+int32_t WINAPI GetLocaleInfoW(LCID locale, DWORD type, LPWSTR out, int32_t cch);
+HANDLE  WINAPI GetProcessHeap(void);
+WORD    WINAPI GetSystemDefaultLangID(void);
+LCID    WINAPI GetUserDefaultLCID(void);
+void    WINAPI GetSystemTimeAsFileTime(LPFILETIME out);
+BOOL    WINAPI GetVersionExA(LPOSVERSIONINFOA v);
+BOOL    WINAPI IsDebuggerPresent(void);
+BOOL    WINAPI IsValidCodePage(UINT cp);
+BOOL    WINAPI IsValidLocale(LCID locale, DWORD flags);
+LPSTR   WINAPI lstrcatA(LPSTR a, LPCSTR b);
+int32_t WINAPI lstrcmpA(LPCSTR a, LPCSTR b);
+int32_t WINAPI lstrcmpiA(LPCSTR a, LPCSTR b);
+LPSTR   WINAPI lstrcpyA(LPSTR a, LPCSTR b);
+LPSTR   WINAPI lstrcpynA(LPSTR a, LPCSTR b, int32_t n);
+void    WINAPI OutputDebugStringA(LPCSTR s);
+void    WINAPI RaiseException(DWORD code, DWORD flags, DWORD nargs, const ULONG_PTR *args);
+DWORD   WINAPI TlsAlloc(void);
+BOOL    WINAPI TlsFree(DWORD index);
+LPVOID  WINAPI TlsGetValue(DWORD index);
+BOOL    WINAPI TlsSetValue(DWORD index, LPVOID value);
+
 /* ---- user: messages ---------------------------------------------------- */
 
 typedef struct tagMSG {
@@ -740,6 +792,80 @@ BOOL    WINAPI SetRect(LPRECT rc, int32_t l, int32_t t, int32_t r, int32_t b);
 BOOL    WINAPI IntersectRect(LPRECT out, const RECT *a, const RECT *b);
 int32_t WINAPI wsprintfA(LPSTR out, LPCSTR fmt, ...);
 int32_t WINAPI lstrlenA(LPCSTR s);
+
+/* ---- user: the rest of what a window-and-dialog game imports ------------- */
+
+typedef struct tagWNDCLASSEXA {
+    UINT      cbSize;
+    UINT      style;
+    WNDPROC   lpfnWndProc;
+    int32_t   cbClsExtra;
+    int32_t   cbWndExtra;
+    HINSTANCE hInstance;
+    HICON     hIcon;
+    HCURSOR   hCursor;
+    HBRUSH    hbrBackground;
+    LPCSTR    lpszMenuName;
+    LPCSTR    lpszClassName;
+    HICON     hIconSm;
+} WNDCLASSEXA, *LPWNDCLASSEXA;
+
+typedef struct tagMENUITEMINFOA {
+    UINT    cbSize, fMask, fType, fState, wID;
+    HMENU   hSubMenu;
+    HBITMAP hbmpChecked, hbmpUnchecked;
+    DWORD   dwItemData;
+    LPSTR   dwTypeData;
+    UINT    cch;
+} MENUITEMINFOA, *LPMENUITEMINFOA;
+
+typedef INT_PTR (CALLBACK *DLGPROC)(HWND, UINT, WPARAM, LPARAM);
+
+#define VK_LBUTTON 0x01
+#define VK_RBUTTON 0x02
+#define VK_MBUTTON 0x04
+#define VK_SHIFT   0x10
+#define VK_CONTROL 0x11
+#define VK_MENU    0x12
+
+ATOM    WINAPI RegisterClassExA(const WNDCLASSEXA *wc);
+BOOL    WINAPI UnregisterClassA(LPCSTR cls, HINSTANCE inst);
+BOOL    WINAPI BringWindowToTop(HWND hwnd);
+HWND    WINAPI SetActiveWindow(HWND hwnd);
+HWND    WINAPI GetForegroundWindow(void);
+HWND    WINAPI GetDesktopWindow(void);
+BOOL    WINAPI InvalidateRect(HWND hwnd, const RECT *rc, BOOL erase);
+BOOL    WINAPI MoveWindow(HWND hwnd, int32_t x, int32_t y, int32_t w, int32_t h, BOOL repaint);
+HWND    WINAPI SetCapture(HWND hwnd);
+BOOL    WINAPI ReleaseCapture(void);
+BOOL    WINAPI SetWindowTextA(HWND hwnd, LPCSTR text);
+HWND    WINAPI WindowFromPoint(POINT pt);
+BOOL    WINAPI GetCursorPos(LPPOINT pt);
+BOOL    WINAPI SetCursorPos(int32_t x, int32_t y);
+int16_t WINAPI GetKeyState(int32_t vk);
+UINT    WINAPI MapVirtualKeyA(UINT code, UINT type);
+int32_t WINAPI wvsprintfA(LPSTR out, LPCSTR fmt, va_list ap);
+
+/* Dialogs and menus. There is no resource interpreter here: creating one
+ * fails and every control query answers "no such control". */
+INT_PTR WINAPI DialogBoxParamA(HINSTANCE inst, LPCSTR templ, HWND parent, DLGPROC proc, LPARAM param);
+HWND    WINAPI CreateDialogParamA(HINSTANCE inst, LPCSTR templ, HWND parent, DLGPROC proc, LPARAM param);
+BOOL    WINAPI EndDialog(HWND dlg, INT_PTR result);
+HWND    WINAPI GetDlgItem(HWND dlg, int32_t id);
+int32_t WINAPI GetDlgCtrlID(HWND hwnd);
+UINT    WINAPI GetDlgItemInt(HWND dlg, int32_t id, BOOL *translated, BOOL isSigned);
+UINT    WINAPI GetDlgItemTextA(HWND dlg, int32_t id, LPSTR out, int32_t cch);
+BOOL    WINAPI SetDlgItemInt(HWND dlg, int32_t id, UINT value, BOOL isSigned);
+BOOL    WINAPI SetDlgItemTextA(HWND dlg, int32_t id, LPCSTR text);
+BOOL    WINAPI CheckDlgButton(HWND dlg, int32_t id, UINT check);
+UINT    WINAPI IsDlgButtonChecked(HWND dlg, int32_t id);
+LRESULT WINAPI SendDlgItemMessageA(HWND dlg, int32_t id, UINT msg, WPARAM wp, LPARAM lp);
+HMENU   WINAPI LoadMenuA(HINSTANCE inst, LPCSTR name);
+BOOL    WINAPI DestroyMenu(HMENU menu);
+int32_t WINAPI GetMenuItemCount(HMENU menu);
+BOOL    WINAPI GetMenuItemInfoA(HMENU menu, UINT item, BOOL byPosition, LPMENUITEMINFOA info);
+HMENU   WINAPI GetSubMenu(HMENU menu, int32_t pos);
+BOOL    WINAPI TrackPopupMenu(HMENU menu, UINT flags, int32_t x, int32_t y, int32_t reserved, HWND hwnd, const RECT *rc);
 
 /* MSVC's stdio spellings, which the harness's C uses. Defined in crt.cpp. */
 int32_t _snprintf(char *out, size_t cap, const char *fmt, ...);

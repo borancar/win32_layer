@@ -593,6 +593,30 @@ static void w32l_mouse_flush(void)
     w32l_mouse_dx = w32l_mouse_dy = 0;
 }
 
+/* Where the pointer is, in the program's logical coordinates, and which
+ * buttons the program has been told are down (1 left, 2 right, 4 middle).
+ * For GetCursorPos and GetKeyState. */
+void w32l_host_mouse_state(int32_t *x, int32_t *y, uint32_t *buttons)
+{
+    *x = w32l_mouse_seen ? w32l_mouse_last_x : w32l_disp_w / 2;
+    *y = w32l_mouse_seen ? w32l_mouse_last_y : w32l_disp_h / 2;
+    *buttons = (w32l_button_down[0] ? 1u : 0u) | (w32l_button_down[1] ? 2u : 0u) |
+               (w32l_button_down[2] ? 4u : 0u);
+}
+
+/* SetCursorPos: move the pointer to a logical position. */
+void w32l_host_mouse_warp(int32_t lx, int32_t ly)
+{
+    float wx = 0, wy = 0;
+
+    w32l_mouse_seen = 1;
+    w32l_mouse_last_x = lx;
+    w32l_mouse_last_y = ly;
+    if (w32l_sdl_window && w32l_sdl_renderer && !w32l_host_lockstep() &&
+        SDL_RenderCoordinatesToWindow(w32l_sdl_renderer, (float)lx, (float)ly, &wx, &wy))
+        SDL_WarpMouseInWindow(w32l_sdl_window, wx, wy);
+}
+
 void (*w32l_host_frame_hook)(void);
 void (*w32l_host_hotkey)(int32_t which);
 
