@@ -467,3 +467,5 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - A store followed by a reload of the same member (`mov [esi+14],3; mov eax,[esi+14]`) is reproduced by writing the store through `*(volatile int *)&f14 = 3; return f14;` (a volatile member also reloads, but then schedules the store earlier).
 
 - A local buffer declared as `char data[N]` makes VC8 emit a /GS cookie the original lacks; declare it as N/4 `int` members instead. A `void` function ending in a `void` virtual call becomes a tail `jmp`; if the original calls and returns normally, declare the callee to return `int`.
+
+- A search loop that reloads the array pointer every iteration and jumps from the failed first test to the increment is `do { if (o->At(i)) return i; i++; } while (i < o->n);` with an inline bounds-checked accessor; a `for` loop with the outer test strength-reduces instead.
