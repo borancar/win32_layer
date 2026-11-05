@@ -368,6 +368,22 @@ masked and their targets checked (symbols, string literals, jump-table labels, E
 funclets, thunks followed through the incremental-link `jmp` table). The comparer
 is `tools/bytematch.py` in the Commandos repo; copy it.
 
+**More shapes that moved the match (Commandos Sim*/ClassAccion, 94 identical):**
+- A destructor often lives in its own translation unit; compile it separately
+  or inlining changes the caller. A class pair compiled together can inline
+  what the original did not (split `ClassAccion` / `ClassAcUsuario`).
+- Implicit vs explicit dtor changes vtable slot 0 and the scalar-deleting stub;
+  keep a switch (`SIM_DTORS_INLINE`) while testing.
+- A repeated tail such as `if (guardar) {...}` is an inline helper taking
+  `(int, Class*, void*, int)`; write it once and call it.
+- A diff of a few bytes that is a register swap (edi vs esi) is usually a
+  parameter/local order, not different logic; permute before rewriting.
+- Struct copies compile differently as ints than as floats (`fld/fstp` vs
+  `mov`); copy with the member types the original used.
+- A field read pair load/store ordering (`fstp [this+x]` before a pointer load)
+  is a scheduler choice that source reordering did not move; record such
+  functions as known near misses (`~name addr` in `symbols.tsv`) and move on.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
