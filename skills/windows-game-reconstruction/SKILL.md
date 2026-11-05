@@ -307,6 +307,30 @@ Planned, in order. Replace each stub with what was learned:
 | ArmyMen2 policy and findings | `ArmyMen2/CLAUDE.md`, `docs/`, `STATUS.md` |
 | Commandos | `~/git/retrofoundry/Commandos/game/` (extracted GOG 1.1, build 23145) |
 
+### Running the original compiler (Commandos: VC8 `cl.exe`)
+
+To byte-match a reconstruction, run the compiler the game was built with, on
+the same layer (ArmyMen2 did it for VC6 with its own shim; VC8 reuses the layer):
+
+- **Get it without installing:** read the install disc's `.msi` (File /
+  Component / Directory tables, column-major, string pool) to map each cab entry's
+  File key to its install path, then `cabextract` the wanted ones (Commandos:
+  `tools/msitables.py`, `tools/extract-vc8.py`).
+- **Host:** a PE loader that applies base relocations and binds imports between
+  the images it loaded (VC8 links the *real* MSVCR80/MSVCP80, and two DLLs share a
+  base), host overrides ahead of the layer for LoadLibrary / GetProcAddress /
+  PE resources / FormatMessage-from-module, `DllMain` in dependency order, an EXE
+  entry run. `cl` runs `c1`/`c1xx`/`c2` in-process as DLLs.
+- **Layer settings a tool needs, a game must not have:** `w32l_host_environment`
+  (the real environment, not the canonical block), `w32l_os_version` (NT 5.1; a
+  2005 CRT refuses the layer's default Windows 98), `W32L_FIXED_HEAP=0` (the
+  deterministic heap arena covers the compilers' image bases).
+- **Pitfalls found:** `GetModuleFileNameW` must give a backslash path (the tool
+  cuts it at the last `\`); set the command line before the first image starts
+  (the CRT's `DllMain` caches it); `cl` reads a leading `/` as a switch, so run
+  from the source directory with relative names; a message table (`clui.dll`)
+  needs `FormatMessage(FROM_HMODULE)` or every diagnostic prints blank.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
@@ -343,3 +367,4 @@ Planned, in order. Replace each stub with what was learned:
   above ("From imports bound to the first menu").
 - 2026-11-04: mouse and keyboard window messages in the layer; confirmed by hand on the Commandos menu.
 - 2026-11-04: Commandos in-game sound through OpenMiles: calls succeed (samples, music stream started), audibility not yet confirmed by ear. Layer: `w32l_stdcall_adapter`, `w32l_handle_fd`, host PCM output.
+- 2026-11-05: the VC8 `cl.exe` (14.00.50727.42) compiles C and C++ on Linux through the layer (`kernel32w.cpp`, `w32l_host_environment`, `w32l_os_version`); Commandos `tools/vc8host.cpp`.
