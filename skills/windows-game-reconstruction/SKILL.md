@@ -434,3 +434,4 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - Placeholder class names across many small .cpp files collide (ODR); compile fine, but the COMDAT of one is dropped by the linker/bytematch. Check for duplicate class names after each batch.
 - Inline strcpy-to-global with 'sub edx,eax' diff indexing: write 'char c; const char*p=s; do { c=*p; g[p-s]=c; p++; } while(c);'. Local 'r=0; if(c) r=&a[i]; return r' hoists the xor above the cmp.
 - Imports: name an IAT slot as __imp__<Name>@<N> in symbols.tsv; declare __declspec(dllimport) __stdcall in src/win32/. Walk the PE import table to map slot address -> name (peimports.py prints names only).
+- Branch layout: original 'je Lend ... Lend: xor eax,eax; ret' => 'if (c) { work; return 1; } return 0;' (not an early 'if (!c) return 0;').
