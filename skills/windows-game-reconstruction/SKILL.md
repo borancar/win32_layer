@@ -436,3 +436,4 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - Imports: name an IAT slot as __imp__<Name>@<N> in symbols.tsv; declare __declspec(dllimport) __stdcall in src/win32/. Walk the PE import table to map slot address -> name (peimports.py prints names only).
 - Branch layout: original 'je Lend ... Lend: xor eax,eax; ret' => 'if (c) { work; return 1; } return 0;' (not an early 'if (!c) return 0;').
 - float t = a*a+b*b; return (float)sqrt(t); produces the fstp [esp]/fld [esp] round-trip before call __CIsqrt (single-precision rounding); without the local it keeps the value in st0.
+- Null path ending 'xor eax,eax; ret' means the function returns int (return o->M(); return 0;) even if the result looks unused.
