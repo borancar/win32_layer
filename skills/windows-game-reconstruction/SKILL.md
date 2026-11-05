@@ -388,6 +388,8 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 
 **Template factories are real templates.** `ctorAccionT<T>::Crear` is `return new T(a,b,c,d)`; read the size from the `push imm` before `operator new` and the ctor from the `call`, then instantiate the template explicitly. 82 of 84 matched on the first build (Commandos `tools/genfabricas.py`).
 
+**More fixed-shape families (Commandos, +350 identical):** scalar deleting destructors (`call dtor; if (f & 1) operator delete(this); return this`) and bare vptr-store constructors can be recognised by byte pattern and emitted per function with a placeholder owner; map vtable addresses as `extern "C"` arrays in the symbol table. Skip stubborn near misses and keep generating.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
