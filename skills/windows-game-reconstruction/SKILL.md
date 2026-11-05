@@ -448,3 +448,6 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - Read destructor targets from the FuncInfo unwind map; a base needs a virtual destructor for the derived constructor to get an EH frame.
 - Copy a member into a local before a call whose args are computed from it (`void **d = datos;`) to get the original's ecx/edx/eax order (ClassLista::Anyadir).
 - Unsolved: a zero kept in a register across a compare (`xor eax,eax; cmp [m],eax`), pointer-difference loops.
+- A call whose callee pops the stack (no `add esp` after) and where `ecx` was never loaded is a **thiscall on `this`** (ecx passes through): declare it as a member `N(...)`, not a `__stdcall` free function. Fixes odd register choices (edx instead of ecx) in forwarders.
+- A tail `jmp` into a member keeps ecx; when a function reuses its argument slot (`mov [esp+8],-1; jmp`) the callee has the same stack arity.
+- An inline accessor like `int N() { return f4 ? f8 - f4 : 0; }` reproduces register layouts that inlined source bodies do not.
