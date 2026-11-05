@@ -681,11 +681,13 @@ LPVOID WINAPI MapViewOfFileEx(HANDLE hm, DWORD access, DWORD hi, DWORD lo, SIZE_
         return NULL;
     }
     len = bytes ? bytes : (size_t)((uint64_t)h->find - off);
-    if (access & FILE_MAP_COPY) {
+    /* FILE_MAP_ALL_ACCESS has the copy bit too; write wins (shared), and only a
+     * bare FILE_MAP_COPY is copy-on-write. */
+    if (access & FILE_MAP_WRITE) {
+        prot |= PROT_WRITE;
+    } else if (access & FILE_MAP_COPY) {
         prot |= PROT_WRITE;
         flags = MAP_PRIVATE;
-    } else if (access & FILE_MAP_WRITE) {
-        prot |= PROT_WRITE;
     }
     p = mmap(where, len, prot, flags | (where ? MAP_FIXED : 0), h->fd, (off_t)off);
     if (p == MAP_FAILED && (prot & PROT_WRITE) && flags == MAP_SHARED)
