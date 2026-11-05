@@ -451,3 +451,7 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - A call whose callee pops the stack (no `add esp` after) and where `ecx` was never loaded is a **thiscall on `this`** (ecx passes through): declare it as a member `N(...)`, not a `__stdcall` free function. Fixes odd register choices (edx instead of ecx) in forwarders.
 - A tail `jmp` into a member keeps ecx; when a function reuses its argument slot (`mov [esp+8],-1; jmp`) the callee has the same stack arity.
 - An inline accessor like `int N() { return f4 ? f8 - f4 : 0; }` reproduces register layouts that inlined source bodies do not.
+- `#include <string.h>` under /O2 makes `strcpy`/`strlen` intrinsics: they expand to the `sub esi,src; mov dl,[eax]; mov [esi+eax],dl; add eax,1; test dl,dl; jnz` loop and the `lea edi,[eax+1]; ...; sub eax,edi` length loop. Do not hand-write those loops, and do not treat them as a pointer-difference mystery.
+- `delete[]` of a `char *` compiles to scalar `operator delete`; call the CRT free (a separate address) through an extern when the original calls it.
+- COM-style `Release()` shows as `mov ecx,[p]; mov edx,[ecx+8]; push p; call edx`: declare the virtual `__stdcall`.
+- `M(F(), F())` pushes the right-hand call first: the first call's result is pushed immediately after it returns.
