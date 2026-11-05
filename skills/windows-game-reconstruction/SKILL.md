@@ -461,3 +461,5 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - `member % N` compiles to `idiv`; copy the member to a local first (`int c = g->cnt; c % 40`) to get VC8's magic-number multiply.
 - A struct passed by value stays a tail `jmp` unless it has a user-written copy constructor (then it is built on the stack and called).
 - Halving ints is `>> 1`, not `/ 2` (`/ 2` adds the `cdq; sub` sign fix-up).
+
+- Jump-table `switch`: decode the table (`tools/jt.py IMAGE TABLE COUNT FIRST_CASE`) to get case value -> code address; the emitted code order is the *source* order of the case labels, so order the cases by their code address, and grouped targets (`case 0x24: case 0x2b:`) share one body. Handlers that `ret 0xc` with a word second argument are `int f(unsigned short a, unsigned short id, int c)`; `int r = 0; ... r = 1; break; ... return r;` reproduces the hoisted `xor eax,eax`.
