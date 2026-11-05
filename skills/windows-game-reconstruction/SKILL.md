@@ -331,6 +331,33 @@ the same layer (ArmyMen2 did it for VC6 with its own shim; VC8 reuses the layer)
   from the source directory with relative names; a message table (`clui.dll`)
   needs `FormatMessage(FROM_HMODULE)` or every diagnostic prints blank.
 
+- **`link.exe` is a second `vc8host` process** (`cl` cannot spawn it): compile,
+  then link. A linked CRT test EXE runs. `FILE_MAP_ALL_ACCESS` has the copy
+  bit; the write bit must win or link's mapped output stays zero.
+
+### The byte-match loop (Kuna + the original compiler)
+
+Use the `kuna-decompiler` skill for the read side, the original compiler for the
+write side, and compare bytes:
+
+1. **Pick the compiler from the Rich header** (product id / build per object
+   count; Commandos: VC8 build 50727 for cl/link/cvtres, plus a few CRT objects
+   from other builds). Check the tool you extracted reports that build.
+2. **Export once:** `kuna decompile-project game/X.exe --stream --jobs auto -o ../X-kuna/X.kuna`
+   (Commandos: 885 functions in about 5 s). Search `index.jsonl` for the function,
+   read its `c_offset`/`c_len` block, and its `.asm` for exact instruction bytes.
+   Treat the C as an estimate; widths, signedness and calls are checked against
+   the asm.
+3. **Transcribe** into `reconstruct/src/`, compile with `tools/vc8cl /c` using
+   the original flags, and compare the object's function bytes against the image
+   (relocations masked). A mismatch is a hint about source shape, not about the
+   compiler: re-read the asm before changing the C.
+4. **Tune with Kuna only when the C is wrong**: `kuna docs options`, one
+   `--option` at a time on the affected function; `--assert` for known
+   prototypes (needs `--jobs 1`, no `--stream`).
+5. Keep a screen (functions identical / bytes unmatched) as ArmyMen2's
+   `tools/relinkscreen.py` does, and re-run it on every change.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
@@ -368,3 +395,4 @@ the same layer (ArmyMen2 did it for VC6 with its own shim; VC8 reuses the layer)
 - 2026-11-04: mouse and keyboard window messages in the layer; confirmed by hand on the Commandos menu.
 - 2026-11-04: Commandos in-game sound through OpenMiles: calls succeed (samples, music stream started), audibility not yet confirmed by ear. Layer: `w32l_stdcall_adapter`, `w32l_handle_fd`, host PCM output.
 - 2026-11-05: the VC8 `cl.exe` (14.00.50727.42) compiles C and C++ on Linux through the layer (`kernel32w.cpp`, `w32l_host_environment`, `w32l_os_version`); Commandos `tools/vc8host.cpp`.
+- 2026-11-05: `link.exe` 8.00.50727.42 runs via `vc8host` (mapped-view write bit fix); byte-match loop written down (Rich header, Kuna export, original compiler, screen).
