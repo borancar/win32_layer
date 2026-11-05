@@ -478,3 +478,10 @@ overflow check) comes from passing the count through an *inline helper's paramet
 `void Alloc(unsigned n){ f14 = new T[n]; ... } ... Alloc(11);`. Also: hoist a compared member into a
 local (`int k = f4;`) when the original loads it before the loop's null test, and keep a result
 in a variable (`int r = 0; ... r = 1; return r;`) when the original returns it from a register.
+More VC8 shapes that matched: a callback called with `ecx` = object plus one stack arg is a pointer to
+member (`typedef void (C::*CB)(int); (a->*cb)(b);`, mangled `P81@AEXH@Z`). A by-value 8-byte struct
+argument (`sub esp,8; mov eax,esp; mov [eax],..`) comes from a temporary with a user copy constructor
+(`f(S(a,b))`). `delete[] p` of a type with a destructor emits the `__vec_dtor` call (give the class
+`~T();` at the destructor's address). A float argument passed with `push ecx; fstp [esp]` is just the
+slot for the float, not a stdcall. A COM-style slot call that passes `this` on the stack is a
+`virtual ... __stdcall` method. Dead locals the original keeps (`mov [esp+..],0`) are `volatile`.
