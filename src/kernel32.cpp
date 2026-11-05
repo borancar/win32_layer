@@ -133,6 +133,9 @@ BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *out)
  * calls. smackw32 has no entries: ArmyMen2's native port calls its own
  * smackw32 (src/game/win32/smackw32.cpp, over libsmacker) by name. */
 
+extern const W32L_Export w32l_exports_w[];   /* kernel32w.cpp */
+extern const size_t      w32l_exports_w_count;
+
 #define X(mod, fn) { mod, #fn, (const void *)&fn }
 static const W32L_Export w32l_exports[] = {
     X("ADVAPI32.dll", RegCreateKeyExA), X("ADVAPI32.dll", RegCloseKey),
@@ -349,6 +352,10 @@ FARPROC WINAPI GetProcAddress(HMODULE mod, LPCSTR name)
         if (!strcmp(w32l_exports[i].module, module) &&
             !strcmp(w32l_exports[i].name, name))
             return (FARPROC)w32l_exports[i].fn;
+    for (i = 0; i < w32l_exports_w_count; i++)
+        if (!strcmp(w32l_exports_w[i].module, module) &&
+            !strcmp(w32l_exports_w[i].name, name))
+            return (FARPROC)w32l_exports_w[i].fn;
 
     /* What Windows does for an export the module does not have: NULL and
      * ERROR_PROC_NOT_FOUND. A program probes for newer entries this way
@@ -370,6 +377,10 @@ const void *w32l_export_lookup(const char *module, const char *name)
         if (!strcasecmp(w32l_exports[i].module, module) &&
             !strcmp(w32l_exports[i].name, name))
             return w32l_exports[i].fn;
+    for (i = 0; i < w32l_exports_w_count; i++)
+        if (!strcasecmp(w32l_exports_w[i].module, module) &&
+            !strcmp(w32l_exports_w[i].name, name))
+            return w32l_exports_w[i].fn;
     return w32l_stub_lookup(module, name);
 }
 
@@ -494,6 +505,8 @@ void w32l_handle_release(W32L_Handle *h)
     if (!gone)
         return;
     if (h->kind == W32L_H_FILE && !h->keepFd && h->fd >= 0)
+        close(h->fd);
+    if (h->kind == W32L_H_MAPPING && h->fd >= 0)
         close(h->fd);
     if (h->kind == W32L_H_FIND && h->find)
         _findclose(h->find);

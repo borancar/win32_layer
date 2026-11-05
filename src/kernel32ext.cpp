@@ -241,15 +241,18 @@ void WINAPI GetSystemTimeAsFileTime(LPFILETIME out)
 
 /* ---- version -------------------------------------------------------------------------- */
 
-/* Windows 98 SE, the same answer GetVersion gives (kernel32crt.cpp). */
+/* Windows 98 SE, the same answer GetVersion gives (kernel32crt.cpp), unless the
+ * host sets w32l_os_version (a 2005-era tool wants NT 5.1, i.e. XP). */
+w32l_OsVersion w32l_os_version = { 4, 10, 0x040A08AEu, VER_PLATFORM_WIN32_WINDOWS };
+
 BOOL WINAPI GetVersionExA(LPOSVERSIONINFOA v)
 {
     if (!v || v->dwOSVersionInfoSize < sizeof *v)
         return FALSE;
-    v->dwMajorVersion = 4;
-    v->dwMinorVersion = 10;
-    v->dwBuildNumber = 0x040A08AEu;
-    v->dwPlatformId = VER_PLATFORM_WIN32_WINDOWS;
+    v->dwMajorVersion = w32l_os_version.major;
+    v->dwMinorVersion = w32l_os_version.minor;
+    v->dwBuildNumber = w32l_os_version.build;
+    v->dwPlatformId = w32l_os_version.platform;
     v->szCSDVersion[0] = 0;
     return TRUE;
 }

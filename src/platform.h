@@ -204,6 +204,15 @@ typedef void (*w32l_timer_fn)(void *ud);
 uint32_t w32l_host_timer_add(uint32_t ms, int32_t periodic, w32l_timer_fn fn, void *ud);
 void     w32l_host_timer_remove(uint32_t id);
 
+/* The Windows version GetVersion/GetVersionEx answer: 98 SE (4.10) by default.
+ * A host running a 2000s tool sets 5.1 / platform 2 (VER_PLATFORM_WIN32_NT). */
+typedef struct { uint32_t major, minor, build, platform; } w32l_OsVersion;
+extern w32l_OsVersion w32l_os_version;
+
+/* Non-zero: GetEnvironmentStrings returns the host's real environment instead of
+ * the canonical block (kernel32crt.cpp). For tools, never for a game. */
+extern int32_t w32l_host_environment;
+
 /* The host fd behind a file HANDLE returned by CreateFile, or -1. */
 int32_t w32l_handle_fd(const void *handle);
 

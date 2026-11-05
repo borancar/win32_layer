@@ -65,7 +65,13 @@ LPSTR WINAPI GetCommandLineA(void)
 
 /* Windows 98 SE. The CRT reads the platform bit to pick between its ANSI
  * and Unicode paths and nothing in the game reads it at all. */
-DWORD WINAPI GetVersion(void) { return 0xC0000A04u; }
+DWORD WINAPI GetVersion(void)
+{
+    /* Windows 98 SE by default: 4.10, the high bit set for the 9x line. */
+    if (w32l_os_version.platform == 2 /* VER_PLATFORM_WIN32_NT */)
+        return (w32l_os_version.build << 16) | (w32l_os_version.minor << 8) | w32l_os_version.major;
+    return 0xC0000A04u;
+}
 
 void WINAPI GetStartupInfoA(LPSTARTUPINFOA out)
 {
@@ -279,9 +285,33 @@ static const char kEnvironment[] =
     "TMP=C:\\TEMP\0"
     "windir=C:\\WINDOWS\0";
 
+/* A tool (the VC8 compiler) needs the real environment: INCLUDE, LIB, TMP. A
+ * host sets this before the program starts; a game never does. */
+int32_t w32l_host_environment;
+
 LPSTR WINAPI GetEnvironmentStrings(void)
 {
-    char *block = (char *)malloc(sizeof kEnvironment + 1);
+    char *block;
+
+    if (w32l_host_environment) {
+        size_t n = 2;
+        char **e;
+        char  *p;
+        for (e = environ; e && *e; e++)
+            n += strlen(*e) + 1;
+        block = (char *)malloc(n);
+        if (!block)
+            return NULL;
+        for (p = block, e = environ; e && *e; e++) {
+            size_t l = strlen(*e) + 1;
+            memcpy(p, *e, l);
+            p += l;
+        }
+        *p++ = 0;
+        *p = 0;
+        return block;
+    }
+    block = (char *)malloc(sizeof kEnvironment + 1);
 
     if (!block)
         return NULL;

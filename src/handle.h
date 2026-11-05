@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-enum { W32L_H_THREAD = 1, W32L_H_EVENT, W32L_H_MUTEX, W32L_H_FILE, W32L_H_FIND };
+enum { W32L_H_THREAD = 1, W32L_H_EVENT, W32L_H_MUTEX, W32L_H_FILE, W32L_H_FIND, W32L_H_MAPPING };
 
 typedef struct W32L_Handle {
     int32_t   kind;
@@ -28,9 +28,9 @@ typedef struct W32L_Handle {
     LPTHREAD_START_ROUTINE start;
     LPVOID    param;
     int32_t   refs;
-    int32_t   fd;        /* W32L_H_FILE: the descriptor */
+    int32_t   fd;        /* W32L_H_FILE, W32L_H_MAPPING: the descriptor */
     int32_t   keepFd;    /* W32L_H_FILE: a standard stream, never closed */
-    intptr_t  find;      /* W32L_H_FIND: crt.cpp's _findfirst handle */
+    intptr_t  find;      /* W32L_H_FIND: crt.cpp's _findfirst handle; W32L_H_MAPPING: its size */
 } W32L_Handle;
 
 /* A fresh record of `kind` with one reference, or NULL. */
