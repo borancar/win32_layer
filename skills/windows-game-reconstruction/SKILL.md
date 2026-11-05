@@ -358,6 +358,16 @@ write side, and compare bytes:
 5. Keep a screen (functions identical / bytes unmatched) as ArmyMen2's
    `tools/relinkscreen.py` does, and re-run it on every change.
 
+**Worked result (Commandos `ClassAUAgacharse`, 10 of 10 functions identical)** and
+the shapes that moved the match: `cl /O2 /Gy /GR /EHsc` with the default `/GS`;
+`class` not `struct` (RTTI name `.?AV` vs `.?AU`); an `int` parameter, not `bool`,
+when the code loads a dword; argument pushes hoisted above an earlier call are
+normal; a shared `[edx+4]/[edx+8]` tail is an inlined helper; a register holding
+`1` across a static guard is `int r = 1; ... return r;`; compare with relocations
+masked and their targets checked (symbols, string literals, jump-table labels, EH
+funclets, thunks followed through the incremental-link `jmp` table). The comparer
+is `tools/bytematch.py` in the Commandos repo; copy it.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
@@ -396,3 +406,4 @@ write side, and compare bytes:
 - 2026-11-04: Commandos in-game sound through OpenMiles: calls succeed (samples, music stream started), audibility not yet confirmed by ear. Layer: `w32l_stdcall_adapter`, `w32l_handle_fd`, host PCM output.
 - 2026-11-05: the VC8 `cl.exe` (14.00.50727.42) compiles C and C++ on Linux through the layer (`kernel32w.cpp`, `w32l_host_environment`, `w32l_os_version`); Commandos `tools/vc8host.cpp`.
 - 2026-11-05: `link.exe` 8.00.50727.42 runs via `vc8host` (mapped-view write bit fix); byte-match loop written down (Rich header, Kuna export, original compiler, screen).
+- 2026-11-05: first class byte-matched with the VC8 compiler (Commandos ClassAUAgacharse, 10 functions); lessons in 'The byte-match loop'.
