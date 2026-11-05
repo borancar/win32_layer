@@ -469,3 +469,12 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - A local buffer declared as `char data[N]` makes VC8 emit a /GS cookie the original lacks; declare it as N/4 `int` members instead. A `void` function ending in a `void` virtual call becomes a tail `jmp`; if the original calls and returns normally, declare the callee to return `int`.
 
 - A search loop that reloads the array pointer every iteration and jumps from the failed first test to the increment is `do { if (o->At(i)) return i; i++; } while (i < o->n);` with an inline bounds-checked accessor; a `for` loop with the outer test strength-reduces instead.
+
+### Array-new with a constant count (VC8)
+
+`new T[11]` with a literal count compiles to a plain `operator new(44)`. The original's
+`mov eax,0xb; mov edx,4; mul edx; seto cl; neg ecx; or ecx,eax; call operator new[]` (unfolded
+overflow check) comes from passing the count through an *inline helper's parameter*:
+`void Alloc(unsigned n){ f14 = new T[n]; ... } ... Alloc(11);`. Also: hoist a compared member into a
+local (`int k = f4;`) when the original loads it before the loop's null test, and keep a result
+in a variable (`int r = 0; ... r = 1; return r;`) when the original returns it from a register.
