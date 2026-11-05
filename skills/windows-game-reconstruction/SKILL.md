@@ -386,6 +386,8 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 
 **Do the stateless functions mechanically.** Decode vtable-slot bodies that are fixed by their bytes (`ret N`, return constant, field get/set, `lea`, `fld [const]`) and generate the C++ from a table of byte patterns (Commandos `tools/gentrivial.py`: 491 functions identical on the first build). Do this before hand-matching anything bigger.
 
+**Template factories are real templates.** `ctorAccionT<T>::Crear` is `return new T(a,b,c,d)`; read the size from the `push imm` before `operator new` and the ctor from the `call`, then instantiate the template explicitly. 82 of 84 matched on the first build (Commandos `tools/genfabricas.py`).
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
