@@ -384,6 +384,8 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
   is a scheduler choice that source reordering did not move; record such
   functions as known near misses (`~name addr` in `symbols.tsv`) and move on.
 
+**Do the stateless functions mechanically.** Decode vtable-slot bodies that are fixed by their bytes (`ret N`, return constant, field get/set, `lea`, `fld [const]`) and generate the C++ from a table of byte patterns (Commandos `tools/gentrivial.py`: 491 functions identical on the first build). Do this before hand-matching anything bigger.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
