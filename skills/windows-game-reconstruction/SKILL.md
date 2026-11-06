@@ -520,3 +520,19 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Small stores into a local struct or parallel arrays: permute.** When only the
   scheduling of 3-4 independent stores differs, try all orderings (24 for four).
   Cheap and often the match (0x64e750, 0x5d67a0, 0x64d180).
+- **Wrong tails from if/else chains: try `switch(msg)`** (0x4b4720, 0x568530).
+- **int copy in one case, `fld/fstp` in another: a `union{int i; float f;}` member**
+  (0x459fe0).
+- **Virtual calls are thiscall.** Declare `virtual void S(int,int,int)` without
+  `__stdcall`, and pad the vtable with dummy virtuals to reach the slot (0x581e60).
+- **Register assignment follows local declaration order.** Reordering locals
+  steers which of esi/edi/ebx a value gets (0x593d50).
+- **More than ~4 stores: hill climb.** `tools/hcstores.py NAME` swaps statements
+  between `// BEGIN`/`// END` pairwise and keeps improvements (0x5655d0, 0x59d5b0).
+- **A function that returns "whatever is in eax":** make it return the pointer and
+  reassign it through the call result (`r = r->f; if (r) r = P(r); return r;`, 0x456690).
+  A `void` version hoists nothing and misses by a few bytes.
+- **Shared return on both paths**: `r = 0; if (g) { r = A(); p = r; if (p) {...} r = p; }
+  return r;` steers `mov eax,esi` as the jump target (0x5d6fa0).
+- **Still unsolved:** eax/ecx/edx scratch choice before pushes, esi/edi swap, the
+  zero-register idiom (`lea eax,[reg+1]`), float argument-slot reuse (0x58acf0).
