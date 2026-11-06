@@ -485,3 +485,17 @@ argument (`sub esp,8; mov eax,esp; mov [eax],..`) comes from a temporary with a 
 `~T();` at the destructor's address). A float argument passed with `push ecx; fstp [esp]` is just the
 slot for the float, not a stdcall. A COM-style slot call that passes `this` on the stack is a
 `virtual ... __stdcall` method. Dead locals the original keeps (`mov [esp+..],0`) are `volatile`.
+
+## Byte-matching idioms (VC8 /O2), learned on Commandos
+
+- Write `p->x` repeatedly instead of hoisting `o = p`; the compiler then reloads into the dead `this` register.
+- A by-value struct argument needs a user copy ctor that copies float-wise; a pair copy via an inline-ctor temporary gives loads-then-stores.
+- Operand order `key == arr[i].d` picks the `cmp r,m` encoding.
+- `int r = 0; if (f == r) r = B(); return r;` gives the tail jmp with zero in eax.
+- A ternary store `f = o ? o->g : 1;` gives two return paths.
+- An index loop `for (int j=0;j<8;j++)` gives signed `jl`; a pointer-end loop gives `jb`.
+- A member array of a class with non-inline ctor and dtor makes the compiler emit the vector-ctor call.
+- Thiscall returning a 32-byte object by value: `T o = a->G("KEY");`.
+- Config readers (`G` then `M`/`N`/`P`) follow one template and can be generated from disassembly (`tools/genprops.py`).
+- When store order differs, hill-climb pair swaps of the store statements until the byte difference is 0 (`tools/reorder_hc.py`).
+- Never delete symbol lines by prefix `sed`; filter by exact name (`grep -vF`).
