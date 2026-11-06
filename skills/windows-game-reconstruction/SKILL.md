@@ -560,3 +560,22 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Renaming at scale**: put `// 0xADDR` on each definition and regenerate the symbol
   map from the compiled listing (PROC + first `; Line N`) plus the comparer's `learn`
   lines (Commandos `tools/symsync.py`); never hand-edit mangled names.
+- **Deleting generator stubs can lose a unique match.** A one-line stub in a generated
+  file may be the only definition at a *derived* override's address (same body as the
+  base's, a different address). Diff the matched address sets before and after
+  (Commandos `tools/distinct.sh -l`, with `git stash` for the old state) instead of
+  trusting the total.
+- **Tail-jump wrappers do not show their parameters.** `mov ecx,[ecx+K]; jmp F` forwards
+  the caller's stack arguments untouched, so the body says nothing about the parameter
+  list; take it from the base class's slot (`ret N`) and forward them (`v->F(a)`).
+- **A `thiscall` free-function lookalike**: a placeholder written as `__stdcall f(a,b,c,d)`
+  that calls a member through an untouched `ecx` is a 4-argument member (`ret 0x10`);
+  rewrite it as one.
+- **Vector deleting destructors (`??_E`)** are emitted only where the vtable is (a TU with
+  a constructor); a TU with an explicit `delete` emits the scalar `??_G`. The same class
+  can have one of each at different addresses.
+- **DirectDraw `IDirectDrawSurface` slot 32 is `Unlock`** (`push 0; push surf; call [vtbl+0x80]`).
+- **Inherited fields across a real base**: when a member of the base class (by vtable)
+  sets a field, move the layout into the base (`class Derived : public Base`) rather
+  than casting; nested types then mangle as `Base::Nested`, so regenerate their symbol
+  lines.
