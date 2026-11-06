@@ -590,3 +590,11 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   `tools/defs.py` now refuses when a listing is older than its source).
 - **A pointer stored right before a `sprintf("Estado=...")`** that looks like a vtable may
   be a string literal (the class name): read the bytes at the address before modelling it.
+- **eax/ecx scratch after a conditional call**: when the original reloads a stack argument
+  into `eax` (ours `ecx`) after `if (x) F();`, load the first argument into a named local
+  before the condition (`int id = *(int *)b; if (t.M(id)) F(); Base(b, c);`). Fixed a
+  long-parked Commandos function (0x4721d0).
+- **Temporaries vs scoped named locals**: a function that builds the same temporary object
+  twice (`F(T("x")); if (p) p->G(T("x"));`) may have been written with named locals in
+  scopes; the image passes `lea eax,[esp+N]` (the local's address) instead of the
+  constructor's returned `this`, and the slots come in source order.
