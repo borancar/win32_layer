@@ -615,3 +615,14 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Learned addresses of tables can be the end**: when the first relocation to a global
   array is its end bound, the comparer learns `base + size`; check learned data symbols.
 - **A build that fails leaves old objects**: count matches only after a clean `make match`.
+- **`mov ecx,N; repe cmpsb`** against a string literal is VC8's inline `strcmp(s, "LIT") == 0`
+  (N = strlen + 1); `memcmp` gives a dword loop instead.
+- **Float constants in `.rdata` (`fld [addr]`) are compiler `__real@` literals**: map them
+  by value (`__real@44a56000` = 1323.0f) and order the source assignments so each array
+  slot gets the constant the image loads first for it.
+- **A base call after an `if`**: when a branch target lands on `mov ecx,esi; call Base`,
+  the base call runs on every path; move it out of the `if` (several "almost" matches
+  were this).
+- **`mov eax,K` followed by the K stored twice or a `jmp` to a shared tail**: VC8 sometimes
+  duplicates a short tail where the image jumps to one; if case reordering and `goto`
+  don't fix it, park.
