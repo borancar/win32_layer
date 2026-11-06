@@ -511,3 +511,12 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Caller-cleaned thiscall** (`this` in ecx, stack args, `add esp,N` after the call) cannot be written: a varargs member passes `this` on the stack and `__thiscall` + `...` is error C2217.
 - **`ecx` used after a call that clobbers it**, `mov eax` vs `mov ecx` scratch choice before pushes, and the `lea eax,[reg+1]` bool result survive all flag sweeps (`/Ox /O1 /Os /Ot /Ob2 /G6 /G7`): suspect the original was built with `/GL`.
 - The Makefile compiles every `src/*.cpp`, parked files included, so keep them compilable; and `grep -v Zzxa` also removes `Zzxa1` lines (use exact symbol names).
+
+- **Store-then-`sub [mem],reg` per field = inlined struct `operator-=`.** Writing
+  `f3c = x; f40 = y; f3c -= f4c; f40 -= f50;` makes VC8 fold into `sub reg,mem`
+  plus one store. The original's `mov [m],eax; mov eax,[o]; sub [m],eax` comes from
+  a small struct with `Pt &operator-=(const Pt &o){x-=o.x;y-=o.y;return *this;}`
+  applied to member sub-structs.
+- **Small stores into a local struct or parallel arrays: permute.** When only the
+  scheduling of 3-4 independent stores differs, try all orderings (24 for four).
+  Cheap and often the match (0x64e750, 0x5d67a0, 0x64d180).
