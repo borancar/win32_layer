@@ -499,3 +499,4 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - Config readers (`G` then `M`/`N`/`P`) follow one template and can be generated from disassembly (`tools/genprops.py`).
 - When store order differs, hill-climb pair swaps of the store statements until the byte difference is 0 (`tools/reorder_hc.py`).
 - Never delete symbol lines by prefix `sed`; filter by exact name (`grep -vF`).
+- **eax-vs-ecx intermediates:** if the original chains pointer loads through `ecx` where we use `eax`, an earlier call's return value is probably still live in `eax` (the function returns it on a fall-through path). Make the callee int-returning: `int r = a->F(); T *t = ...; if (t) r = t->F(); return r;`.
