@@ -579,3 +579,14 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   sets a field, move the layout into the base (`class Derived : public Base`) rather
   than casting; nested types then mangle as `Base::Nested`, so regenerate their symbol
   lines.
+- **Empty base slot, value-returning overrides**: when the base's slot is a bare `ret N`
+  but the overrides return a value (an older compiler allowed a missing `return`), declare
+  the slot with the return type and give the base an empty body under
+  `#pragma warning(disable: 4716)`; VC8 then emits the bare `ret` (Commandos OrganoMotor
+  slot 32). Before reaching for it, check the base really is bare: a stub "with no
+  return" may simply have lost its `mov eax,1`.
+- **Never run a line-number-based delete twice without rebuilding**: the second pass reads
+  stale listings and removes the wrong definitions (Commandos lost 9 matches once;
+  `tools/defs.py` now refuses when a listing is older than its source).
+- **A pointer stored right before a `sprintf("Estado=...")`** that looks like a vtable may
+  be a string literal (the class name): read the bytes at the address before modelling it.
