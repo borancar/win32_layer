@@ -536,3 +536,27 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   return r;` steers `mov eax,esi` as the jump target (0x5d6fa0).
 - **Still unsolved:** eax/ecx/edx scratch choice before pushes, esi/edi swap, the
   zero-register idiom (`lea eax,[reg+1]`), float argument-slot reuse (0x58acf0).
+- **vptr store first in a constructor**: when the original stores the vptr before the
+  member zeroing, model the zeroed members as sub-objects with inline constructors;
+  a flat `f = 0;` body lets VC8 sink the vptr store below them (Commandos 0x49e880).
+- **Derived destructor restoring a middle vtable, then calling the base out of line**:
+  the middle class has an inline empty virtual destructor; only the root's is out of
+  line (ClassWindowsVentana/Dialogo -> ClassWindowsReceptorMensajes -> ClassReceptorMensajes).
+- **`throw()` on a destructor** removes the EH frame when its body calls through a
+  function pointer (a C++ function-pointer call may throw; an `extern "C"` call does not).
+- **`mov eax,[a]; or eax,[b]; jne`** is `!(a | b)` on two ints (not `!a && !b`, not `__int64`).
+- **A pair of stores kept in source order across branches**: an inline `Reset()` on a
+  two-field sub-struct (0x5d5a00); flat stores get reordered.
+- **`lea edi,[eax+1]` after `lstrlenA`**: keep `n = lstrlenA(s)` and write `n + 1` at each use.
+- **A parameter's stack slot reused for a local** (`lea ecx,[esp+0xc]` = the argument slot)
+  is VC8's own doing once the parameter lives in a register; declare a normal local.
+- **The comparer "learns" unknown relocation targets**, so a wrong import (SendMessageA
+  for PostMessageA) can match once and break later; check IAT slots by name.
+- **Owners of non-virtual helpers**: many small members are dead code (no caller, no
+  data reference). Their class is the one whose vtable-slot functions sit next to them
+  (one object file is one contiguous run under incremental linking). Commandos
+  `tools/owners.py` combines vtable membership, callers (through the `jmp` thunk table)
+  and neighbours.
+- **Renaming at scale**: put `// 0xADDR` on each definition and regenerate the symbol
+  map from the compiled listing (PROC + first `; Line N`) plus the comparer's `learn`
+  lines (Commandos `tools/symsync.py`); never hand-edit mangled names.
