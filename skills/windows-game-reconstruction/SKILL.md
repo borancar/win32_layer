@@ -598,3 +598,20 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   twice (`F(T("x")); if (p) p->G(T("x"));`) may have been written with named locals in
   scopes; the image passes `lea eax,[esp+N]` (the local's address) instead of the
   constructor's returned `this`, and the slots come in source order.
+- **Paired stores from two registers** (`xor eax,eax; xor edx,edx; mov [a],eax; mov [b],edx`,
+  or `mov eax,K; mov edx,eax` before two stores) are a small struct built by an inline
+  constructor and copied: `*(Par *)&f = Par(0x8000, 0x8000);`. The constructor's
+  assignment order decides which field gets which register; two pairs filled in opposite
+  orders need two struct types.
+- **`movzx reg32, byte [p+2]; and reg32, 0xfc`** reads the low byte of a 16-bit field:
+  declare the field `unsigned short` (an `unsigned char` field gives `and dl` + `movzx dx`).
+- **`switch` labels:** `case 3: f(); break; ... case 5: f(); break;` and `case 3: case 5:`
+  lay out differently; a range test `a > 0 && a <= 2` becomes one unsigned compare while
+  the image's `jle`/`jg` pair is `switch (a) { case 1: case 2: ... }`.
+- **Loop bounds over a global table** compared with `jl` (signed) mean the source cast the
+  pointers to int: `(int)p < (int)(tabla + 4)`.
+- **`mov ecx,[eax+K]` straight into a call** (no `mov ecx,eax`): keep the intermediate
+  object, not the final pointer, in the local (`PantallaJuego *p = G(); p->visor->F();`).
+- **Learned addresses of tables can be the end**: when the first relocation to a global
+  array is its end bound, the comparer learns `base + size`; check learned data symbols.
+- **A build that fails leaves old objects**: count matches only after a clean `make match`.
