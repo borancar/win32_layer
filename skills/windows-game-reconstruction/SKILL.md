@@ -896,3 +896,4 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Explicit instantiation (`template class X<T>;`) emits every member, inline ones
   included**: the out-of-line constructor copies a template class leaves in the image come
   from there, not from separate code.
+- **Three members vs an array of three**: a constructor that initialises `T a, b, c;` schedules its stores differently from `T x[3];` (the array becomes a loop VC8 unrolls); try both.
