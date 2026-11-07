@@ -762,3 +762,20 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **A derived constructor that stores the base's field before its vtable** (`[eax+4]=p;
   [eax]=vt; [eax+8]=k`) runs the base constructor with that argument
   (`Derivada(P *p) : Base(p) { k = ...; }`).
+- **A parameter loaded into a callee-saved register before an unrelated copy loop** and
+  then advanced (`y += 35` each line) is a local copy: `int fila = y;` declared before
+  the loop; using the parameter itself loads it late.
+- **`shr ecx,16; cmp ecx,K`** where `(x >> 16) == K` gives `and ecx,0xffff0000; cmp
+  ecx,K<<16`: the source took the high word through a cast,
+  `(unsigned short)((unsigned)x >> 16) == K` (HIWORD).
+- **Sweep secondary vtables too.** A class with several bases has forwarders
+  (`jmp Base::F`) in its second and third vtables that a primary-only sweep misses.
+- **A callback pushed as a plain address** (`push 0x5b5360`, no thunk) is a function
+  without external linkage. The byte matcher skips file-static functions, so declare it
+  a static member function; the bytes are the same.
+- **`ecx` used after a call without reloading** means VC8 knew the callee (in the same
+  object file) leaves `ecx` alone. Reproducing it needs the callee in the same file;
+  until then, park it.
+- **An EH table with more states than the code uses** is a static whose initialiser sits
+  in dead code (after a `return`); a dead `static int x = f();` restores the table, not
+  the registers.
