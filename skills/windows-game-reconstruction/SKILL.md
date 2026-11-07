@@ -711,3 +711,13 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **A base constructor or destructor inlined in one subclass and called in another**: put
   the bodies in the header behind an opt-out macro and define it in the files whose image
   calls them.
+- **`c ? a : 0` compiles branchless** (`setne; sub; and`); the image's `xor eax,eax; cmp;
+  jne; mov eax,a` is `int r = 0; if (c) r = a;`.
+- **Repeated range tests on a struct (`x >= r.x && x < r.x + r.w && ...`)** allocate
+  registers differently from the same tests through an inline helper
+  (`int Dentro(int x, int y)`): when hand-written tests are off by registers, try the helper.
+- **Two locals the image keeps apart** (frame bigger than ours by one slot) can be a variable
+  declared at function scope and assigned later, rather than one declared in the inner block.
+- **Object files group a class's functions**: when a member compiles inlined where the image
+  calls it (or the reverse), check which class's address range it sits in and put it in that
+  file (or a header with an opt-out macro).
