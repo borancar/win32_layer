@@ -897,3 +897,4 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   included**: the out-of-line constructor copies a template class leaves in the image come
   from there, not from separate code.
 - **Three members vs an array of three**: a constructor that initialises `T a, b, c;` schedules its stores differently from `T x[3];` (the array becomes a loop VC8 unrolls); try both.
+- **A local text buffer without a `/GS` cookie** was not a `char` array: VC8 puts the cookie on char buffers (and structs of them); a struct of ints used through a `char *` cast (`struct { int t[8]; }`) gets none.
