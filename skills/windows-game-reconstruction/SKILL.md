@@ -636,3 +636,16 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   expression; a `double` expression uses the QWORD constant.
 - **Early `return` inside a nested `if`** (`if (m == X) { if (a != Y) return 1; f = 0; return 1; }`)
   lays out a shared `mov eax,1` the plain `if (a == Y) f = 0; return 1;` does not.
+- **Two signed compares per range (`cmp eax,2; jl; cmp eax,6; jg`)**: VC8 folds
+  `t >= 2 && t <= 6` into one unsigned compare (`lea esi,[eax-2]; cmp esi,4; ja`) when
+  `t` is a local; written on the member (`tipo >= 2 && tipo <= 6`) it keeps both compares.
+- **A register used as a known value** (`sub edx,1; jne; cmp [eax+0x10],edx`): the source
+  compared with the same variable (`int t = o->tipo - 1; if (t == 0 && o->campo10 == t)`),
+  not with the literal.
+- **`fld [x]; fld QWORD [K]; fucom st(1)`** (a double constant and an unordered compare)
+  is `K != x` with the literal on the left; `x != -1.0` folds to a float constant and `fcom`.
+- **A struct argument copied with plain `mov`s and compared from the stack** is a
+  by-value struct parameter (`Poner(int id, float v, Posicion p)`); fld/fstp copies of a
+  by-value argument come from a user-written copy constructor.
+- **A local for a pointer chain before a call** (`ClassMano *m = actor->mano; m->Usar(&x)`)
+  swaps which of ecx/edx gets the object and the argument.
