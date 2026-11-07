@@ -626,3 +626,13 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **`mov eax,K` followed by the K stored twice or a `jmp` to a shared tail**: VC8 sometimes
   duplicates a short tail where the image jumps to one; if case reordering and `goto`
   don't fix it, park.
+- **A loop pointer aimed at a field, reading the struct's other fields at negative offsets
+  (`test [esi],1` ... `push [esi-4]`), or two pointers stepping together**: the source indexed
+  the array (`for (i = 0; !(a[i].flags & 1); i++) ... a[i].dato`); a `T *p` walk gives a
+  pointer to the struct's start instead.
+- **Two constant stores to adjacent fields come out in the reverse of source order** in
+  some functions: if the image stores +0xdd8 then +0xdd4, try writing them the other way.
+- **`fadd DWORD [2^32]` after `fild`** is an unsigned-to-float conversion in a `float`
+  expression; a `double` expression uses the QWORD constant.
+- **Early `return` inside a nested `if`** (`if (m == X) { if (a != Y) return 1; f = 0; return 1; }`)
+  lays out a shared `mov eax,1` the plain `if (a == Y) f = 0; return 1;` does not.
