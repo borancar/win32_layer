@@ -779,3 +779,14 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **An EH table with more states than the code uses** is a static whose initialiser sits
   in dead code (after a `return`); a dead `static int x = f();` restores the table, not
   the registers.
+- **A double constant that is a float widened** (`0.001500000013038516` where the
+  source obviously meant 0.0015) is a float literal in a double expression:
+  `(double)0.0015f`. The bytes match either way; only the constant's address does not.
+- **`push eax` for a constant 0 right after a `sub eax,K / jne` switch chain**: the
+  image reuses the switch's zeroed register. Our VC8 build pushes `0`. No source shape
+  found; it is a candidate for a compiler-version difference (try another service pack).
+- **A member that the image's other functions inline** shows up as the same static
+  (same guard address and bit) in several functions. Define it once in the class's file
+  and call it from the others; VC8 inlines it the same way.
+- **A tiny or scratch file whose every match is also defined elsewhere** can be deleted:
+  check by counting distinct matched addresses before and after.
