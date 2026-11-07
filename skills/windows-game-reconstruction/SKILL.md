@@ -863,7 +863,9 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **An inline function's out-of-line copy** (a COMDAT the image kept although every caller
   inlined it) is emitted by calling it from a throwaway helper under `#pragma
   inline_depth(0)`; the helper itself stays unmapped. Cheaper than moving the body out of
-  the header (which would change every caller).
+  the header (which would change every caller). Do it from another object file when the
+  same file also needs the function inlined: once emitted, VC8 stops inlining it there
+  (later calls and template instantiations call the copy).
 - **Near-duplicates**: mask every image address (calls, globals, vtables) and group
   functions by the remaining bytes; an unmatched member of a group with a matched one is
   usually the same source over another type or another object (a template instance, a
@@ -882,3 +884,8 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   (`entero = Redondear(&origen)`) can schedule differently from two separate stores.
 - **Indexing vs reference**: `EntradaTecla &e = tabla[i]; e.tecla` and `tabla[i].tecla[0]`
   compile to different addressing; try both when a table walk differs.
+- **Pairs passed by value**: when a function of `(x, y, w, h)` differs only in register use
+  (`lea edx,[ecx+ebp]` against `add ebp,ecx`), try the pairs as structs by value
+  (`Punto p, Tamanyo t`): struct members are kept apart from scalars.
+- **A clamp that keeps both values on the x87 stack until the branch** is an inline
+  `max`-style helper (`return x < y ? y : x;`) rather than an `if`.
