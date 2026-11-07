@@ -790,3 +790,9 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   and call it from the others; VC8 inlines it the same way.
 - **A tiny or scratch file whose every match is also defined elsewhere** can be deleted:
   check by counting distinct matched addresses before and after.
+- **`xor eax,eax` before a search loop that leaves eax alone, and the not-found exit
+  returning that eax**: a result variable set inside the loop and left with `break`
+  (`int r = 0; for (...) if (hit) { ...; r = 1; break; } return r;`). Returning from
+  inside the loop zeroes eax at the exit instead. When the loop also compares a field
+  against that zero (`cmp [x],eax`), write the comparison against the variable
+  (`e->hecho != r`).
