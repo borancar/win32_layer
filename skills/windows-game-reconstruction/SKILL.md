@@ -868,3 +868,17 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   functions by the remaining bytes; an unmatched member of a group with a matched one is
   usually the same source over another type or another object (a template instance, a
   copy in another class, an inline body kept twice).
+- **VC8 /O2 fully unrolls short constant loops** (six iterations of a compare-and-update,
+  six 64-bit adds): a straight run of identical blocks in the image is often a `for` loop in
+  the source, and writing it out by hand (or with a macro) allocates registers differently.
+  A loop whose body calls a function is not unrolled.
+- **A member object whose destructor frees something shows up as an EH state** (state 1 → 0
+  around the free) in the owner's destructor; the free belongs in the member's (inline)
+  destructor, not in the owner's body. Such a member cannot live in a union, so give the
+  owner the real member and rewrite direct field uses as `member.field`.
+- **When an inlined tail keeps a pointer in a callee-saved register** where yours reloads it
+  from `this`, the source cached it in a local (`VistaMundo *v = vista; ... v->F(o)`); a
+  value computed through a small static inline helper that returns a struct
+  (`entero = Redondear(&origen)`) can schedule differently from two separate stores.
+- **Indexing vs reference**: `EntradaTecla &e = tabla[i]; e.tecla` and `tabla[i].tecla[0]`
+  compile to different addressing; try both when a table walk differs.
