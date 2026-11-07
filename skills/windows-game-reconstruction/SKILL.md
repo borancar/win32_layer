@@ -675,3 +675,10 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Member calls that leave ecx alone look like `__stdcall` calls** (`push ...; call X` with no
   `mov ecx`, `ret N`): before parking such a "stdcall" function, try it as a member calling
   members of `this`.
+- **A tail duplicated only in part** (each branch has its own `cmp [x],0; jne; test eax; je;
+  store` prefix, then they join): the source called one inline helper from each branch
+  (`if (a) return Esperar(c1); return Esperar(c2);`); inlining copies the helper's head into
+  both paths and tail merging joins the rest. A plain `int c = a ? c1 : c2; ...` gives one copy.
+- **An address comment far from its PROC's first `; Line`** happens when instructions are
+  scheduled before the body's first statement; a sync tool should accept the nearest comment
+  above unless another definition starts in between.
