@@ -660,3 +660,10 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   appends slots and shifts every later one, and nothing complains until a virtual call
   past it lands on the wrong offset (`call [eax+0x70]` where the image has `+0x68`). Keep a
   derived class's redeclarations on the interface's exact signature and cast inside.
+- **x87 compares: VC8 loads the left operand first.** `fld [a]; fld [b]; fcompp` comes from
+  `a OP b` (and a literal on the left gives a double constant, see above); if ours loads them
+  the other way, swap the operands and mirror the operator (`f1 < f3` -> `f3 > f1`).
+- **A value-returning slot whose image leaves eax unset**: keep the declared return type and
+  write no `return` (C4716 off); `return 0` adds an `xor eax,eax` the image lacks.
+- **Local struct for two ints that only exist as arguments** (`sub esp,8` reserved, one field
+  spilled, the other passed from eax) is `struct { int x, y; } s; s.x = ...; s.y = ...; f(s.x, s.y)`.
