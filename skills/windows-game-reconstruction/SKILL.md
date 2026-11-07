@@ -667,3 +667,11 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   write no `return` (C4716 off); `return 0` adds an `xor eax,eax` the image lacks.
 - **Local struct for two ints that only exist as arguments** (`sub esp,8` reserved, one field
   spilled, the other passed from eax) is `struct { int x, y; } s; s.x = ...; s.y = ...; f(s.x, s.y)`.
+- **A returned temporary kept by pointer in a callee-saved register** (`call Valor; mov edi,eax;
+  ... mov ecx,edi; call Cuenta`) is the temporary handed by reference to an inline helper
+  (`__forceinline int NumeroODefecto(Bloque &v, int d) { return !v.Cuenta() ? d : (int)v.Numero(); }`
+  then `x = NumeroODefecto(b->Valor("K"), 180)`); a named local gives `lea ecx,[esp+N]` per call,
+  and `&b->Valor(...)` destroys it at once.
+- **Member calls that leave ecx alone look like `__stdcall` calls** (`push ...; call X` with no
+  `mov ecx`, `ret N`): before parking such a "stdcall" function, try it as a member calling
+  members of `this`.
