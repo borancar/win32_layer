@@ -850,3 +850,13 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   Commandos this matched ~300 of ~1000 candidates (leaf functions ~35%) at no manual cost.
 - **Check that a rewritten call reads ecx, not just writes it:** `mov ecx,[ecx+N]` is a
   read of `this`.
+- **A default chosen with `test; mov ecx,K; je; mov ecx,eax`** is a local set to the default
+  and overwritten (`const char *q = ""; if (p) q = p;`), not `p ? p : ""` (which branches
+  around two loads).
+- **x87 comparisons follow the source's operand order**: `fld b; fld a; fcomp st(1)` with
+  `test ah,5; jp` is `b > a` written that way (`w > limite`); `a < b` gives `fcom` with
+  `test ah,0x41`. Likewise `x = x + v` and `x += v` both load `v` first in VC8 (a parked
+  case where the image loads `x` first).
+- **Renaming a placeholder class to its real (RTTI) name turns on vtable checks**: the
+  matcher then compares the class's vtable slot by slot, so placeholder virtual bodies
+  (`void X::v1() {}`) must go.
