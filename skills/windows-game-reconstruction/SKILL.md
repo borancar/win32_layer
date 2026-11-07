@@ -729,3 +729,8 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **A type whose destructor maps to another class's destructor is that class.** When a
   by-value return type's destructor resolves to an existing class's, rename it everywhere
   (and the mangled names in the symbol map); nothing else needs to change.
+- **`fnstcw; or 0xc00; fldcw; fistp qword; fldcw` inline** (instead of a call to
+  `__ftol2_sse`) is VC8's conversion of a float to `unsigned int`.
+- **A field loaded into a register and tested, then used** (`mov ecx,[x]; test ecx,ecx; je;
+  ... call [ecx]`) is a local (`T *v = s->campo; if (v) v->F();`); testing the member
+  directly reloads it after the test.
