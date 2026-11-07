@@ -521,6 +521,17 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   scheduling of 3-4 independent stores differs, try all orderings (24 for four).
   Cheap and often the match (0x64e750, 0x5d67a0, 0x64d180).
 - **Wrong tails from if/else chains: try `switch(msg)`** (0x4b4720, 0x568530).
+- **`cmp; jmp L` where `L` holds the shared conditional jump** = VC8 cross-jumping two
+  identical if/else arms. Write the arms out twice (`if (t != X) { if (t != Y) A; else B; }
+  else if (F()) A; else B;`); a ternary or a bool flag gives `setne`/`test` (0x4ef9e0).
+- **A register preset to 0 that survives untouched to `ret`** (no `mov eax,..` in the
+  epilogue) is the return value: give the function an int result (`int r = 0; ... r = 1;
+  ... return r;`) even when the callers ignore it (0x5e1a30, 0x5e1ac0).
+- **`strcpy(dst, "")` compiled as a byte loop from a fixed address** (not `mov byte [dst],0`)
+  copies from the compiler's shared empty literal: use `extern char g_ADDR[];` as source.
+- **Records of equal size behind different names** (buttons, panel objects, stock tables
+  0x94 bytes) are one struct; adjacent embedded copies show up as `this+K`, `this+K+size`.
+
 - **int copy in one case, `fld/fstp` in another: a `union{int i; float f;}` member**
   (0x459fe0).
 - **Virtual calls are thiscall.** Declare `virtual void S(int,int,int)` without
