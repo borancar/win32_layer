@@ -538,6 +538,15 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   inline `ParEntero &operator+=(const ParEntero &)` on a member pair (0x6287f0).
 - **A struct copy as unrolled `mov` pairs instead of `rep movsd`**: give the struct an inline
   memberwise `operator=` (0x587b00).
+- **Zeroing constructors, read the store order as structure:** members that have their own
+  zeroing constructors are stored first, in declaration order, each in its own internal order
+  (a float triple `z,y,x`; an int pair `b,a`); stores set in the body follow. A triple stored
+  before lower offsets is the only member with a constructor; everything else is the body
+  (0x570050, 0x4dbbd0, 0x612b20). A vptr store in the middle of other stores is the derived
+  constructor's; stores before it come from an inlined base constructor (0x5bc9d0).
+- **Hill-climbing stores** (`tools/hcstores.py`): score only the function under test (a second
+  differing function in the same file corrupts the score), and never kill the loop while it
+  rewrites the symbol table.
 - **Records of equal size behind different names** (buttons, panel objects, stock tables
   0x94 bytes) are one struct; adjacent embedded copies show up as `this+K`, `this+K+size`.
 
