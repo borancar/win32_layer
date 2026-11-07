@@ -547,6 +547,16 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Hill-climbing stores** (`tools/hcstores.py`): score only the function under test (a second
   differing function in the same file corrupts the score), and never kill the loop while it
   rewrites the symbol table.
+- **Debug-text members (InfoEstado: state-name chain, `sprintf`, window call):** declare the
+  locals in the order the image uses the registers; put a `? :` for a name straight in the
+  `sprintf` argument list when the image computes the string right at the push (a prior `if`
+  chain loads it earlier); load a field into a local first when the image loads it before the
+  call (`int est = estado;`); `buf + strlen(buf)` appends (inline strlen loop); a state chain
+  whose middle test is `sub eax,K; je` is a `switch`.
+- **A point copy through a temporary** (`fld/fstp` into a stack slot, then integer `mov`s into the
+  destination) is `Punto3D t = o->pos; dest = t;` where the temporary's copy constructor copies
+  floats and the destination assignment is the plain one.
+- **A flag test of `test ah,0x41` + `lea eax,[reg+1]` + `je`** is `int r = 0; if (a > b) r = 1;`.
 - **Records of equal size behind different names** (buttons, panel objects, stock tables
   0x94 bytes) are one struct; adjacent embedded copies show up as `this+K`, `this+K+size`.
 
