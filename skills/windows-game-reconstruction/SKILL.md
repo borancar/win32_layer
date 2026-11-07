@@ -697,10 +697,17 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   through the iterator (`(*it.cur)->F()`), not through the value it tested.
 - **Register order flips with `a = b = x` vs `b = a = x`**: the assignment chain decides which
   register keeps the value and which takes the copy.
-- **An EH frame around a constructor that only calls `malloc`**: under `/EHsc` an
-  `extern "C"` function cannot throw, so no frame is built; the original declared the
-  allocator with C++ linkage. Declare it so (`void *__cdecl malloc(unsigned)`, no
-  `<stdlib.h>`) and map the mangled name to the CRT address.
+- **`new T[n]` calls `operator new` unless `operator new[]` is declared.** VC8 only
+  emits a call to `??_U` (and `delete[]` to `??_V`) in files that declare them (`<new>`);
+  elsewhere both go to `??2`/`??3`. A CRT-looking allocation that builds an EH frame
+  around a base constructor is `new char[...]` with `operator new[]` declared (it can
+  throw; `extern "C"` `malloc` cannot under `/EHsc`). Declare `operator delete[]` with
+  `throw()` or every destructor that calls it gains an EH frame.
+- **A function that leaves an argument in eax on every path** and does its work in other
+  registers returns that argument (menu key handlers: `return c;`).
+- **Two byte-identical out-of-line copies of an inline destructor** are the implicit
+  destructors of two classes (a subclass with nothing to destroy compiles to its base's
+  body); map each name to its own copy.
 - **A base constructor or destructor inlined in one subclass and called in another**: put
   the bodies in the header behind an opt-out macro and define it in the files whose image
   calls them.
