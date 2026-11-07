@@ -734,3 +734,7 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **A field loaded into a register and tested, then used** (`mov ecx,[x]; test ecx,ecx; je;
   ... call [ecx]`) is a local (`T *v = s->campo; if (v) v->F();`); testing the member
   directly reloads it after the test.
+- **Temporaries in conditions:** a temporary created in `a && f().g()` lives to the end of
+  the full expression, so VC8 guards its destructor with a flag (`or ebx,2; test bl,1`). When
+  the image destroys it right after use without a flag, the test was its own statement
+  (`bool hay = false; if (a) hay = f().g() != 0;`).
