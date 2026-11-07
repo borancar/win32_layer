@@ -721,3 +721,11 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Object files group a class's functions**: when a member compiles inlined where the image
   calls it (or the reverse), check which class's address range it sits in and put it in that
   file (or a header with an opt-out macro).
+- **Sweep the vtables for lone `jmp` slots.** List every unmatched vtable slot whose code is a
+  single `jmp` (or `mov ecx,[ecx+N]; jmp`), resolve the target through the thunk table, and
+  write each as a one-line override (`return Base::F(args);` or a call to a non-virtual helper).
+  Dozens of slots fall out this way; a tail call with no `mov ecx` means the target uses the
+  same `this` (a base member, or a sibling helper of the same class).
+- **A type whose destructor maps to another class's destructor is that class.** When a
+  by-value return type's destructor resolves to an existing class's, rename it everywhere
+  (and the mangled names in the symbol map); nothing else needs to change.
