@@ -796,3 +796,15 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   inside the loop zeroes eax at the exit instead. When the loop also compares a field
   against that zero (`cmp [x],eax`), write the comparison against the variable
   (`e->hecho != r`).
+- **Sweep the whole image for trivial functions by their bytes, not just vtable slots.**
+  VC8 (no /OPT:REF here) keeps every out-of-line copy of inline members even when nothing
+  calls it: getters (`mov eax,[ecx+N]; ret`), setters, `lea eax,[ecx+N]`, float reads,
+  constant stores, empty bodies, `mov ecx,[ecx+N]; jmp T` forwarders, zeroing
+  initialisers. Each shape has one source; a generator that walks the function starts
+  (16-aligned after `int3` padding), skips what is matched, and emits one definition per
+  address matched ~1000 functions on Commandos in one pass. Name the owner from the class
+  code ranges and say it is a guess.
+- **Families of identical constructors** (the editor's per-action dialogs: a base
+  constructor call with a per-class table, then three vtable stores) are worth a
+  byte-pattern generator too; an implicit destructor is a bare `jmp` to the base's where a
+  user-declared empty one resets the vptrs first.
