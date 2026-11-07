@@ -529,6 +529,15 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   ... return r;`) even when the callers ignore it (0x5e1a30, 0x5e1ac0).
 - **`strcpy(dst, "")` compiled as a byte loop from a fixed address** (not `mov byte [dst],0`)
   copies from the compiler's shared empty literal: use `extern char g_ADDR[];` as source.
+- **The loop's pointer anchored on a later field** (`lea eax,[this+0xc]`, fields at `[eax-8]`,
+  `[eax-4]`, `[eax]`): take a reference to the element (`T &e = t[i];`) instead of indexing
+  each access; a pointer (`p++`) or `t[i].f` anchors elsewhere (0x583d30). An argument pointer
+  loaded *before* the loop's zero test means it was copied to a local first
+  (`const char *q = p; for (; n; n--, q++)`, 0x570790).
+- **Two-int fields updated together** (`[eax]`, `[eax+4]` with one base per element): an
+  inline `ParEntero &operator+=(const ParEntero &)` on a member pair (0x6287f0).
+- **A struct copy as unrolled `mov` pairs instead of `rep movsd`**: give the struct an inline
+  memberwise `operator=` (0x587b00).
 - **Records of equal size behind different names** (buttons, panel objects, stock tables
   0x94 bytes) are one struct; adjacent embedded copies show up as `this+K`, `this+K+size`.
 
