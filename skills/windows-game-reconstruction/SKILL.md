@@ -811,3 +811,11 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **`setae al` (or another `setcc al`) returning a comparison where we get `sbb eax,eax;
   add eax,1`**: the result went through a `bool` local (`bool r = a >= b; return r;`);
   returning the comparison directly takes the sbb form.
+- **Template-instance copies of one member** (ListaObjetos<T>'s constructor, once per T):
+  instantiate just that member with a throwaway type, `template ListaObjetos<T1>::
+  ListaObjetos(uint32_t, uint8_t, uint32_t);`, which emits that COMDAT alone. If the
+  copies inline a base constructor that our build calls instead, force it inline in that
+  file only (`#define X_INLINE __forceinline` before the header).
+- **Find byte-identical duplicates of matched functions** (compare with `call`/`jmp`
+  targets turned absolute): each needs only a second name; they show which classes share
+  a template or an inline body.
