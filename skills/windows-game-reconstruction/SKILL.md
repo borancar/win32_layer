@@ -837,3 +837,16 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **The byte matcher learns any unknown call target**, so a trial with the wrong CRT
   name still "matches" and records the wrong symbol. Identify a target before letting it
   be learned.
+- **Let a decompiler write the candidates and the compiler judge them.** For small
+  functions, `kuna decompile-all --json --option structsynth off` (raw offset arithmetic,
+  no synthesized structs) gives C that VC8 accepts after light rewriting: the convention
+  comes from the bytes (ecx read before it is written: a member, Kuna's first parameter is
+  `this`; `ret N`: stdcall; else cdecl), Kuna's `(**(void **)(*obj + off))(args)` and its
+  two-step form become virtual calls on a stub class with `off/4` dummy slots, `sub_X(...)`
+  calls get the callee's convention from the callee's bytes, `dat_X` become externs. Put
+  all candidates in one file, drop what the compiler rejects (map error lines back to
+  functions), byte-match, keep only exact matches; retry the misses with rewrites (Kuna
+  normalises `x < 5` to `x <= 4`, and VC8 emits `cmp 5; jae` vs `cmp 4; ja`). On
+  Commandos this matched ~300 of ~1000 candidates (leaf functions ~35%) at no manual cost.
+- **Check that a rewritten call reads ecx, not just writes it:** `mov ecx,[ecx+N]` is a
+  read of `this`.
