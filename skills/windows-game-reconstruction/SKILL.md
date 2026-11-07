@@ -808,3 +808,6 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   constructor call with a per-class table, then three vtable stores) are worth a
   byte-pattern generator too; an implicit destructor is a bare `jmp` to the base's where a
   user-declared empty one resets the vptrs first.
+- **`setae al` (or another `setcc al`) returning a comparison where we get `sbb eax,eax;
+  add eax,1`**: the result went through a `bool` local (`bool r = a >= b; return r;`);
+  returning the comparison directly takes the sbb form.
