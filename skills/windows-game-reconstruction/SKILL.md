@@ -744,3 +744,21 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **All argument temporaries built before any is used** (`Token(1)`, `Token(0)`, then the
   numbers) means they were passed by reference to a `__forceinline` helper; arguments are
   evaluated right to left, the helper's body then runs in its own order.
+- **A guard bit and an EH state that belong to another function** (`test byte [guard],0x10`
+  with `mov [esp+N],4` in a function that has one static) mean that function's body was
+  inlined: VC8 keeps the callee's static, guard bit and state number. Define the callee
+  in the same file; a store in the shared tail of a switch that the inlined copy lacks
+  belongs inside one case.
+- **`mov eax,[x]; sub eax,K; jne`** in place of `cmp [x],K; jne` is a `switch` with one case.
+- **A loop compare `jl` against the end of a global array** is an `int` index loop that
+  VC8 strength-reduced; a pointer loop compares with `jb`.
+- **A member reached through `this` the code never reads** (`ret 4`, `ecx` unused) is
+  still a member function: thiscall and stdcall compile alike when `this` is dead.
+- **The argument order of a five-argument receiver** (`Mensaje(a, b, id, c, d)`): count
+  which `[esp+N]` the id compare reads before assuming the id comes first.
+- **A destructor with an EH frame where the image has none:** the body calls something
+  that can throw (a member function, plain `operator delete`). Declare
+  `operator delete(void *) throw()` and call an in-file member for the cleanup.
+- **A derived constructor that stores the base's field before its vtable** (`[eax+4]=p;
+  [eax]=vt; [eax+8]=k`) runs the base constructor with that argument
+  (`Derivada(P *p) : Base(p) { k = ...; }`).
