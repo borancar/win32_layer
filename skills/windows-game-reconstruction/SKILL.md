@@ -889,3 +889,10 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   (`Punto p, Tamanyo t`): struct members are kept apart from scalars.
 - **A clamp that keeps both values on the x87 stack until the branch** is an inline
   `max`-style helper (`return x < y ? y : x;`) rather than an `if`.
+- **A zero kept in a register across a search loop and returned on failure** is a result
+  variable: `int r = 0; for (...) if (hit) { ...; r = 1; break; } return r;` (or
+  `EntradaX *r = 0; ... { r = e; break; } return r;`). An early `return 1` / `return e` from
+  inside the loop makes VC8 materialise the zero only at the exit.
+- **Explicit instantiation (`template class X<T>;`) emits every member, inline ones
+  included**: the out-of-line constructor copies a template class leaves in the image come
+  from there, not from separate code.
