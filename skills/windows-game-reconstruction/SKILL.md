@@ -738,3 +738,9 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   the full expression, so VC8 guards its destructor with a flag (`or ebx,2; test bl,1`). When
   the image destroys it right after use without a flag, the test was its own statement
   (`bool hay = false; if (a) hay = f().g() != 0;`).
+- **A struct copied through a stack temporary as plain dword moves** (`fstp [tmp]; mov
+  edx,[tmp]; mov [dst],edx` per field) is `*p = T(a, b)` with a constructor; assigning the
+  fields directly stores them with `fstp [dst]`.
+- **All argument temporaries built before any is used** (`Token(1)`, `Token(0)`, then the
+  numbers) means they were passed by reference to a `__forceinline` helper; arguments are
+  evaluated right to left, the helper's body then runs in its own order.
