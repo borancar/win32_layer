@@ -819,3 +819,21 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Find byte-identical duplicates of matched functions** (compare with `call`/`jmp`
   targets turned absolute): each needs only a second name; they show which classes share
   a template or an inline body.
+- **A destructor whose body calls something gets an EH frame in our build** (`push -1;
+  push __ehhandler...`, the cookie) so that the base's destructor still runs if the call
+  throws. The image has none: declare the callee `throw()` (or it is `extern "C"`, as
+  `free`), and the body is the bare `push esi; mov esi,ecx; ...; jmp base`.
+- **A subclass destructor that stores its base's vtable, not its own**, is the subclass's
+  empty destructor with the base's (empty, inline) one inlined: VC8 drops the dead store
+  of the subclass's vptr. Give the base an inline `~Base() {}` and the subclass an
+  out-of-line `~X() {}`. Find the owner by the deleting destructor right after it (it
+  inlines the same body), whose address is in a vtable slot.
+- **A float wrapper calling into the CRT** (`fld [esp+4]; call X; fstp [esp+4]; fld
+  [esp+4]; ret`) is `(float)sqrt(x)` with the function made intrinsic (`#pragma
+  intrinsic(sqrt, cos, atan2, pow)` calls `_CIsqrt`...); `fstp qword [esp]; call` is a
+  non-intrinsic one (`floor`, `ceil`). Name the CRT routine by the string it passes to
+  `_matherr` ("sqrt", "cos"); floor and ceil have none, but their x87 fallbacks load a
+  control word with RC=01 (down, floor) or RC=10 (up, ceil).
+- **The byte matcher learns any unknown call target**, so a trial with the wrong CRT
+  name still "matches" and records the wrong symbol. Identify a target before letting it
+  be learned.
