@@ -682,3 +682,18 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **An address comment far from its PROC's first `; Line`** happens when instructions are
   scheduled before the body's first statement; a sync tool should accept the nearest comment
   above unless another definition starts in between.
+- **`lea ecx,[esp+N]` before a member call on a returned object** (instead of `mov ecx,eax`)
+  is a named local, not a temporary: `{ T v = b->Valor("K"); v.CopiarA(p, n); }`, one block
+  per value so each destructor runs right away.
+- **Our guessed class name clashing with an RTTI name**: an RTTI name always wins; rename the
+  guessed class (and its mangled names in the symbol map) instead of working around it with
+  file splits.
+- **An inline function the image has both inlined and out of line** (a header constructor):
+  keep it `inline` in the header behind a macro (`#define X_INLINE inline` unless defined) and
+  let one source file define the macro empty before the include to emit the one copy.
+- **A template member defined in a header gets inlined into callers the image calls it from**:
+  mark the definition `__declspec(noinline)`; its own bytes do not change.
+- **A loop that reloads `*cur` for the call** (`mov eax,[esi]; ... mov ecx,[esi]; call`) calls
+  through the iterator (`(*it.cur)->F()`), not through the value it tested.
+- **Register order flips with `a = b = x` vs `b = a = x`**: the assignment chain decides which
+  register keeps the value and which takes the copy.
