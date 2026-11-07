@@ -649,3 +649,10 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   by-value argument come from a user-written copy constructor.
 - **A local for a pointer chain before a call** (`ClassMano *m = actor->mano; m->Usar(&x)`)
   swaps which of ecx/edx gets the object and the argument.
+- **A duplicated call whose argument is a register known to be 0** (`push eax` after
+  `test eax,eax; jne`) where ours pushes `0`: the source had one call after an if/else
+  (`if (c && !r) f |= 8; else f &= ~8; Acelerar(r);`) and the compiler duplicated the tail
+  late, after constant propagation. An early `Acelerar(r); return;` in the branch lets it
+  fold r to 0.
+- **A pair passed by value from two adjacent members** (`mov edx,[ecx+0x20]` reloaded after
+  comparing it) is a struct copy through a cast (`f(*(Par *)&a1)`), not `Par v; v.a = a1; ...`.
