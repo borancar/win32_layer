@@ -697,3 +697,10 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   through the iterator (`(*it.cur)->F()`), not through the value it tested.
 - **Register order flips with `a = b = x` vs `b = a = x`**: the assignment chain decides which
   register keeps the value and which takes the copy.
+- **An EH frame around a constructor that only calls `malloc`**: under `/EHsc` an
+  `extern "C"` function cannot throw, so no frame is built; the original declared the
+  allocator with C++ linkage. Declare it so (`void *__cdecl malloc(unsigned)`, no
+  `<stdlib.h>`) and map the mangled name to the CRT address.
+- **A base constructor or destructor inlined in one subclass and called in another**: put
+  the bodies in the header behind an opt-out macro and define it in the files whose image
+  calls them.
