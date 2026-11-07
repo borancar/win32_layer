@@ -860,3 +860,11 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
 - **Renaming a placeholder class to its real (RTTI) name turns on vtable checks**: the
   matcher then compares the class's vtable slot by slot, so placeholder virtual bodies
   (`void X::v1() {}`) must go.
+- **An inline function's out-of-line copy** (a COMDAT the image kept although every caller
+  inlined it) is emitted by calling it from a throwaway helper under `#pragma
+  inline_depth(0)`; the helper itself stays unmapped. Cheaper than moving the body out of
+  the header (which would change every caller).
+- **Near-duplicates**: mask every image address (calls, globals, vtables) and group
+  functions by the remaining bytes; an unmatched member of a group with a matched one is
+  usually the same source over another type or another object (a template instance, a
+  copy in another class, an inline body kept twice).
