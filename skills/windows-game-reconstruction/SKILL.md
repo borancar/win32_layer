@@ -656,3 +656,7 @@ slot for the float, not a stdcall. A COM-style slot call that passes `this` on t
   fold r to 0.
 - **A pair passed by value from two adjacent members** (`mov edx,[ecx+0x20]` reloaded after
   comparing it) is a struct copy through a cast (`f(*(Par *)&a1)`), not `Par v; v.a = a1; ...`.
+- **An "override" with a different parameter type is a new virtual, not an override**: it
+  appends slots and shifts every later one, and nothing complains until a virtual call
+  past it lands on the wrong offset (`call [eax+0x70]` where the image has `+0x68`). Keep a
+  derived class's redeclarations on the interface's exact signature and cast inside.
