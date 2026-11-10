@@ -106,8 +106,7 @@ void WINAPI Sleep(DWORD ms)
 
 BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER *out)
 {
-    out->QuadPart = w32l_host_lockstep() ? (LONGLONG)w32l_host_clock_ns()
-                                        : (LONGLONG)SDL_GetPerformanceCounter();
+    out->QuadPart = (LONGLONG)w32l_host_qpc_ns();
     return TRUE;
 }
 

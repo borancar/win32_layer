@@ -235,6 +235,21 @@ uint64_t w32l_host_clock_ns(void)
     return w32l_host_lockstep() ? w32l_clock_ns : SDL_GetTicksNS();
 }
 
+/* The counter a program polls in a loop that does not pump: in a lockstep run the virtual clock only
+ * moves per pump, so every read also moves it a little (W32L_LOCKSTEP_QPC_NS, default 10 us). */
+uint64_t w32l_host_qpc_ns(void)
+{
+    static uint64_t extra, per;
+    if (!w32l_host_lockstep())
+        return SDL_GetPerformanceCounter();
+    if (!per) {
+        const char *e = getenv("W32L_LOCKSTEP_QPC_NS");
+        per = e && *e ? (uint64_t)atoll(e) : 10000;
+    }
+    extra += per;
+    return w32l_clock_ns + extra;
+}
+
 int32_t w32l_host_on_game_thread(void)
 {
     return pthread_equal(pthread_self(), w32l_game_thread);

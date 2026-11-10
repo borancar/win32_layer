@@ -106,6 +106,7 @@ void w32l_host_exit(int32_t code) __attribute__((noreturn));
 int32_t  w32l_host_lockstep(void);
 /* Nanoseconds: the virtual clock in lockstep, the host's otherwise. */
 uint64_t w32l_host_clock_ns(void);
+uint64_t w32l_host_qpc_ns(void);   /* QueryPerformanceCounter's value (in lockstep each read advances it a little) */
 uint32_t w32l_host_pump_number(void);
 int32_t  w32l_trace_window(void);        /* W32L_TRACE_FROM..W32L_TRACE_TO holds the current pump */   /* lockstep: the pump about to run, 0 before the first */
 
