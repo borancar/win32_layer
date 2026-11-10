@@ -297,6 +297,50 @@ Planned, in order. Replace each stub with what was learned:
 3. Per-routine replacement with differential checks (hybrid as oracle).
 4. Frame-lockstep verification, asset format work, and so on.
 
+## Verifying a port: side by side, a Lua control socket, the Win32 boundary
+
+Learned from the Commandos port goal (2026-11-10). The test of a port is not a
+recording of the original; it is **the original (hybrid) and the port running
+side by side, live, on the same input**, compared as they go.
+
+- **Side by side, not recorded.** Do not build oracle files of the original's
+  traces or frames to diff later. Start the hybrid (the original over the layer)
+  and the port together and compare them every step; the first difference is the
+  lead, and both programs are still alive and inspectable on it. The layer
+  already provides the lockstep: `W32L_LOCKSTEP=1` (deterministic clocks, a fixed
+  step per pump) and `W32L_STEP=<unix socket>` (each program waits for a
+  coordinator before every pump and reports `pump N`, each presented frame's
+  hash and the host events it applied; the coordinator answers with replay
+  actions and `step`). `W32L_FRAMELOG` (a hash per frame) is the cheap check,
+  `last FILE` / `W32L_FRAMEDUMP_*` writes the frames that differ. A coordinator
+  of this shape is `Popcorn/sidebyside.py` (emulator vs port) -- the same flow.
+- **Lua scripting over a control socket instead of command-line scripted input.**
+  Drive and inspect the game with Lua lines sent over the control/step socket,
+  executed on the game thread at a pump boundary (`w32l_host_lua`, the `lua`
+  verb), so an injection lands on the same pump in both programs and they stay
+  frame-exact. The environment worth exposing: peek/poke guest memory at image
+  addresses, key/click/move injection, frame hash and dump, the pump number.
+  (A `W32L_REPLAY` file or a command-line script is only good for hover and
+  screenshots; scripted clicks did not register in Commandos, real events and the
+  socket do.) A loader sets `w32l_host_lua`; the retail layer has none, so a game
+  that needs it brings a (32-bit) Lua in its loader.
+- **The Win32 boundary is ours: use it from both Lua and gdb.** Every call the
+  game makes to the platform goes through the layer, so it is the one place to
+  stop, inspect and inject without touching the game's code: log or break at the
+  import thunks (`CMD_TRACE`-style thunks in the loader, with the return
+  address), read the arguments and the stack there, and take a **backtrace** by
+  scanning the stack for return addresses (an optimised image has no frame
+  pointer chain: keep words that point into `.text` just after a `call`). From
+  Lua, the same points are hooks (`on_call(name, args)`); from gdb, break on the
+  thunk (`break *thunk`, `commands`, `x/32wx $esp`) on either program, the
+  hybrid or the port, at the same pump. The boundary tells which functions the
+  game uses on a path (callers of the calls it makes), what a port must call in
+  the same order, and where the two programs first diverge.
+- **A port must not lean on the original executable.** It carries its own
+  structures and globals; assets are data. Port existing reconstructed
+  functions only (no invented functions); keep the byte-match baseline
+  (`make match`) from falling while porting.
+
 ## Where things live
 
 | | |
