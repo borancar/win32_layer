@@ -6,14 +6,29 @@ compiler it was measured on and whether it lasted.
 
 **Tags.** `[vc6]` is Visual C++ 6.0, compiler build 12.00.8168, `/O2 /GX`, on
 ArmyMen2 (github.com/borancar/ArmyMen2), which went from 399 to 1,639 of 1,646
-functions byte-identical between 2026-09-27 and 2026-10-31. VC8 (`[vc8]`) idioms
-from Commandos are in the skill's `SKILL.md`, one directory up; add new compilers here under
-their own tag. An idea measured on one compiler is a hypothesis on another.
+functions byte-identical between 2026-09-27 and 2026-10-31.
+
+`[vc8]` is Visual C++ 2005 SP1, `cl` 14.00.50727.762 (`c1xx`/`c2` of the same
+build, `link` 8.00.50727.762), `/O2 /Gy /GR /EHsc` with the default `/GS`, on
+Commandos: Behind Enemy Lines (github.com/retro-foundry-games/CommandosBEL),
+2026-11-05 to 2026-11-10. A handful of functions need `/GL` and `link /ltcg`
+(section 13). Until 2026-11-09 the project compiled with the RTM compiler
+(14.00.50727.42), so every idiom found before that date was found on RTM; the
+first entry of section 1 is what that cost. The raw idiom list, in the order it
+was found and without status, is in the skill's `SKILL.md`, one directory up.
+
+Add new compilers here under their own tag. An idea measured on one compiler is
+a hypothesis on another.
 
 **Status** says what happened to the idea afterwards:
 
 - **held**: still in the tree with the function byte-identical, and no record
-  of it being replaced. Checked against ArmyMen2 `20c901fe`.
+  of it being replaced. `[vc6]` checked against ArmyMen2 `20c901fe`. `[vc8]`
+  checked against Commandos `83ef99f8`: the spelling read in the source and the
+  function identical in a `make match` of that tree. Two weaker marks:
+  *(match)* means the function is identical there but the spelling was not
+  read; *(record)* means the entry is taken from the log, `STATUS.md` or
+  `docs/` and not rechecked.
 - **number win**: lowers the distance and is still in the tree, but is not
   source the original author would have written. Listed for removal once the
   binary matches. Use last, mark it in the source, never count it as recovered
@@ -25,8 +40,17 @@ their own tag. An idea measured on one compiler is a hypothesis on another.
 - **no effect**: tried broadly and moved nothing. Recorded so it is not
   re-ground.
 
-The figures `A -> B` are the per-function edit distance of the relinked bytes
-against the image (0 is identical; a replaced byte costs 2).
+The `[vc6]` figures `A -> B` are the per-function edit distance of the relinked
+bytes against the image (0 is identical; a replaced byte costs 2).
+
+The `[vc8]` figures are what Commandos' `make match` prints: `N identical, M
+different`, where N counts symbol names whose object bytes equal the image
+(relocations masked, their targets checked against `symbols.tsv`), and, for one
+function, `K bytes differ`. Parked near misses (`~` in `symbols.tsv`) are in
+neither number. The record's last figure is 10,082 identical, 0 different (SP1).
+The check for this file had only the RTM compiler: 10,036 identical, 46
+different, the 46 being SP1-only matches by the record (the sum is 10,082); the
+`/GL` check did not link there, so its 6 identical, 8 parked are *(record)*.
 
 ## 1. Local optima: wins that did not last
 
@@ -40,6 +64,7 @@ Read this first. Every item lowered the number when it landed.
   went back and the function stays at 154. *Rule: for every unsigned cast,
   negation or difference test, check the variable's whole domain. The byte
   metric cannot see wrong semantics.*
+  `[vc8]` none recorded; the tree was not audited for it.
 - **A different instruction that scores better.** `[vc6]` **reverted.** LoadMap's
   TRIG size check written `size - (uint32_t)plane` scored 2 where the plain
   `size != plane` scores 356, because the `sub` supplies one scratch-register
@@ -67,6 +92,7 @@ Read this first. Every item lowered the number when it landed.
   BlockWeightRoute 26 -> 16, SightScan 76 -> 52 (three dead reads), ObjRemap
   124 -> 108, and FindPath now carries none. *Rule: after any structural fix,
   ablate every hack in the function and keep only those whose removal costs.*
+  `[vc8]` same, and not yet done: see "Workarounds for the wrong compiler" below.
 - **"The ceiling."** `[vc6]` **reverted.** At 1,507 of 1,645 the remaining 138
   were triaged as "register allocation and loop rotation the source cannot
   steer" and declared the practical limit. The cause was stub structs reached
@@ -74,6 +100,7 @@ Read this first. Every item lowered the number when it landed.
   1,639. A band of 5 to 13-byte near misses written off as "the allocator wall"
   mostly closed too. *Rule: do not declare a wall until typed structs, real
   classes, the frame layout and a from-scratch derivation have been tried.*
+  `[vc8]` same class, different cause: the wall was the service pack (below).
 - **A narrower type that scores well.** `[vc6]` **reverted.** Narrowing a
   32-bit uid or a field (`approach` holds 2 for a roach) lowered HudSquadUpdate's
   printed distance. Rejected: the type is wrong, and the gain was a jump table
@@ -86,6 +113,8 @@ Read this first. Every item lowered the number when it landed.
   `delta = AngleDelta(...)` with `delta = abs(delta)`. Scoring with jump targets
   masked rewarded truncated functions. *Rule: a search only proposes. Read every
   accepted edit for a dependency or a domain change before applying it.*
+  `[vc8]` no meaning-changing proposal recorded; the search's wins were number
+  wins (below).
 - **A behaviour fix that raises the number is still right.** `[vc6]` **held.**
   UpdateTrooperAction 380 -> 464 and DepthInsert 460 -> 468 when real bugs were
   fixed (a held weapon never dropped; an append linking a node to itself).
@@ -100,6 +129,106 @@ Read this first. Every item lowered the number when it landed.
   order decides register order" (section 11); two diagnoses from a second model
   that named the wrong source block. Verify a claim against the bytes before it
   goes into a document.
+  `[vc8]` same: "suspect `/GL`", "unwritable", "no candidates left" (below).
+
+### `[vc8]` Commandos
+
+Every item raised the count or closed a question when it landed.
+
+- **"The compiler's choice" that was the wrong service pack.** `[vc8]`
+  **reverted.** Under RTM (.42) whole families were parked as allocator quirks
+  no source could steer: a 1 made by `lea eax,[zero+1]` (`Alcanzado` of
+  missions 21 to 26, 0x474d80..0x475870, 14 bytes each), a switch's zeroed
+  register pushed or stored (0x532360, 22 bytes; 0x46bb30, 76), `jb` closing
+  an unsigned table scan where RTM emits `jl` (0x5b3d20, 0x5ed7f0, 0x5b3c60,
+  0x5db9a0, 1 byte each). At 4,419 matched, 26 of 56 parks were this family; 22
+  flag combinations on 0x512640 and `/GL` moved none of them. The Rich header
+  says build 50727 for RTM and SP1 alike. With SP1 (.762): 9,684 -> 9,724, 40
+  parks identical with their plain source, no RTM match lost (two respelled)
+  *(record; the byte counts are the RTM build of `83ef99f8`)*. *Rule: when a
+  family of near misses resists every spelling and flag, list every compiler
+  revision that stamps the same Rich build and try each before tuning further.*
+- **Workarounds for the wrong compiler, never swept.** `[vc8]` **number win
+  (suspect).** What was written to dodge RTM (result variables added only to
+  hold a zero, swapped operands, `volatile` locals, the notes on 609 parks) is
+  still in the tree. `STATUS.md` says to re-test the plain forms against SP1; no
+  commit in the log does it. *Rule: after a compiler or flag correction, ablate
+  every hack and re-derive every park note before any new tuning.*
+- **Whole-body asm for compiler output.** `[vc8]` **superseded.** Five
+  stream-sentry constructors and destructors (0x5867b0, 0x5867e0, 0x586ea0,
+  0x586ef0, 0x586fb0) and 0x586f20, 0x586f60, 0x5b1030 were matched as naked
+  `__asm` (count 9,672). All eight are C++ now and identical (virtual-base
+  member access for the sentries). 0x586d00's asm was deleted and its C++ is
+  parked at 18 bytes: one match given up on purpose. 0x6100a0 was byte-matched
+  as inline asm, then replaced by C++ that is not identical (379 instructions
+  against 385) and is parked. *Rule (owner): a body is whole-body
+  asm only if the original source was assembly; an asm copy of compiler output
+  is copied bytes, not source.*
+- **The overcorrection: real assembly rewritten as C++.** `[vc8]` **reverted.**
+  The same audit rewrote the 18 hand-assembled blit routines as C++: 10,049 ->
+  10,030. They were restored as `__asm` (10,048; 10,049 with 0x64a500). The
+  evidence that they were assembly: a C frame around an `__asm` block (`push
+  ebp; mov ebp,esp`, exactly the registers the body touches), `ebp` reused as a
+  data pointer, loop counters in globals, a stray `movsw`, assembler alignment
+  padding, and `/GL` callers that rely on `edx` surviving the call. *Rule:
+  decide asm or compiler output from the frame and the loops before choosing
+  the language; then leave real assembly alone.*
+- **Library code counted as matched.** `[vc8]` **reverted** (owner). The VC8
+  `<string>`, `<locale>` and iostream instances in the image were matched by
+  compiling probes with the real headers and scanning for equal bytes
+  (`stdscan.py`); 9,547 -> 9,401 when they were removed, 9,300 after the
+  stand-in classes the generators had given library code went too. The method
+  works; the scope was wrong. *Rule: fix what counts as the game's code before
+  counting, and name library ranges so generators skip them.*
+- **"Unwritable" calling conventions.** `[vc8]` **superseded.** Functions
+  taking an argument in `eax` were written off ("only naked asm, which is not
+  reconstruction"); they are `static __declspec(noinline)` functions (0x441b80,
+  0x48a6f0, 0x48a710, 0x526d60, identical). A thiscall-looking function with a
+  plain `ret` was "a dead end, park at once", and arguments in `edi`/`esi`/`ebx`
+  were then filed under the static form too: 0x5f7520 written that way was
+  removed. They are `/GL` code and match under `/GL` + `/ltcg` (0x5f7520,
+  0x5f7640, 0x5f7670, 0x4b10b0) *(record)*.
+- **"Suspect `/GL`."** `[vc8]` **reverted.** The `eax`-against-`ecx` scratch
+  choice at 0x4721d0 (2 bytes; unmoved by `/Ox /O1 /Os /Ot /Ob2 /G6 /G7
+  /arch:SSE`) was blamed on whole-program allocation. It was a missing local:
+  `int id = *(int *)b;` before the condition (identical). Measured later, `/GL`
+  changes none of the scratch families (the `jb` scan, the `edx` tail call,
+  0x512640).
+- **Parks that were misreads.** `[vc8]` **superseded.** 0x480350 sat as a
+  store-order near miss; its `ret 8` shows two arguments, and it matched once
+  rewritten. Three `InfoEstado` parked as "rep movs count set up before the
+  switch" were the `strcpy` intrinsic once per case. The "zero" at 0x6dd5bc was
+  the literal 180.0f. Two serializers' parked approximations were simply wrong
+  *(record)*. *Rule: before respelling a 2 to 4 byte miss, re-read `ret N`,
+  each argument's slot, the field order of the stores and the constant's bytes.*
+- **A comparer that learns.** `[vc8]` **held as a hazard.** `bytematch.py`
+  records any unknown relocation target as a new symbol, so a wrong import
+  (`SendMessageA` for `PostMessageA`), a wrong CRT name or a table's end bound
+  "matched" once and broke later; the first `/GL` comparer masked addresses and
+  the strict one at once caught a misnamed global *(record)*. *Rule: an address
+  must be named before it is compared; never let the scorer supply the name.*
+- **Counting names, not addresses.** `[vc8]` **held as a hazard.** "4,565
+  identical" was 4,282 distinct addresses once counted that way; `83ef99f8`
+  under RTM is 10,036 names on 9,512 addresses. Aliases, duplicate definitions
+  and scratch copies inflate the first number, and deleting a "duplicate" can
+  lose the only definition of an address (37 such files checked: removing them
+  loses 36). *Rule: report distinct addresses, and diff the address sets before
+  and after any cleanup.*
+- **Matches on a wrong class layout.** `[vc8]` **reverted.** `SimBichoBase`
+  redeclared two virtuals with other parameter types; they became new slots,
+  the class's small members still matched, and every virtual call past slot 23
+  was off by 8 until one such caller was written. *Rule: a derived
+  redeclaration keeps the interface's exact signature; a matching leaf says
+  nothing about the vtable.*
+- **"No candidates left."** `[vc8]` **reverted.** At 9,586 the work list built
+  from `symbols.tsv` was empty. About 2,200 function starts had no symbol at
+  all, and a function only declared `extern` counted as done. Lists rebuilt from
+  the comparer's `ok` lines gave 9,589 -> 9,640 in the next passes *(record)*.
+- **Search wins that are number wins.** `[vc8]` **number win.** The variant
+  search's applied matches for 0x4ea6a0 and 0x4803b0 are `volatile float` on a
+  local; both still carry the note that the image spills differently. Its
+  `int`/`unsigned` rewrite can change meaning; no case is recorded, none was
+  audited.
 
 ## 2. Method
 
@@ -109,6 +238,9 @@ Read this first. Every item lowered the number when it landed.
   the image with nothing about reconstructed targets wildcarded. Masked "shape"
   scores hide a swapped global (`H*W` against `W*H`), a wrong jump target and a
   wrong register; they are for reading a diff, never for scoring one.
+  `[vc8]` weaker here: objects are compared unlinked, relocations masked and
+  their targets checked by name, and the checker learns unnamed targets
+  (section 1).
 - **A one-second screen plus a full confirm.** `[vc6]` **held.** Save the symbol
   tables from one full relink; a screen then compiles one unit, resolves it the
   same way and prints `FN old -> new`. Confirm every win through a full relink:
@@ -144,6 +276,33 @@ Read this first. Every item lowered the number when it landed.
 - **One compiling job at a time**, and refresh the saved symbols after changing
   any signature: MSVC mangles parameter and return types, so a stale table
   resolves calls to a stub and mis-scores callers. `[vc6]` **held.**
+
+- **Park with a marker and the exact difference.** `[vc8]` **held.** `~name` in
+  `symbols.tsv` keeps a near miss out of both counts while its address still
+  validates callers; `// 0xADDR ~ (why)` sits on the definition. 1,186 `~`
+  lines and 1,164 markers at `83ef99f8` (functional ports included).
+- **Fixed-shape functions by generator, before any hand work.** `[vc8]` **held**
+  *(record)*. Bodies decided by their bytes (getters, setters, forwarders,
+  deleting destructors, vptr-store constructors, template factories) are
+  emitted from byte patterns and kept only when identical: 491 on the first
+  build of `gentrivial.py`, 82 of 84 factories, about 1,000 accessors in one
+  sweep; about a third of all matches.
+- **Decompiler candidates, the compiler as judge.** `[vc8]` **held** *(record)*.
+  Kuna's C with struct synthesis off, rewritten mechanically and kept only when
+  identical: about 390 of 1,900 candidates, 267 of 701 under 32 bytes, nothing
+  past 200 bytes, 0 of 264 on a later rerun.
+- **Group the unmatched by masked bytes.** `[vc8]` **held** *(record)*. With
+  calls and absolute addresses zeroed, a group of two or more is one source
+  shape; one match pays for all (about 60 exact duplicates needed only a second
+  name).
+- **Write for behaviour first, then compare.** `[vc8]` **held** *(record)*. Of
+  the functions ported from the disassembly for function only and parked
+  unread, 23 were already identical and 9 more matched after edits: 10,050 ->
+  10,082.
+- **Count after a clean build, and diff the address sets after any deletion.**
+  `[vc8]` **held.** A failed compile leaves the old object and its match. A
+  prefix `sed` on the symbol table deleted another file's lines three times, a
+  line-number delete run twice on stale listings lost 9 matches *(record)*.
 
 ## 3. Control flow and block layout
 
@@ -186,6 +345,8 @@ Read this first. Every item lowered the number when it landed.
   explicit `case N: return 0;`. Arm layout follows source order, the table index
   the case value. `mov eax,K; push eax` in every arm is a local set per arm and
   one call after the switch, which VC6 copies into each arm.
+  `[vc8]` same for layout and table: `Selector5c01c0::Llamar` (0x5c01c0) is
+  written `case 1, 3, 4, 2`, the order of its blocks in the image.
 - **A dead `cmp` with no branch after it** is two identical if/else arms the
   compiler merged. `[vc6]` **held.**
 - **Small shared tails reached by `goto` get duplicated; do the work in each
@@ -194,6 +355,39 @@ Read this first. Every item lowered the number when it landed.
 - **`xor r,r; test; jle; mov r,X` is `x = 0; if (c) x = X;`**; a ternary gives
   `mov; jmp; xor`. `sub 3; neg; sbb; and K; add B` is the two-constant ternary
   `v == 3 ? B : B + K`. `[vc6]` **held.**
+  `[vc8]` same direction: `c ? a : 0` is branchless (`setne; sub; and`), the
+  image's `xor; cmp; jne; mov` is `int r = 0; if (c) r = a;` *(record)*.
+
+- **One result variable, one exit.** `[vc8]` **held.** A zero or one kept in a
+  register and returned is `int r = 0; ... if (e) r = e->F(); return r;`; early
+  `return`s let VC8 fold the constant. `Tabla557240::Aplicar` (0x5572c0),
+  `ClassSubInterfaceMultiple::Tiene` (0x5e1a30), `CWinEditAngle::Desplazamiento`
+  (0x4ca620, preset 1). Found on RTM, still identical. It does not close every
+  kept-zero case (section 12).
+- **A materialised `== 0` that is then tested** (`xor eax,eax; cmp [m],eax;
+  setz al; test eax,eax; jz`), listed unsolved, is the result variable again:
+  `int b = (x == 0); if (b) b = F(); return b;`. `[vc8]` **held.**
+  `WinEditorMisiones::PuedeCerrar`/`PuedeSalir` (0x4ade00, 0x4ade50),
+  `CaracterUnico` (0x64ee60).
+- **Write identical arms out twice** when the image has `cmp; jmp L` with the
+  conditional jump at `L`: VC8 cross-jumps them itself; a ternary or flag gives
+  `setne`. `[vc8]` **held.** `ClassAcCasa::Marcar` (0x4ef9e0).
+- **`sub eax,K; je` chains are a `switch`**, also with one case
+  (`mov eax,[x]; sub eax,1; jne`). `[vc8]` **held** *(match)* (0x4b4720,
+  0x568530).
+- **A 0 or 1 argument pushed through a branch** is `if (c) f(1); else f(0);`,
+  two calls the compiler merges; a ternary gives `setcc`. `[vc8]` **held.**
+  `Lista4926f0::Marcar` (0x4926f0).
+- **Two branches that store the same field** match only as one conditional
+  expression. `[vc8]` **held** *(match)* (`DiferenciaAngulo` 0x4eea40,
+  0x62b670).
+- **Loop close.** `[vc8]` **held** *(record)*. An `int` index loop over a table
+  ends `jl`, a pointer loop `jb`; `(int)p < (int)end` forces `jl` on pointers.
+  An unsigned index against a constant bound ends `jb` only on SP1 (0x5b3d20);
+  on RTM no spelling gave it.
+- **Falling off the end.** `[vc8]` **held** *(record)*. A value-returning slot
+  whose image leaves `eax` unset is written with no `return` (C4716 off);
+  `return 0` adds an `xor`.
 
 ## 4. Variables, loads and stores
 
@@ -219,10 +413,14 @@ Read this first. Every item lowered the number when it landed.
   is reloaded after an inline `strcpy` (ReceivePlayerMsg 2 -> 0). The reverse
   also holds: renaming the parameter and dropping the copy lost two matches,
   which came back with the copy.
+  `[vc8]` same: `int id = *(int *)b;` before the condition closed 0x4721d0
+  (2 -> 0), `const unsigned char *q = p;` before the loop 0x570790.
 - **Dead argument slots are spill slots.** `[vc6]` **held.** VC6 parks byte or
   address-taken locals in a parameter's home once the parameter lives in a
   register. `mov [esp+N],cl; mov edx,[esp+N]; and edx,0xff` is a `uint8_t`
   local, not a parameter.
+  `[vc8]` same *(record)*: a local in a parameter's home is the compiler's
+  doing; declare a normal local.
 - **Frame size is evidence.** `[vc6]` **held.** A different `sub esp` is a missing
   or extra local. Map every `[esp+N]` to an entry-relative slot (subtract pushes
   and saved registers) and name the image's slots before changing anything.
@@ -233,11 +431,15 @@ Read this first. Every item lowered the number when it landed.
   too small for one buffer per name means the original reused a buffer
   (CheckMapRules 9 -> 0). Array size moves slot order (HudEdgePaint `text[4]` to
   `text[3]`, 37 -> 2).
+  `[vc8]` same *(record)*: one function-scope local reused shares a slot, two
+  scoped ones do not; a returned-by-value object per braces reuses slots.
 - **Runs of `mov [esp+N], imm`** are a local array initialised from constants;
   declaration order decides the order of the store groups. `[vc6]` **held.**
 - **Chained assignment.** `[vc6]` **held.** One load stored to two fields is
   `a = b = src;` (inner first). `a = b = c = 0` stores right to left, so write
   separate statements when the image stores in declaration order.
+  `[vc8]` same *(record)*: `a = b = x` against `b = a = x` also decides which
+  register keeps the value.
 - **Commutative operands.** `[vc6]` **held, fragile.** VC6 loads `A + B` as `B`
   first, so source order is often the reverse of the loads. Where both operands
   are globals the order can instead follow the compiler's symbol table
@@ -248,6 +450,28 @@ Read this first. Every item lowered the number when it landed.
 - **Write the expression straight into the field when the image compares the
   computed value**; `if (!g && (sel = f->x) >= 0)` loads the field after the
   global test. `[vc6]` **held.**
+
+- **Compare with the variable, not the literal.** `[vc8]` **held.** A register
+  reused as a known value (`sub edx,1; jne; cmp [eax+0x10],edx`) is
+  `int t = o->tipo - 1; if (t == 0 && o->campo10 == t ...)`. `MotorAliado::s09`
+  (0x4468f0), first filed as a compiler quirk.
+- **The loop bound is the member, not a copy of it**, when the image re-tests
+  the count after the loop. `[vc8]` **held.** `ClassMenu::Cambiar` (0x5a1320).
+  The same idea did not move 0x623900.
+- **A reference to the element anchors the loop pointer** on a later field
+  (`T &e = t[i];`); `p++` or `t[i].f` anchor elsewhere. `[vc8]` **held.**
+  `Tabla583d30::Vaciar` (0x583d30).
+- **Store order: read it as structure first, then permute.** `[vc8]` **held.**
+  Stores that precede the body, or sit between the vptr store and a
+  registration call, come from member sub-objects with inline constructors, in
+  declaration order (`Datos612b20` 0x612b20: `TresCero`, `UnCero` members and a
+  two-line body). Only then try orders: all 24 for four stores, a pairwise hill
+  climb (`hcstores.py`) for more (0x5655d0, 0x59d5b0 *(match)*). Brute force
+  ruled order out for several parks; those were something else.
+- **A float stored and reloaded before a compare.** `[vc8]` **number win.**
+  `volatile float` reproduces the `fstp/fld` pair and the frame size
+  (`Radio4364e0::Radio` 0x4364e0, 0x4ea6a0, 0x4803b0). A plain `float` local
+  gives the round trip in other functions *(record)*, so try that first.
 
 ## 5. Structures, types and parameters
 
@@ -308,6 +532,22 @@ Read this first. Every item lowered the number when it landed.
   `g[x & 0xFFFF]` compiles `[idx+table]`; a variable index `[table+idx]`. A signed
   `jl` loop close is an index loop storing into a typed member array.
 
+- **Small operators on member pairs.** `[vc8]` **held.** Per-field
+  store-then-`sub [mem],reg`, or two ints updated through one base, is an
+  inline `operator-=`/`operator+=` on a sub-struct (`ClassVolumen::Desplazar`
+  0x6287f0); unrolled `mov` pairs instead of `rep movsd` are an inline
+  memberwise `operator=` (0x587b00 *(match)*).
+- **By-value structs and their copy constructors.** `[vc8]` **held**
+  *(record)*. `sub esp,N; mov eax,esp; mov [eax],..` with loads before stores
+  needs a user copy constructor; `fld/fstp` copies need one that copies as
+  floats; without one the fields are pushed. A temporary copied through integer
+  registers is the implicit copy.
+- **`class` or `struct` is in the image.** `[vc8]` **held** *(record)*. RTTI
+  names are `.?AV` or `.?AU`; a wrong keyword fails the type descriptor compare
+  and silently drops the function from the comparer (the mangled name differs).
+- **An "override" with another parameter type is a new slot.** `[vc8]` **held.**
+  See section 1, "Matches on a wrong class layout".
+
 ## 6. Calls, inlines and C++
 
 - **A helper with no address of its own is inline in the original.** `[vc6]`
@@ -333,9 +573,15 @@ Read this first. Every item lowered the number when it landed.
   `push -1; push handler; fs:[0]` frame in a C-linkage function and treats
   C-linkage callees as non-throwing. A function whose original has a frame must
   have C++ linkage; guard header `extern "C"` blocks so VC6 does not see them.
+  `[vc8]` same under `/EHsc` *(record)*: only `extern "C"` and `throw()`
+  callees are non-throwing; declare callees and `operator delete` `throw()` to
+  drop a frame the image lacks.
 - **Callee definition order.** `[vc6]` **held.** VC6 infers "cannot throw" only
   for callees defined earlier in the unit, so keep definitions in original
   address order.
+  `[vc8]` stronger *(record)*: a callee defined earlier in the unit is inlined
+  or known to keep `ecx`; move it to another file or mark it
+  `__declspec(noinline)`.
 - **An EH state store around a constructor call is a real `new T(...)`**, not an
   allocation plus placement construction (MpPanelScreen 339 -> 260). Stores
   before the vptr store are member initialisers. `[vc6]` **held.**
@@ -344,6 +590,8 @@ Read this first. Every item lowered the number when it landed.
   writes each vptr store itself, and a destructor's comes first, before the
   unwind state, where no statement can go. A class with no destructor deriving
   through `: Base(n)` needs `typedef Base Base;` to avoid C2437.
+  `[vc8]` same *(record)*: real `virtual ~D()` with an inline `~Base() {}`
+  gives the scalar deleting destructor; an implicit destructor is a bare `jmp`.
 - **Real virtual methods keep the bytes.** `[vc6]` **held.** Giving the classes
   the image's virtuals in slot order, with overrides forwarding to the
   reconstructed members, changed no compared byte in 1,646 functions; the
@@ -362,10 +610,38 @@ Read this first. Every item lowered the number when it landed.
 - **Two case arms calling one address** are two identical source functions
   folded by the linker (`/OPT:ICF`). Identical empty virtuals fold with unrelated
   stubs of the same bytes. `[vc6]` **held.**
+  `[vc8]` opposite: no folding in this image (incremental link). Identical
+  bodies each keep an address and each needs its own name
+  (`~ClassLineaVariable` at 0x5a67f0 and 0x5a6b10, both identical).
 - **Enumerators compile exactly like literals.** `[vc6]` **held.** An out-of-range
   comparison constant spelled as an `enum` silences a host-compiler warning with
   no byte change; the same constant in range, or passed through an inline helper,
   changes the bytes.
+
+- **`ecx` passing through is a member call on `this`.** `[vc8]` **held**
+  *(record)*. Argument loads through `edx`/`eax` with `ecx` untouched before a
+  callee-pops call: declare the callee a member, not a `__stdcall` free
+  function. The commonest early near miss (six functions at once).
+- **One inline member for a merged read-or-write call.** `[vc8]` **held.** The
+  serializers' `test m; ... jz; mov eax,[edx+8]; jmp; mov eax,[edx+4]; call
+  eax` comes from one inline helper (`ES(guardar, f, p, n)`); `if/else` at each
+  site does not merge. `ClassAcPisada::Serializar` (0x51f0f0) and about 30
+  siblings matched in a row on 2026-11-06.
+- **String work is the intrinsic.** `[vc8]` **superseded** the "pointer
+  difference loop" mystery. `strcpy`, `strlen`, `strcat`, `strcmp` under
+  `#pragma intrinsic` (or `<string.h>` at `/O2`) expand to the loops that hand
+  code could not reproduce *(record)*.
+- **A function-local `static T x = f();`** gives the guard bit, the EH frame
+  and the state numbers for free. `[vc8]` **held.** `Contador497780::Bajar`
+  (0x497780); 0x587990, 0x5878b0 *(match)*. A guard bit and state that belong
+  to another function mean that function was inlined.
+- **A local filled by a call, EH state set after it,** is a function returning
+  the object by value, not a default-constructed local. `[vc8]` **held**
+  *(match)* (`DialogoOrgano4a5a30::Borrar` 0x4a5a30).
+- **One object file per class.** `[vc8]` **held** *(record)*. Destructors sit in
+  their own unit; merging two units changed a destructor (inlining). Where the
+  image has a function both inline and out of line, keep it in the header
+  behind an opt-out macro.
 
 ## 7. Register allocation: the measured model
 
@@ -411,12 +687,20 @@ stuck functions:
   time and watch the one differing instruction (PointerPickRepair matched by
   dropping a private copy that held a uid).
 
+- `[vc8]` **No model measured.** Nothing here was tested on VC8. What is known
+  is negative: on SP1 a temporary's register for `F("X", g->campo)` (`eax` in
+  the image, `edx` or `ecx` in ours: 0x512640, 0x4e3930, 0x42c970) moves with
+  no field type, local, inline getter, flag or `/GL`. Cause unknown.
+
 ## 8. Reading the image
 
 Tells that say what the source was, before any compile:
 
 - A plain `ret` with stack arguments is `__cdecl`; `ret N` is `__stdcall` or
   thiscall. `[vc6]` **held.**
+  `[vc8]` same, with three more conventions to rule out first: `edx` read
+  before written is `__fastcall` (0x5d6200), `eax` is a static function, other
+  registers are `/GL` (section 13).
 - The frame size and each slot's offset name the locals and their sizes
   (section 4). `[vc6]` **held.**
 - A buffer's size follows from the gap to the next slot. `[vc6]` **held.**
@@ -429,6 +713,14 @@ Tells that say what the source was, before any compile:
   code generator merges them (`VC6_KEEPTMP`, `VC6_IL_OVERRIDE` in ArmyMen2's
   host). Editing the IL until the code matches gives the target shape. `[vc6]`
   **held.**
+
+- `[vc8]` `push ebp; mov ebp,esp; and esp,-8` in an ordinary function is a
+  local aligned to 8, not a flag: `struct __declspec(align(8)) { T *p; }` filled
+  at the top (0x5690b0, and its `__fastcall` twin 0x5aa0f0). **held.**
+- `[vc8]` The Rich header gives the major build only; it cannot name the
+  service pack. **held.**
+- `[vc8]` Hand assembly shows as a C frame around a body no compiler schedules
+  (section 1). Check before transcribing. **held.**
 
 ## 9. Number wins: levers that work and are not source
 
@@ -459,6 +751,31 @@ once the binary matches.
 - **Difference and negation tests** (`a - b` for `a != b`, `-x` for `x != 0`).
   `[vc6]` **reverted** wherever the image has `cmp`/`test` (section 1).
 
+`[vc8]` Commandos has no marker convention for these; they were found by grep.
+
+- **`volatile` locals.** `[vc8]` **number win.** `volatile int t = 0;` for a
+  dead zero stored to a slot (`ClassEngineJuego::ActivarObjetoC4` 0x594500,
+  0x556670), `volatile float` for a spill (section 4), a store through
+  `*(volatile int *)&campo` to force a reload. 24 files at `83ef99f8`. The dead
+  zero may be a real exception-state marker; nobody has shown which.
+- **Naked `jmp eax` slot forwarders.** `[vc8]` **number win.** `mov eax,[ecx];
+  mov eax,[eax+K]; jmp eax` (VC8 picks `edx`) is naked asm at 0x45a220,
+  0x60f600, 0x639700 and identical; the same shape written as C++ is parked at
+  0x607ab0 and 0x621bc0. One family, two treatments; the parked one is honest.
+- **Naked adjustor thunks.** `[vc8]` **number win.** 247 `add/sub ecx,N; jmp`
+  thunks are generated asm until the classes get their real multiple-
+  inheritance bases, which make the compiler emit them.
+- **A dead `__declspec(align(64))` local** for an `and esp,-64` prologue.
+  `[vc8]` **number win, and not a match:** `OrganoMotor::InfoEstado` (0x45a320)
+  is still parked 5 bytes off. The real aligned object is unknown.
+- **Harness scaffolding.** `[vc8]` **number win.** An exported caller that
+  keeps a `static` function alive, a throwaway helper under `#pragma
+  inline_depth(0)` that emits an inline function's out-of-line copy, a stand-in
+  second caller that stops `/GL` folding a global into a helper. None is source;
+  each stands for a caller the original had elsewhere.
+- **Patched bytes.** `[vc8]` **number win.** `EsIdiomaAleman` (0x594840) is
+  naked asm because the retail image has its jumps overwritten with `nop`s.
+
 ## 10. Searches, and what never paid
 
 - **Adjacent statement swaps**, keeping the best that worsens nothing, repeated.
@@ -468,6 +785,8 @@ once the binary matches.
 - **Copy substitution** (use a copy's source instead of the copy, or the
   reverse) was the only mechanical family that produced matches late
   (1,552 -> 1,555). `[vc6]` **held.**
+  `[vc8]` same family, by hand: a member or parameter copied to a local, or a
+  local dropped for repeated `p->x`, decided many matches (section 4).
 - **Aliases into re-reads and back**; a walked alias into a retyped parameter;
   `for (;;)` against `while (1)`; label moves between identical `return E;`
   statements. Each found a few. `[vc6]` **held.**
@@ -481,13 +800,33 @@ once the binary matches.
 - **Declaration-order permutation**: changed nothing in any of 85 functions.
   `[vc6]` **no effect.** (Declaration order does decide the order of constant
   store groups for local arrays, section 4.)
+  `[vc8]` opposite in places: `unsigned i = 0;` then `ColumnaLista *p = tabla;`
+  as separate statements gave `PrepararColumnas` (0x4c6790) its register
+  setup order, and local order steered `esi`/`edi`/`ebx` in 0x593d50 *(match)*.
+  The three-counter loops (`Hoja5c0e50`) moved with no order.
 - **Compiler-flag sweeps**: no per-file flag beat `/O2 /GX`; `/Oa` and `/Ow`
   explode the diffs. `[vc6]` **no effect.**
+  `[vc8]` same for flags (below); the lever was the service pack.
 - **Retyping each integer local across the fixed widths**: 17 closer, none
   matched. **Introducing a parameter copy everywhere**: 3 closer, none matched.
   `[vc6]` **no effect.**
 - **decomp-permuter**: found one match in two minutes and then cost more memory
   than it returned; dropped for single-process sweeps. `[vc6]` **superseded.**
+
+- **Mechanical variant search** (`variants.py`: adjacent statement swaps,
+  mirrored and negated comparisons, `volatile` on a local, `int`/`unsigned`,
+  `x == 0`/`!x`; beam of 3 rounds, one function scored). `[vc8]` **held, with
+  number wins among its results.** 6 of 390 parks in five minutes, at least 4
+  more in later runs *(record)*. Read what it applied (section 1).
+- **Statement-order brute force.** `[vc8]` **held** *(record)*. Cheap for up to
+  four stores; a negative result is information (the park is not an order
+  problem).
+- **Flag sweeps.** `[vc8]` **no effect.** 22 combinations on 0x512640; `/Ox /O1
+  /Os /Ot /Ob2 /G6 /G7 /arch:SSE` on 0x4721d0; `/Os` and `/O1` break what `/O2`
+  matches. `#pragma optimize("s", on)` does produce a kept zero register but
+  changes the calls and the frame around it (0x4261e0).
+- **`/GL` as an explanation for scratch-register families.** `[vc8]` **no
+  effect.** It explains register arguments and nothing else (section 13).
 
 ## 11. Declarations and headers move code
 
@@ -508,6 +847,17 @@ once the binary matches.
   free. Relink and compare every function. Put per-function views and typedefs
   beside the function that needs them.
 
+`[vc8]` **held** *(record)*, in a different form: units here are small and
+mostly header-less, so the lever is what else is defined in the unit.
+
+- A callee defined in the same file changes its callers (inlined, or `ecx`
+  known to survive). Adding a definition beside its callers broke a matched
+  caller.
+- Placeholder class names reused across small files collide; the compile is
+  clean and one COMDAT is silently dropped.
+- Merging header-less files needs a shared header first; each merge is
+  followed by a full `make match`.
+
 ## 12. Known not to exist, and still open
 
 - No zero-code rotation consumer; no register hint without code; a dead pair on
@@ -523,3 +873,56 @@ once the binary matches.
   explained each and found no spelling. `[vc6]`
 - **Register-only residues accepted as such:** FindPath (32), ScriptPad (16).
   `[vc6]`
+- `[vc8]` **Open on SP1**, no source lever found: `add eax,-1` for a read-only
+  `x - 1` (0x552d80, 0x552ee0; `switch (x - 1)` and a stored-back `n--` do give
+  it); the `eax` temporary of section 7; `jmp eax` slot forwarders (0x607ab0,
+  0x621bc0); a zero or one kept in a register that SP1 did not close (0x45b910,
+  0x5de170, 0x4261e0, 0x5d6d80 at 66 bytes); frame slot placement (0x4f7240, 2
+  bytes; 0x63d460); a tail `jmp` lost to cached arguments (0x62fcf0); a static
+  function whose object stays in `ecx` (0x5d48e0, 38 bytes). Cause unknown for
+  each.
+- `[vc8]` **Solved after being listed unsolved in `SKILL.md`:** the `lea
+  eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
+  register (all SP1); the materialised `== 0` (section 3); pointer-difference
+  string loops (intrinsics, section 6); the float argument-slot reuse of
+  0x58acf0 (plain source once the owner class had its layout: `T *e =
+  sonidos[canal]; if (e) return e->VolumenSonido(); return 0.0f;`, identical);
+  `eax` and other register arguments (static functions and `/GL`, section 13).
+
+## 13. VC8 only
+
+- **The service pack is part of the compiler identity.** `[vc8]` **held**
+  *(record)*. RTM and SP1 both stamp 50727. SP1's patch is an EXE around an MSP
+  around a cab of whole PE files; swap `c1.dll c1xx.dll c2.dll cl.exe link.exe`
+  into a copy of the RTM tree. One SP1-only behaviour to dodge: after `int a =
+  0;` a later `int b = 5;` becomes `lea b,[a+5]`; declare the non-zero constant
+  first (`PonerBando`, `Texto`).
+- **`/GS` cookies follow the local's type.** `[vc8]` **held** *(match)*. A
+  `char` array, or a struct of them, gets a cookie; a local array of shorts
+  adds a pad. Where the image has neither, the buffer was not declared as
+  chars: an `int` array seen through a `char *` (`Marco61c8b0::Pintar`
+  0x61c8b0). Taking the address of a pointer parameter makes `/GS` copy it; a
+  variadic declaration removes the copy *(record)*.
+- **Static functions take arguments in registers.** `[vc8]` **held.** With
+  internal linkage and no inlining VC8 passes the first argument in `eax`, then
+  `ecx`, and still emits a standalone copy: `static __declspec(noinline)`
+  (`Insertar48a6f0` 0x48a6f0, 0x48a710, 0x526d60, 0x5cf640, the four copies of
+  0x441b80). Declared parameter order picks the registers. Whether the original
+  functions were `static` or `/GL` output of the same shape is not settled.
+- **Other register arguments are `/GL` + `link /ltcg`.** `[vc8]` **held**
+  *(record)*. Pointer arguments go in callee-saved registers, scalars stay on
+  the stack; a global every caller passes is folded into the callee. Checked
+  after linking, per operand, with every address named (`glcheck.py`): 6
+  identical, 8 parked. `/GL` objects cannot be compared as COFF.
+- **Register-argument entries the source cannot express** (other registers
+  with a caller-cleaned stack) get a small asm adapter over a C++ body.
+  `[vc8]` **number win** *(record)*; not counted as matched.
+- **EH states are members.** `[vc8]` **held** *(record)*. Under `/EHsc` the
+  frame and its state numbers come from members with destructors, by-value
+  temporaries and function-local statics; write those and the frame follows.
+  A frame-less constructor over a base with a destructor is still open.
+- **Incremental-link thunks.** `[vc8]` **held** *(record)*. Callers reach most
+  functions through a `jmp` table; map a name to the thunk where callers use
+  the thunk, and give a body reached both ways a second name.
+- **Checked iterators and the rest of the C++ library:** not measured; library
+  code is out of scope by owner decision (section 1).
