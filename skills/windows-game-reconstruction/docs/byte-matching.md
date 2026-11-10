@@ -655,8 +655,9 @@ Every item raised the count or closed a question when it landed.
 
 ## 7. Register allocation: the measured model
 
-Full detail is in ArmyMen2's `docs/vc6-regalloc.md`. The parts that decide most
-stuck functions:
+`[vc6]` Full detail is in ArmyMen2's `docs/vc6-regalloc.md`. `[vc8]` The
+Commandos observations are in [`vc8-regalloc.md`](vc8-regalloc.md), beside this
+file; no VC8 model exists yet. The VC6 parts that decide most stuck functions:
 
 - **Two layers.** `[vc6]` **held.** Global allocation colours *webs* (live
   ranges; `z = g(z)` is two webs, a plain copy `T c = x;` usually none). Local

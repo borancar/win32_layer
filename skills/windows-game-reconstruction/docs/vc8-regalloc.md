@@ -14,7 +14,7 @@ section 1).
 
 ## What is known not to move it
 
-- `[vc8]` **Known negative.** on SP1 a temporary's register for `F("X", g->campo)` (`eax` in
+- `[vc8]` **Known negative.** On SP1 a temporary's register for `F("X", g->campo)` (`eax` in
   the image, `edx` or `ecx` in ours: 0x512640, 0x4e3930, 0x42c970) moves with
   no field type, local, inline getter, flag or `/GL`. Cause unknown.
 
