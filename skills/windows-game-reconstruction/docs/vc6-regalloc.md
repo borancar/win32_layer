@@ -1,6 +1,6 @@
 # How VC6 assigns registers
 
-> Copied from ArmyMen2 (github.com/borancar/ArmyMen2, `docs/vc6-regalloc.md` as of
+> Copied from ArmyMen2 (https://github.com/borancar/ArmyMen2, `docs/vc6-regalloc.md` as of
 > `20c901fe`), where it is maintained. Paths such as `tools/vc6asm.py`,
 > `tools/c2rot.py`, `src/vc6/` and `docs/bytematching.md` are that repository's.
 > The summary with survival status is `byte-matching.md`, beside this file.

@@ -11,7 +11,7 @@ One line per change to the skill, oldest first. Matching idioms go in
   `0x700000` ELF placement ArmyMen2 uses; the ELF must move.
 - 2026-11-04: standing rule from the user: loaders may be per game; the
   platform implementation (`win32_layer`) must be common and shared.
-- 2026-11-04: Commandos loader started: `~/git/retrofoundry/Commandos/src/loader.cpp`
+- 2026-11-04: Commandos loader started: `https://github.com/retro-foundry-games/CommandosBEL/blob/master/src/loader.cpp`
   (per-game), `Makefile` (ELF linked at `0x10000000`), `tools/peimports.py`.
   `CMD_DRYRUN=1` maps and binds without running. 271 imports: 114 bound by the
   layer, 59 more by `src/stubs.cpp` (41 mss32, 18 wsock32), 98 missing
@@ -46,3 +46,4 @@ One line per change to the skill, oldest first. Matching idioms go in
 - 2026-11-11: the changelog moved out of `SKILL.md` into this file; every VC8 byte-matching idiom and the register-allocation tricks moved from `SKILL.md` into `docs/byte-matching.md` (section 14) and `docs/vc8-regalloc.md`, tagged `[vc8]` or `[vc8 rtm]`.
 - 2026-11-11: the known pitfalls (ArmyMen2, and booting Commandos) moved from `SKILL.md` into `docs/pitfalls.md`.
 - 2026-11-11: `SKILL.md` trimmed to the stage 1 method, scaffolding and the byte-match loop; pitfalls, middleware, verifying a port, the ArmyMen2 lessons and the original-compiler host are files under `docs/`, referenced from it.
+- 2026-11-11: home-relative paths replaced by https GitHub origin links throughout the skill.

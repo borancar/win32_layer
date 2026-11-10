@@ -8,8 +8,8 @@ description: Reverse-engineer a 1990s Win32 (PE32 i386) game and reconstruct it 
 Keep the original binary running and replace it function by function. Treat
 the original as the oracle: call nothing done because it looks right on screen.
 
-- Reference port: ArmyMen2 (`~/git/retrofoundry/ArmyMen2`). Platform:
-  `~/git/win32_layer`. DOS games: use the `dos-game-reconstruction` skill.
+- Reference port: ArmyMen2 (`https://github.com/borancar/ArmyMen2`). Platform:
+  `https://github.com/borancar/win32_layer`. DOS games: use the `dos-game-reconstruction` skill.
 - When a stage teaches something, write it into the matching file under
   `docs/`, keep this file to instructions, and add one line to `CHANGELOG.md`.
 
@@ -38,7 +38,7 @@ Start from `ArmyMen2/src/hybrid/loader.cpp` (`WinMain`, `bind_imports`,
 
 - Write one loader per game, in the game's repo. Copy the ArmyMen2 loader and
   bend it: image placement, TEB, detours, retail patches, log hooks, traces.
-- Put everything the IAT binds to in `~/git/win32_layer`. Never fork the layer.
+- Put everything the IAT binds to in `https://github.com/borancar/win32_layer`. Never fork the layer.
 - When a game needs an import the layer lacks, add it to the layer in the same
   style, behind `w32l_export_lookup`, and keep ArmyMen2 building and agreeing
   with its oracle.
@@ -181,9 +181,9 @@ compare bytes.
 
 | | |
 |---|---|
-| Layer | `~/git/win32_layer` (`README.md` lists the modules and `W32L_*` switches) |
-| Reference loader | `~/git/retrofoundry/ArmyMen2/src/hybrid/loader.cpp` |
+| Layer | `https://github.com/borancar/win32_layer` (`README.md` lists the modules and `W32L_*` switches) |
+| Reference loader | `https://github.com/borancar/ArmyMen2/blob/master/src/hybrid/loader.cpp` |
 | Reference build | `ArmyMen2/Makefile`, target `hybrid` (`HYBRID_*` variables) |
 | ArmyMen2 policy and findings | `ArmyMen2/CLAUDE.md`, `docs/`, `STATUS.md` |
-| Commandos | `~/git/retrofoundry/Commandos` (`game/` is the extracted GOG 1.1, build 23145) |
+| Commandos | `https://github.com/retro-foundry-games/CommandosBEL` (`game/` is the extracted GOG 1.1, build 23145) |
 | Changes to this skill | `CHANGELOG.md` |

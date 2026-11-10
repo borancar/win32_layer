@@ -18,12 +18,12 @@ decisions. Keep it lean.
 | `game/` | the installed game, extracted. Not in the repo. |
 | `docs/` | findings |
 | `reconstruct/` | the decompiled game (`src/`, Win32-touching code in `src/win32/`), own README, LICENSE, Makefile |
-| `~/git/win32_layer` | the shared Win32/DirectX platform over SDL3 (separate repo) |
+| `https://github.com/borancar/win32_layer` | the shared Win32/DirectX platform over SDL3 (separate repo) |
 
 ## Standing rules
 
 - **The platform is shared, the loader is ours.** Everything the original's
-  import table is bound to lives once in `~/git/win32_layer`. When this game
+  import table is bound to lives once in `https://github.com/borancar/win32_layer`. When this game
   needs an import the layer lacks, add it to the layer (same style, same
   `w32l_export_lookup` table), do not fork it, and keep the other games
   working. Game-specific behaviour goes behind `platform.h` hooks. The loader
@@ -39,7 +39,7 @@ decisions. Keep it lean.
   platform-neutral. That keeps the seam to the platform layer clean.
 - **Keep the skill and the layer current, and push.** Lessons that generalise
   go into the `windows-game-reconstruction` skill
-  (`~/git/win32_layer/skills/`); platform work goes into `win32_layer`. Commit
+  (`https://github.com/borancar/win32_layer/tree/master/skills/`); platform work goes into `win32_layer`. Commit
   and push both as they change, straight to `master` on `win32_layer`.
 - **Always the 32-bit toolchain** (`-m32`). Fixed-width `<stdint.h>` types in
   reconstructed code.

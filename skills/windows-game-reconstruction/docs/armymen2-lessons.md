@@ -1,4 +1,4 @@
-# Lessons from ArmyMen2 (the reference port, `retro-foundry-games/ArmyMen2`)
+# Lessons from ArmyMen2 (the reference port, `https://github.com/borancar/ArmyMen2`)
 
 Referenced from `SKILL.md`, later stages.
 

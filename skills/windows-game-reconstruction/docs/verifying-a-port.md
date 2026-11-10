@@ -67,7 +67,7 @@ side by side, live, on the same input**, compared as they go.
   attribute; MSVC vtable/destructor layout differs from Itanium, so a class with
   virtuals must store the original vtable address itself. Start with non-virtual,
   non-constructor functions and widen from there.
-- **The proven shape (ArmyMen2, `retro-foundry-games/ArmyMen2`): no Wine, the hybrid is the host.**
+- **The proven shape (ArmyMen2, `https://github.com/borancar/ArmyMen2`): no Wine, the hybrid is the host.**
   Replace functions piecewise and check each against real gameplay; keep the
   reconstruction's code high (`-Wl,-Ttext=0x00700000`) and carry the game's DATA at
   its own original addresses with a generated linker script (`place.ld`,

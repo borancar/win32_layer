@@ -5,12 +5,12 @@ original compiler emitted, collected from project history. Each entry carries th
 compiler it was measured on and whether it lasted.
 
 **Tags.** `[vc6]` is Visual C++ 6.0, compiler build 12.00.8168, `/O2 /GX`, on
-ArmyMen2 (github.com/borancar/ArmyMen2), which went from 399 to 1,639 of 1,646
+ArmyMen2 (https://github.com/borancar/ArmyMen2), which went from 399 to 1,639 of 1,646
 functions byte-identical between 2026-09-27 and 2026-10-31.
 
 `[vc8]` is Visual C++ 2005 SP1, `cl` 14.00.50727.762 (`c1xx`/`c2` of the same
 build, `link` 8.00.50727.762), `/O2 /Gy /GR /EHsc` with the default `/GS`, on
-Commandos: Behind Enemy Lines (github.com/retro-foundry-games/CommandosBEL),
+Commandos: Behind Enemy Lines (https://github.com/retro-foundry-games/CommandosBEL),
 2026-11-05 to 2026-11-10. A handful of functions need `/GL` and `link /ltcg`
 (section 13). Until 2026-11-09 the project compiled with the RTM compiler
 (14.00.50727.42), so every idiom found before that date was found on RTM; the

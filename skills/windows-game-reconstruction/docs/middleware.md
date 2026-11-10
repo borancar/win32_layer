@@ -2,7 +2,7 @@
 
 Referenced from `SKILL.md`, stage 1.
 
-- **Miles (`mss32`)**: OpenMiles (`github.com/maci0/openmiles`) is the real
+- **Miles (`mss32`)**: OpenMiles (`https://github.com/maci0/openmiles`) is the real
   provider. It is **GPLv3**. **Decided (2026-11-04): the Commandos project is
   GPLv3, and `win32_layer` is GPL v2 or (at your option) any later version**
   (stated in its README; the repo carries only the v2 `LICENSE` text) so the
