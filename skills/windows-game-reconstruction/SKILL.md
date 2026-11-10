@@ -557,6 +557,28 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 
 **More fixed-shape families (Commandos, +350 identical):** scalar deleting destructors (`call dtor; if (f & 1) operator delete(this); return this`) and bare vptr-store constructors can be recognised by byte pattern and emitted per function with a placeholder owner; map vtable addresses as `extern "C"` arrays in the symbol table. Skip stubborn near misses and keep generating.
 
+### Byte-matching ideas, and which of them lasted
+
+`docs/byte-matching.md` (beside this file) is the catalogue of source shapes,
+methods and searches that moved a byte match, each tagged with the compiler it
+was measured on (`[vc6]` from ArmyMen2; this file's VC8 sections are `[vc8]`)
+and with what became of it: **held**, **number win**, **reverted/superseded**
+or **no effect**. Read its first section, *Local optima*, before trusting a
+score: a respelling that was not equal for every input, an instruction the
+original does not have, hacks that went stale, and a "ceiling" that was a
+missing struct all lowered the number first.
+
+When a stage teaches a matching idea, add it there, not here:
+
+- Tag it with the compiler (`[vc6]`, `[vc8]`, ...). An idea from one compiler
+  is a hypothesis on another.
+- Give the function and the distance before and after.
+- Before recording a win from history, check whether it was later reverted or
+  replaced (search the log for the function name, "drop", "restore", "back to",
+  and distances that went up), and record that status.
+- When a stalled function is rewritten from the image and the old levers are
+  discarded, go back and mark those levers superseded.
+
 ## Changelog
 
 - 2026-11-04: created. Stage 1 specified from the ArmyMen2 loader.
@@ -607,6 +629,7 @@ is `tools/bytematch.py` in the Commandos repo; copy it.
 - Two conditional jumps to one out-of-line block at the end (after the epilogue) = 'if (a && (i = F()) != -1) {...} else G();' (single else), not nested ifs.
 - 2026-11-05 (Commandos, +700 functions after the generators): (1) Factory `Crear`/`CrearEdit` whose epilogue is merged (one `ret`, no `xor eax,eax` on the null path) returns **void**; the compiler only materialises 0 when the result is used, so check the return type before hunting an expression shape. (2) Scalar deleting destructors: write the real `virtual ~D()` with an inline `virtual ~Base() {}` (else a call to it appears) and map `??_G..` plus `??_7..`; when the destructor body calls out, declare the callees and `operator delete` `throw()` or the compiler keeps a separate destructor with an EH frame instead of inlining it into `??_G`. The same `throw()` removes the EH frame from constructors that `new` members (`Nc::Nc` in tiny221). (3) Constructors with member arrays call the vector constructor iterator (`push dtor; push ctor; push count; push size; lea this+off; call`): declare the element class with ctor/dtor and the array as a member; stores before that call are member initialisers, stores after are the body. (4) `mov ecx,[global]` before a call means the global is a pointer (`extern T *g; g->M()`), not an object. (5) A tail `jmp` with the arguments untouched on the stack needs the callee to take exactly the caller's parameters; if the compiler caches them in registers it pushes copies instead. (6) Unsolved after many attempts: the `lea eax,[reg+1]` bool result, `ecx` where VC8 picks `eax`/`edx` for a temporary (about a dozen functions), `jmp eax` slot thunks (matched with `__declspec(naked)`).
 - 2026-11-05 (Commandos, tiny291-305): (1) A plain `ret` in a function that has stack arguments means `__cdecl`; `ret N` means `__stdcall`/thiscall. Check before blaming the body. (2) A frame with a stack security cookie plus an unexplained 4-byte store (`mov dword [esp],0`) is a struct `{int h; char b[N];}` whose header is zeroed, not a plain `char buf[N]` (frame size and stack offsets differ by 4). (3) `new T(a)` with an EH frame in the original means the constructor is *not* `throw()`; the same call without a frame needs `throw()` on the constructor. (4) A float triple written with `fld/fstp [esp+..]` around pushes lists the elements in memory order of the pushed pointer: derive index from the pushed address, not from store order. (5) Pointer-difference loops (`(p-base)>>2 < n`) get rewritten by VC8 into an index induction variable; the original's `mov ebx,esi` shape did not reproduce from any source form tried (about four near misses).
+- 2026-11-11: byte-matching ideas moved to a catalogue with compiler tags and survival status, `docs/byte-matching.md`; first batch is ArmyMen2's VC6 history (399 -> 1,639 of 1,646), with the reversals listed first.
 
 ### Register-allocation tricks (VC8 /O2), found on Commandos
 - A `void` call followed by `pop ecx` vs `add esp,4`: the original's `add esp,4` means the call result is live, so make the callee and the caller return `int`.
