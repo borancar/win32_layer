@@ -4,6 +4,59 @@ Source shapes and methods that brought a reconstruction closer to the bytes the
 original compiler emitted, collected from project history. Each entry carries the
 compiler it was measured on and whether it lasted.
 
+## Read this first
+
+This header is the part to read every time. Do not read the file whole: find
+the section for your symptom below, or grep for the instruction pattern
+(`grep -n -i 'setz\|lea eax,\[' byte-matching.md`), and read only the entries
+whose tag is your compiler.
+
+**The rules** (each is a reversal recorded in section 1):
+
+1. Fix the compiler identity first: build, flags and service pack. Try every
+   revision that stamps the same Rich build before tuning a near-miss family.
+2. A lower number proves nothing about meaning. Check every respelling for
+   every input, and reject one that emits an instruction the image lacks.
+3. When a function stalls, re-derive it from the image (block order, exits,
+   frame) before reading the old source again.
+4. After any structural or compiler fix, ablate every hack in the function and
+   keep only those whose removal costs.
+5. Declare no wall before typed structs, real classes, the frame layout, a
+   from-scratch derivation and the other compiler revisions have been tried.
+6. Write whole-body asm only where the original source was assembly.
+7. Fix what counts as the game's code before counting; leave library code out.
+8. Name every address before comparing it. Never let the scorer learn a name.
+9. Count distinct addresses, after a clean build, and diff the address sets
+   around every cleanup.
+10. Before respelling a 2 to 4 byte miss, re-read `ret N`, each argument's slot,
+    the store order and the constants' bytes.
+11. A search only proposes: read every edit it applies.
+12. Keep a behaviour fix that raises the number.
+13. Use number wins last, mark them, and never count them as recovered source.
+
+**Where to look**
+
+| symptom | section |
+|---|---|
+| blocks, jumps, shared tails, `switch`, loop shape differ | 3 |
+| load or store order, a local, the frame size differ | 4 |
+| field width, signedness, struct copies, parameters differ | 5 |
+| calls, inlining, EH frames, constructors, destructors differ | 6 |
+| registers only | 7, then `vc6-regalloc.md` or `vc8-regalloc.md` |
+| unsure of the calling convention or what a prologue means | 8, and 13 for VC8 |
+| about to add a `volatile`, a dead read or naked asm | 9 |
+| about to run a search or a flag sweep | 10 |
+| an unrelated function moved after a header or file change | 11 |
+| about to call something unsolvable | 12 |
+| `/GS` cookies, `/GL`, static functions, service packs | 13 |
+| a VC8 shape not found above | grep section 14 (raw, unstatused, half the file) |
+
+**Reading an entry.** `[vc6]`, `[vc8]`, `[vc8 rtm]` name the compiler; **held**,
+**number win**, **reverted/superseded**, **no effect** say what became of the
+idea; *(match)* and *(record)* say how far it was checked. Definitions follow.
+
+## Tags, statuses and figures
+
 **Register allocation has its own files**, one per compiler, beside this one:
 [`vc6-regalloc.md`](vc6-regalloc.md) (the measured VC6 model, summarised in
 section 7) and [`vc8-regalloc.md`](vc8-regalloc.md) (VC8 observations, no model

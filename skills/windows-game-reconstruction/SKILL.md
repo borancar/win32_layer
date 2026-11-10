@@ -156,9 +156,11 @@ Read the file for the stage you are in.
 ## The byte-match loop
 
 Read with the `kuna-decompiler` skill, write with the original compiler,
-compare bytes. Before the first function, read `docs/byte-matching.md`: section
-1 (*Local optima*) and the sections tagged for your compiler. The register
-notes are `docs/vc6-regalloc.md` and `docs/vc8-regalloc.md`.
+compare bytes. Before the first function, read the header of
+`docs/byte-matching.md` (*Read this first*: the rules and the symptom index).
+Do not read that file whole; go from the index to a section, or grep it for the
+instruction pattern. The register notes are `docs/vc6-regalloc.md` and
+`docs/vc8-regalloc.md`.
 
 1. **Identify the compiler from the Rich header** (product id and build per
    object count). Check that the extracted tool reports that build, and list
@@ -171,8 +173,8 @@ notes are `docs/vc6-regalloc.md` and `docs/vc8-regalloc.md`.
    and compare the function's bytes with the image, relocation targets checked
    by name.
 4. **On a mismatch, re-read the asm, then look the difference up in
-   `docs/byte-matching.md`** (by instruction pattern, in the sections for your
-   compiler tag) before changing the C. When a family of near misses resists
+   `docs/byte-matching.md`** (its symptom index, or grep the instruction
+   pattern; read only entries with your compiler tag) before changing the C. When a family of near misses resists
    every spelling, try the other compiler revisions before tuning further.
 5. **Tune Kuna only when its C is wrong:** one `--option` at a time
    (`kuna docs options`); `--assert` for known prototypes (`--jobs 1`, no
