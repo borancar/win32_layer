@@ -151,7 +151,9 @@ Read the file for the stage you are in.
 ## The byte-match loop
 
 Read with the `kuna-decompiler` skill, write with the original compiler,
-compare bytes.
+compare bytes. Before the first function, read `docs/byte-matching.md`: section
+1 (*Local optima*) and the sections tagged for your compiler. The register
+notes are `docs/vc6-regalloc.md` and `docs/vc8-regalloc.md`.
 
 1. **Identify the compiler from the Rich header** (product id and build per
    object count). Check that the extracted tool reports that build, and list
@@ -163,16 +165,17 @@ compare bytes.
 3. **Transcribe** into `reconstruct/src/`, compile with the original flags,
    and compare the function's bytes with the image, relocation targets checked
    by name.
-4. **On a mismatch, re-read the asm before changing the C.** When a family of
-   near misses resists every spelling, try the other compiler revisions before
-   tuning further.
+4. **On a mismatch, re-read the asm, then look the difference up in
+   `docs/byte-matching.md`** (by instruction pattern, in the sections for your
+   compiler tag) before changing the C. When a family of near misses resists
+   every spelling, try the other compiler revisions before tuning further.
 5. **Tune Kuna only when its C is wrong:** one `--option` at a time
    (`kuna docs options`); `--assert` for known prototypes (`--jobs 1`, no
    `--stream`).
 6. **Keep a screen** (functions identical, bytes unmatched) and re-run it on
    every change. Count distinct addresses, after a clean build.
-7. **Read section 1 of `docs/byte-matching.md` (*Local optima*) before
-   trusting a score**, and look an idiom up there before trying it.
+7. **Re-read section 1 of `docs/byte-matching.md` before trusting a score**
+   or declaring a function unmatchable.
 8. **Record every matching idea in `docs/byte-matching.md`, not here:** the
    compiler tag (`[vc6]`, `[vc8]`, `[vc8 rtm]`), the function, the figures
    before and after, and its status. Search the log for a later revert first.
