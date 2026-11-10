@@ -376,6 +376,20 @@ side by side, live, on the same input**, compared as they go.
   `ret N` is thiscall) and never reorder a vtable the original indexes. Any
   injection harness that needed Wine there is, with the hybrid, a patch module the
   loader applies.
+- **The loader and DLL approach, no Wine.** The reconstruction is built as a hook DLL
+  with the ORIGINAL compiler and linker (hosted natively on Linux, `vc8host`/`vc8link`
+  style), so its code has the original's ABI, vtable layout and calling conventions by
+  construction. Our own loader maps the original EXE (the hybrid), then maps the hook
+  DLL into the same process: apply its base relocations, bind its imports (the layer
+  for Win32, and the loader for a few host entry points), run its `DllMain`/install,
+  which writes a `jmp` at each replaced original function's entry. This is what
+  ArmyMen2's `am2hook.dll` did under Wine; with the hybrid there is nothing to
+  install Wine for. The DLL reaches the original's data by absolute address (the EXE
+  stays mapped), owns no duplicate of it, and its constructors store the ORIGINAL
+  vtable addresses for classes the unpatched code also uses. A host (gcc) port comes
+  later from the same sources; the DLL proves function by function that the sources
+  and the data map are right, with frames compared side by side against the untouched
+  hybrid.
 - **A port must not lean on the original executable.** It carries its own
   structures and globals; assets are data. Port existing reconstructed
   functions only (no invented functions); keep the byte-match baseline
