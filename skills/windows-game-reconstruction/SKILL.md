@@ -324,6 +324,22 @@ side by side, live, on the same input**, compared as they go.
   screenshots; scripted clicks did not register in Commandos, real events and the
   socket do.) A loader sets `w32l_host_lua`; the retail layer has none, so a game
   that needs it brings a (32-bit) Lua in its loader.
+- **Send input as Win32 messages from Lua, not as X/SDL host events.** Do not
+  synthesize X events or SDL events to drive the game (an xdotool-style script or
+  a fake host pointer is another source of divergence, and a headless run has no
+  real window to receive them). Have Lua post the window messages and set the
+  input state the game reads, at the pump boundary, through the same entry points
+  the layer's host event handlers use: `PostMessage`-style `WM_MOUSEMOVE`,
+  `WM_LBUTTONDOWN`/`UP`, `WM_KEYDOWN`/`UP`, `WM_CHAR`, `WM_MOUSEWHEEL` (client
+  coordinates, with the wParam/lParam the real message carries), plus the
+  DirectInput keyboard/mouse state and `GetCursorPos`/`GetKeyState` answers for a
+  game that polls instead of using the queue. Both programs get the identical
+  message on the identical pump, so a click lands the same way in the hybrid and
+  in the port; Lua can also read back the queue and the cursor to confirm it was
+  delivered. (Commandos: the layer posts `WM_MOUSEMOVE` and the button messages;
+  a scripted click from the replay file did not register where a real one did,
+  which is the reason to send the whole sequence, move then button down and up
+  on later pumps, from Lua.)
 - **The Win32 boundary is ours: use it from both Lua and gdb.** Every call the
   game makes to the platform goes through the layer, so it is the one place to
   stop, inspect and inject without touching the game's code: log or break at the
