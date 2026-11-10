@@ -364,6 +364,18 @@ side by side, live, on the same input**, compared as they go.
   attribute; MSVC vtable/destructor layout differs from Itanium, so a class with
   virtuals must store the original vtable address itself. Start with non-virtual,
   non-constructor functions and widen from there.
+- **The proven shape (ArmyMen2, `retro-foundry-games/ArmyMen2`): no Wine, the hybrid is the host.**
+  Replace functions piecewise and check each against real gameplay; keep the
+  reconstruction's code high (`-Wl,-Ttext=0x00700000`) and carry the game's DATA at
+  its own original addresses with a generated linker script (`place.ld`,
+  `origchunks.S`, `origgap.S`), so patched and unpatched code and Lua `peek`/`poke`
+  see the same memory; drive and inspect through the control socket and a Lua
+  console (`peek8/16/32`, `poke8/16/32`, `peekstr`, `call(addr, ...)`, `sym(name)`;
+  `docs/lua.md`, `src/inject/luaconsole.c`); compare with `tools/sidebyside.py` +
+  `docs/lockstep.md`; audit conventions with `tools/checkabi.py` (ecx read plus
+  `ret N` is thiscall) and never reorder a vtable the original indexes. Any
+  injection harness that needed Wine there is, with the hybrid, a patch module the
+  loader applies.
 - **A port must not lean on the original executable.** It carries its own
   structures and globals; assets are data. Port existing reconstructed
   functions only (no invented functions); keep the byte-match baseline
