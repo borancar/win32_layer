@@ -536,9 +536,9 @@ score: a respelling that was not equal for every input, an instruction the
 original does not have, hacks that went stale, and a "ceiling" that was a
 missing struct all lowered the number first.
 
-Every matching idiom lives there, none here: the register-allocation notes are
-its section 7, the raw VC8 record (found in order, no status yet) its section
-14. When a stage teaches a matching idea, add it there, not here:
+Every matching idiom lives there, none here: the measured VC6 register model
+is its section 7, the VC8 register observations are `docs/vc8-regalloc.md`, and
+the raw VC8 record (found in order, no status yet) is its section 14. When a stage teaches a matching idea, add it there, not here:
 
 - Tag it with the compiler (`[vc6]`, `[vc8]`, ...). An idea from one compiler
   is a hypothesis on another.
