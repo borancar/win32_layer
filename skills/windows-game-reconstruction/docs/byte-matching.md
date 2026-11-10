@@ -4,6 +4,11 @@ Source shapes and methods that brought a reconstruction closer to the bytes the
 original compiler emitted, collected from project history. Each entry carries the
 compiler it was measured on and whether it lasted.
 
+**Register allocation has its own files**, one per compiler, beside this one:
+[`vc6-regalloc.md`](vc6-regalloc.md) (the measured VC6 model, summarised in
+section 7) and [`vc8-regalloc.md`](vc8-regalloc.md) (VC8 observations, no model
+yet). Read the one for your compiler when a diff is registers only.
+
 **Tags.** `[vc6]` is Visual C++ 6.0, compiler build 12.00.8168, `/O2 /GX`, on
 ArmyMen2 (https://github.com/borancar/ArmyMen2), which went from 399 to 1,639 of 1,646
 functions byte-identical between 2026-09-27 and 2026-10-31.
