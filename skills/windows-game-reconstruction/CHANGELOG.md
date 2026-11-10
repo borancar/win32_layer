@@ -44,3 +44,4 @@ One line per change to the skill, oldest first. Matching idioms go in
 - 2026-11-11: byte-matching ideas moved to a catalogue with compiler tags and survival status, `docs/byte-matching.md`; first batch is ArmyMen2's VC6 history (399 -> 1,639 of 1,646), with the reversals listed first.
 - 2026-11-11: Commandos' VC8 history added to `docs/byte-matching.md` as `[vc8]` (SP1 14.00.50727.762, `/O2 /Gy /GR /EHsc`), reversals first: the RTM-for-SP1 compiler, asm copies of compiler output, library code counted, "unwritable" conventions; idioms here that were reverted or superseded are now pointers to it.
 - 2026-11-11: the changelog moved out of `SKILL.md` into this file; every VC8 byte-matching idiom and the register-allocation tricks moved from `SKILL.md` into `docs/byte-matching.md` (section 14) and `docs/vc8-regalloc.md`, tagged `[vc8]` or `[vc8 rtm]`.
+- 2026-11-11: the known pitfalls (ArmyMen2, and booting Commandos) moved from `SKILL.md` into `docs/pitfalls.md`.
