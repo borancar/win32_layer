@@ -11,14 +11,14 @@ yet). Read the one for your compiler when a diff is registers only.
 
 **Tags.** `[vc6]` is Visual C++ 6.0, compiler build 12.00.8168, `/O2 /GX`, on
 ArmyMen2 (https://github.com/borancar/ArmyMen2), which went from 399 to 1,639 of 1,646
-functions byte-identical between 2026-09-27 and 2026-10-31.
+functions byte-identical.
 
 `[vc8]` is Visual C++ 2005 SP1, `cl` 14.00.50727.762 (`c1xx`/`c2` of the same
 build, `link` 8.00.50727.762), `/O2 /Gy /GR /EHsc` with the default `/GS`, on
-Commandos: Behind Enemy Lines (https://github.com/retro-foundry-games/CommandosBEL),
-2026-11-05 to 2026-11-10. A handful of functions need `/GL` and `link /ltcg`
-(section 13). Until 2026-11-09 the project compiled with the RTM compiler
-(14.00.50727.42), so every idiom found before that date was found on RTM; the
+Commandos: Behind Enemy Lines (https://github.com/retro-foundry-games/CommandosBEL).
+A handful of functions need `/GL` and `link /ltcg`
+(section 13). At first the project compiled with the RTM compiler
+(14.00.50727.42), so every idiom found before the switch to SP1 was found on RTM; the
 first entry of section 1 is what that cost.
 
 `[vc8 rtm]` marks an observation made on that RTM compiler and not rechecked on
@@ -641,7 +641,7 @@ Every item raised the count or closed a question when it landed.
   serializers' `test m; ... jz; mov eax,[edx+8]; jmp; mov eax,[edx+4]; call
   eax` comes from one inline helper (`ES(guardar, f, p, n)`); `if/else` at each
   site does not merge. `ClassAcPisada::Serializar` (0x51f0f0) and about 30
-  siblings matched in a row on 2026-11-06.
+  siblings matched in a row.
 - **String work is the intrinsic.** `[vc8]` **superseded** the "pointer
   difference loop" mystery. `strcpy`, `strlen`, `strcat`, `strcmp` under
   `#pragma intrinsic` (or `<string.h>` at `/O2`) expand to the loops that hand
@@ -992,7 +992,7 @@ it here.
 
 ### From the first mass-matching rounds
 
-- `[vc8]` 2026-11-05: mass byte-matching with generators (Commandos, 2877 functions). Lessons: (1) a
+- `[vc8]` **Mass byte-matching with generators (2,877 functions).** Lessons: (1) a
   callee reached with `ecx` untouched is a member call on `this`; `edx` used where you'd expect
   `ecx` means `this` is live (write a method, not a free function). (2) A generator must run over
   *unmatched plus already-generated* addresses, else its output file loses earlier matches. (3)
@@ -1019,7 +1019,7 @@ it here.
   0;) even if the result looks unused.
 - `[vc8]` Two conditional jumps to one out-of-line block at the end (after the epilogue) = 'if (a &&
   (i = F()) != -1) {...} else G();' (single else), not nested ifs.
-- `[vc8 rtm]` 2026-11-05 (Commandos, +700 functions after the generators): (1) Factory
+- `[vc8 rtm]` **+700 functions after the generators.** (1) Factory
   `Crear`/`CrearEdit` whose epilogue is merged (one `ret`, no `xor eax,eax` on the null path)
   returns **void**; the compiler only materialises 0 when the result is used, so check the return
   type before hunting an expression shape. (2) Scalar deleting destructors: write the real `virtual
@@ -1035,7 +1035,7 @@ it here.
   exactly the caller's parameters; if the compiler caches them in registers it pushes copies
   instead. (6) (Superseded: the unsolved list and the naked `jmp eax` thunks; see sections 9 and
   12.)
-- `[vc8 rtm]` 2026-11-05 (Commandos, tiny291-305): (1) A plain `ret` in a function that has stack
+- `[vc8 rtm]` **Tiny291-305.** (1) A plain `ret` in a function that has stack
   arguments means `__cdecl`; `ret N` means `__stdcall`/thiscall. Check before blaming the body. (2)
   A frame with a stack security cookie plus an unexplained 4-byte store (`mov dword [esp],0`) is a
   struct `{int h; char b[N];}` whose header is zeroed, not a plain `char buf[N]` (frame size and
@@ -1550,7 +1550,7 @@ it here.
   `unsigned`, not `unsigned char`), or an `abs`/`cdq` idiom (`#pragma intrinsic(abs)`).
 - `[vc8]` **`tools/symsync.py FILE` also defines symbols** from the `// 0xADDR` comments, so a batch
   of small structs needs no hand-written mangled names.
-- `[vc8]` 2026-11-07 (Commandos, forwarders): (1) A forwarder that loads its first stack argument
+- `[vc8]` **Forwarders.** (1) A forwarder that loads its first stack argument
   into `edx` (not `ecx`) and then calls a thiscall target without touching `ecx` is a **member**
   passing `this` on: declare it as a member and call the target as another member, not a free
   function. (2) `xor eax,eax` before the null test of a chased pointer, then `jmp target; ret` =
@@ -1561,26 +1561,26 @@ it here.
   return this; }`, not a compiler destructor (`gendestructores.py` has the shape). (5) `Base(flag |
   4)` conditional on a field: `Base(campo == 0 ? f | 4 : f)` matches, `if (...) f |= 4;` does not.
   (6) Check float constants in `.rdata` before guessing (0.75f, 255.9f were the "1.0f" I assumed).
-- `[vc8]` 2026-11-07 (Commandos, more forwarders): a virtual call that pushes the object itself
+- `[vc8]` **More forwarders.** a virtual call that pushes the object itself
   (`push eax; call edx` with `ecx` never set to it) is a `__stdcall` slot (COM style): declare
   `virtual R __stdcall M(args)` and write `obj->M(args)`. `mov ecx,[this+X]; test ecx,ecx` right
   before a call means a local copy (`T *q = p; if (q) q->M();`), not two reads of the field.
   Arguments reordered through `esi` (`mov esi,[esp+8]` after `push esi`) reveal which stack slot is
   really first; count the shift before naming parameters. A memset after the field stores that does
   not return `this` is a plain void member, not a constructor.
-- `[vc8]` 2026-11-07 (Commandos, x87 compares): `fldz; fcomp [m]; fnstsw ax; test ah,0x41; jp L; mov
+- `[vc8]` **X87 compares.** `fldz; fcomp [m]; fnstsw ax; test ah,0x41; jp L; mov
   eax,1; ret; L: xor eax,eax; ret` is `m >= 0.0f` (the operands are loaded in the opposite order: `0
   <= m`), not `== 0`; read the flag logic (PF after `test ah,0x41` is set when C0 and C3 are both
   clear or both set) before choosing the operator. `while (p && *p)` (the null test inside the loop
   condition) produces a loop whose back edge is the flags of `add ecx,4`; `if (p) while (*p)` does
   not.
-- `[vc8]` 2026-11-07 (Commandos, by-value structs): a struct passed **by value** that the image
+- `[vc8]` **By-value structs.** a struct passed **by value** that the image
   builds with `sub esp,N; mov eax,esp; mov [eax],ecx; mov [eax+4],edx` (loads from the source first,
   then the stores) needs a **user-declared copy constructor** (`S(const S &o) { a = o.a; b = o.b;
   }`); without it the compiler pushes the fields directly. Put the `// 0xADDR` comment on the
   function that uses it, not above the struct, or symsync names the copy constructor with that
   address.
-- `[vc8]` 2026-11-07 (Commandos, destructors and statics): (1) A hand-written destructor that calls
+- `[vc8]` **Destructors and statics.** (1) A hand-written destructor that calls
   out gets an EH frame unless the callees and the global `operator delete` are declared `throw()`
   (`void __cdecl operator delete(void *) throw();` at file scope works). (2) When the image's
   callers reach a function through an incremental-link thunk, map the name to the **thunk** address;
@@ -1590,13 +1590,13 @@ it here.
   image's data addresses. (4) Action constructors without an EH frame (base call, vtable, fields)
   match with a stub base `struct Base { Base(args); virtual ~Base(); }`; a float triple zeroed z, y,
   x is a member whose constructor does `z = 0; y = 0; x = 0;`.
-- `[vc8]` 2026-11-07 (Commandos, where the vtable store lands): VC8 schedules plain field stores of
+- `[vc8]` **Where the vtable store lands.** VC8 schedules plain field stores of
   a constructor body across the vptr store, so the vptr's position is a clue to the source. A field
   stored **before** the vptr comes from a base constructor: if the class has no other base, it is a
   non-virtual base (MSVC still puts the vfptr at offset 0) whose inline constructor sets it. A pair
   zeroed `b, a` right after the vptr is a member with its own constructor; writing the same zeros in
   the body moves the vptr after them.
-- `[vc8]` 2026-11-07 (Commandos, EH-framed destructors): members with destructors are what the EH
+- `[vc8]` **EH-framed destructors.** members with destructors are what the EH
   states number (the body runs under the highest, each member is destroyed after the state drops);
   declare the member types with their destructors at the right offsets and the frame follows. A
   `delete[]` of an array whose elements have a destructor is the image's `eh vector destructor
@@ -1604,20 +1604,20 @@ it here.
   is `delete[] (char *)p`; the same call through `ecx` is an `extern "C" free`. A cached object
   pointer reloaded around an import call (`BringWindowToTop(owner->hwnd)` in `eax`) wants a local
   for the owner.
-- `[vc8]` 2026-11-07 (Commandos, inline destructors in EH frames): the unwind funclet of an
+- `[vc8]` **Inline destructors in EH frames.** the unwind funclet of an
   EH-framed destructor calls the out-of-line copy of each inline base destructor, and the image can
   hold several identical copies of one (no COMDAT folding: `~ClassLineaVariable` at 0x5a67f0 and
   0x5a6b10). Give a second copy a distinct class name with the same vtable address so its call is
   inferred, not checked against the other copy. A comparison tool that infers callees from
   relocations must follow incremental-link `jmp` thunks there too.
-- `[vc8]` 2026-11-07 (Commandos, small shapes): (1) A bounds check the image repeats right after a
+- `[vc8]` **Small shapes.** (1) A bounds check the image repeats right after a
   guard (`cmp i,n; jae` twice) is an inline accessor `T *Elemento(i) { return i < n ? t[i] : 0; }`
   called twice (`if (l.Elemento(i)) l.Elemento(i)->F();`). (2) Taking the address of a pointer
   parameter (`&s + 1` to reach varargs) makes /GS copy the parameter; declare the function variadic
   (`...`) and the copy goes away. (3) A function that ends `mov eax,1` after side effects returns
   int even when its header said void: fix the declaration and the mangled name. (4) `xor eax,eax`
   before the first guard is the `int r = 0; if (...) { ...; r = 1; } return r;` shape (again).
-- `[vc8]` 2026-11-13 (Commandos, same-TU knowledge and copies): (1) VC8 knows the register use of a
+- `[vc8]` **Same-TU knowledge and copies.** (1) VC8 knows the register use of a
   callee **defined earlier in the same TU**: two member calls in a row then skip the second `mov
   ecx,esi`, and a short callee gets inlined. When the image reloads `ecx`, or calls what you
   inlined, move the callee to another file (or `#pragma auto_inline(off)` around it). (2) A size
@@ -1631,7 +1631,7 @@ it here.
   `while (Read(...)) { if (!Use()) { r = 0; break; } ... } return r;` keeps `r` in a register where
   an early `return 0` folds it.
 - `[vc8 rtm]` (Superseded: the RTM unsolved list; see sections 1 and 12.)
-- `[vc8]` 2026-11-13 (Commandos, inlined copies and struct shapes): (1) When a small function is
+- `[vc8]` **Inlined copies and struct shapes.** (1) When a small function is
   both out of line and inlined into callers, the inlined copies can need a different source shape
   than the standalone one (field order of a temporary box, add operand order): give the callers
   their own inline helper rather than forcing one shape on both. Brute-forcing the 24 orders of four
@@ -1643,14 +1643,14 @@ it here.
   must have the image's exact bits: read the constant and write it with nine significant digits
   (`316.199982f`, not `316.2f`). (5) A conditional forwarder (`if (x) return x->F(a, b, c); return
   0;` as `jmp eax`) needs the callee's slot to return a value: fix the slot's declared return type.
-- `[vc8]` 2026-11-07 (Commandos, small closed functions): (1) A point cleared through a temporary
+- `[vc8]` **Small closed functions.** (1) A point cleared through a temporary
   (`fldz; fst [esp]; mov eax,[esp]` ... then integer stores) is `T t(0,0,0); p = t;` with the
   **implicit** copy and assignment: the user-written float-wise copy folds the temporary away, the
   default one copies through integer registers. (2) A function's size from a gap list can be short
   when a `je` leaves past its first `ret` (cold tail laid out after it): check the jump targets
   before writing a "small" body. (3) A mislabelled neighbour name (`near2`) is only the nearest
   symbol: read the bytes, never trust it for the class.
-- `[vc8]` 2026-11-07 (Commandos, reading the listing before the compiler): many "register family"
+- `[vc8]` **Reading the listing before the compiler.** many "register family"
   parks were misreads. (1) Read the exact jump targets: a `je` that lands on `mov eax,1` is a
   *return 1* branch, not the fall-through. (2) Float compares: `fld a; fld b; fcompp; test ah,0x41;
   je` is `b > a`, and `test ah,5; jp` is a strict `<`/`>`; the order the two values are loaded
@@ -1670,7 +1670,7 @@ it here.
   function ending `jmp edx` after a virtual slot load is a tail call; the `-1` store before it goes
   through if the statement order is `pos = -1; Soltar();` only when the compiler schedules it so —
   otherwise it is a scheduling park.
-- `[vc8 rtm]` 2026-11-07 (Commandos, gap survey of 16-130 byte functions): (1) `eax=ecx` as the
+- `[vc8 rtm]` **Gap survey of 16-130 byte functions.** (1) `eax=ecx` as the
   first instruction means a constructor even for a table fill (`Bits45a480`: a 256-entry bit-count
   table) and the function-local `static` of that type gives the `test [guard],1 / or / call ctor`
   prologue. (2) A switch whose jump table is **out of case order** (cases 1,2,3,4 call slots
@@ -1688,7 +1688,7 @@ it here.
   pushes copies and calls instead (parked, `Contar62fcf0`). (8) Factories `new T(a, b, 14, c)` and
   destructors of two members with destructors match first try once the constructor/destructor
   symbols exist; the exception frame is generated.
-- `[vc8 rtm]` 2026-11-07 (Commandos, checked-iterator list walkers): the engine's list class walks
+- `[vc8 rtm]` **Checked-iterator list walkers.** the engine's list class walks
   with `x = *cur; x != -1 && (cur-beg) < count`. (1) Initialise with the chain `it.beg = it.cur =
   datos` when the image keeps the base in a register and with two statements `cur = ...; beg = ...`
   when it spills it. (2) A counter that the image zeroes after the null-test join is declared after
@@ -1701,7 +1701,7 @@ it here.
   symbol line at the thunk address. (7) When the image shows exactly three stack slots (list,
   cursor, base) and ours four (an element field), no source form found so far fixes it (parked:
   Mandar63d460, EnPunto).
-- `[vc8 rtm]` 2026-11-07 (Commandos, small-function sweep, part 2): (1) "Does any entry pass a
+- `[vc8 rtm]` **Small-function sweep, part 2.** (1) "Does any entry pass a
   callback" loops (`Alguna`): write `int r = 0; for (...) if (a[i] && f(dato, a[i], &b[i])) { r = 1;
   break; } return r;`; an early `return 1` inside the loop compiles to a different shape. (2) When
   the listing shows a byte or word load from the middle of a field (`movsx esi, word [ecx+0xa]`),
@@ -1716,7 +1716,7 @@ it here.
   (6) A repeated pointer step of the same size in three registers (index, byte offset, pointer) is
   merged by the compiler into one when the source steps them by the same stride; the image keeps
   three, which no source form produced.
-- `[vc8 rtm]` 2026-11-08 (Commandos, script-reader `Leer` functions): (1) The config readers are
+- `[vc8 rtm]` **Script-reader `Leer` functions.** (1) The config readers are
   `ClassMissionScriptBlock v = b->Valor("KEY"); if (v.Cuenta()) field = (int)v.Numero();` (float
   fields store without the cast). Count the frame: if every `Valor` result has its own slot, keep
   the named locals in one scope; if the image reuses two or three slots, put each key in its own
@@ -1731,19 +1731,19 @@ it here.
   and pass `*(Punto *)xy`; a `Punto p(0,0)` local stores them in the other order. (7) Functions
   whose first instructions use esi/edi/ebx before setting them are register-argument (LTCG)
   functions: park them.
-- `[vc8]` 2026-11-08 (Commandos, inline fistp): `fnstcw; or 0xc00; fldcw; fistp qword` in an
+- `[vc8]` **Inline fistp.** `fnstcw; or 0xc00; fldcw; fistp qword` in an
   otherwise normal `__ftol2_sse` function is not other compiler flags: it is a float converted to
   **unsigned** (`(unsigned)v.Numero()`, or an `unsigned` field). Also: `neg/sbb/add 1` is `int x =
   !cond` (a `bool` gives `sete`); a local array of shorts adds a /GS pad, a struct of three shorts
   does not; a char buffer's size can be read from the frame (`sub esp`) difference.
-- `[vc8 rtm]` 2026-11-08 (Commandos, the aligned frame): a prologue `push ebp; mov ebp,esp; and
+- `[vc8 rtm]` **The aligned frame.** a prologue `push ebp; mov ebp,esp; and
   esp,0xfffffff8` in an otherwise ordinary function means a local that needs 8-byte alignment, not a
   different compiler setting. The original source copies a value into a small struct (even a single
   pointer, or two ints) that the compiler aligns to 8: `struct __declspec(align(8)) Saved {
   ItemRender *i; };` filled at the top and read back after a loop reproduces the frame and the
   stores (`mov [esp+0x14],eax`), and the function then matches (0x5690b0 and its fastcall twin
   0x5aa0f0 matched first try). Look for it whenever a parked function starts with that prologue.
-- `[vc8]` 2026-11-08 (Commandos, inline string-compare table searches): `strcmp` as an intrinsic
+- `[vc8]` **Inline string-compare table searches.** `strcmp` as an intrinsic
   compiles to the unrolled byte compare ending `sbb eax,eax; sbb eax,-1`. For a search loop over an
   array of records, write the exit the way the image lays it out: if the image has `return 0` (the
   pops and `xor eax,eax`) *before* the found block, put the found work after the loop (`for (...) {
@@ -1751,8 +1751,7 @@ it here.
   in the image are one `goto hallado` after the `return 0`. A name checked against `i < cuenta ?
   datos + i * size : 0` (an inline checked accessor) reproduces the image's index guard. When a hit
   jumps over a call (`if (!ok) goto skip`), keep the call after the block instead of duplicating it.
-- `[vc8 rtm]` 2026-11-08 (Commandos, by-value fetch chains, state-name copies, single-exit results):
-  (1) A callee that fills a hidden pointer and returns it (`mov eax,esi` after the call) is a method
+- `[vc8 rtm]` **By-value fetch chains, state-name copies, single-exit results.** (1) A callee that fills a hidden pointer and returns it (`mov eax,esi` after the call) is a method
   **returning a class by value**; chaining `a.F(i).F(0).G(...)` gives the image's temporaries (EH
   states 0,1, destroyed in reverse) and its use of the returned `eax` as the next `this`; the
   class's destructor is a bodiless virtual `~T();` mapped to the real address in the symbol table,
@@ -1776,7 +1775,7 @@ it here.
   originals (docs/classes.tsv) for any class whose RTTI data is compared. Unsolved: a frame-less
   constructor that builds a base with a destructor (VC8 /EHsc adds the frame; only `extern "C"`
   callees are non-throwing).
-- `[vc8]` 2026-11-09 (Commandos, the C++ library the game links in): standard-library functions
+- `[vc8]` **The C++ library the game links in.** standard-library functions
   match first try once the class has the right shape, and they are cheap. (1) The RTTI name tells
   `class` from `struct`: `ctype_base` is a struct (`.?AU`), a class gives a different type
   descriptor and the data compare fails with "1 byte differs". (2) An inline base destructor that
@@ -1799,7 +1798,7 @@ it here.
   written as a `do { ch = *s; *d = ch; s++; d++; } while (ch);` (the `strcpy` intrinsic gives the
   other register layout).
 - `[vc8 rtm]` (Reverted by the owner: standard-library instances by scan; see section 1.)
-- `[vc8 rtm]` 2026-11-08 (Commandos, small guard-action functions): (1) `char buf[256] = "NOINFO";`
+- `[vc8 rtm]` **Small guard-action functions.** (1) `char buf[256] = "NOINFO";`
   is the 7-byte copy from the literal plus a clear of the remaining 249 bytes (a `memset` call):
   write the initialiser, not strcpy. A debug text built as `strcpy(buf, "Estado: "); switch (state)
   { case n: strcat(buf, "NAME\n"); }` with the intrinsics declared (`#pragma intrinsic(strcpy,
@@ -1817,14 +1816,14 @@ it here.
   Several classes share one message pair (interest told once, watch off); once one class's version
   matches, the others are the same text with other offsets: look up the sibling classes by the
   message string's references in the image.
-- `[vc8 rtm]` 2026-11-08 (Commandos, register arguments are `__fastcall`): a function that reads
+- `[vc8 rtm]` **Register arguments are `__fastcall`.** a function that reads
   `edx` (or `ecx` and `edx`) before writing it and ends with a plain `ret` takes its first two
   integer arguments in `ecx`/`edx` and is `__fastcall`: declare `int __fastcall F(int unusedEcx, int
   id)` and it matches (0x5d6200). A sign test `test edx,edx; jns` is `if (id & 0x80000000)`, not `id
   < 0` (that gives `jge`); keep a masked copy in a separate local (`int v = id; ...`) to get the
   image's `mov eax,edx; lea ecx,[eax-0x3f]` order. Functions that read `eax` or `esi` first are not
   fastcall (LTCG-style custom registers): those stay parked.
-- `[vc8]` 2026-11-08 (Commandos, hand written assembly): the image contains routines that are not
+- `[vc8]` **Hand written assembly.** the image contains routines that are not
   compiler output: a plain `push ebp; mov ebp,esp` frame (no `and esp`, no security cookie, no EH
   `push -1`), `ret N` after explicit pops, scheduled loops with `test`/`movsw`/`dec ecx; je`. They
   match as inline `__asm`: the compiler's own prologue gives the same `push ebp; mov ebp,esp; push
@@ -1839,13 +1838,13 @@ it here.
   ... pop ebp; ret N`. `tools/asmgen.py ADDR NAME` (and `NAKED=1`) generates it from the image; keep
   only byte-exact results. Do not use this for compiler-generated functions (`and esp,-8`, `push -1`
   EH frames, security cookies): that would copy bytes, not reconstruct source.
-- `[vc8]` 2026-11-08 (Commandos, scope): the C++ standard library and the CRT inside the image are
+- `[vc8]` **Scope.** the C++ standard library and the CRT inside the image are
   **not** transposed (owner decision); the library matches made earlier (iostream/locale/string
   instantiations, `tools/stdscan.py` hits) were removed again and do not count. The entries above
   about instantiating std classes are history, kept only for the lessons about `??_D` vbase
   destructors and probing with real headers if a game ever needs a std function written. Count only
   the game's own code.
-- `[vc8]` 2026-11-08 (Commandos, float spills and compares): when the image computes a float, stores
+- `[vc8]` **Float spills and compares.** when the image computes a float, stores
   it to the stack (`fstp [esp+4]`) and reloads it for the compare (`fld [esp+4]; fld other; fcompp;
   test ah,0x41`), a plain `float` local stays in the x87 register: declare the local `volatile
   float` to get the store/reload pair (it also grows the frame to the image's size). The direction
@@ -1866,7 +1865,7 @@ it here.
   `Vd_`, `CopiarSeguro`, `ios_base_std`) so check the address, not the name. Library entries that
   sneak into `symbols.tsv` or the sources must be deleted, not parked, and never counted. Only the
   game's own code is reconstructed.
-- `[vc8 rtm]` 2026-11-08 (Commandos, automatic variant search): a parked near-miss is often one
+- `[vc8 rtm]` **Automatic variant search.** a parked near-miss is often one
   source spelling away, so search for it by machine. `tools/variants.py` (run from reconstruct/ with
   `python3 -I`, otherwise tools/dis.py shadows the stdlib) takes every `// 0xADDR ~` function,
   applies mechanical rewrites (swap two adjacent simple statements, mirror/negate a comparison,
@@ -1876,13 +1875,13 @@ it here.
   and unparked. On 390 parked Commandos functions it matched 6 in about five minutes (statement
   swaps and `volatile` floats), where hand retries had failed. Run it after every batch of new parks
   and whenever a new trick (a new rewrite) is added to the tool.
-- `[vc8]` 2026-11-08 (Commandos, missing return): when a null-guard path jumps straight to the final
+- `[vc8]` **Missing return.** when a null-guard path jumps straight to the final
   `ret` with `eax` still holding the tested pointer (no `xor eax,eax`, no store), the original
   simply fell off the end of the function (`if (t) return ...;` and nothing after). VC8 compiles
   that with a warning and leaves `eax` as is; an explicit `return 0` or `return (int)t` changes the
   layout. Also fold the in-range tests into the ternary of the one return (`return f = (a && b) ? x
   : 0;`) to get `xor eax,eax; mov [f],eax` for the else arm.
-- `[vc8]` 2026-11-08 (Commandos, constructors): (1) VC8 devirtualises `slot()` calls on `this`
+- `[vc8]` **Constructors.** (1) VC8 devirtualises `slot()` calls on `this`
   inside a constructor; when the image does `mov edx,[esi]; call [edx+0x34]` (a real virtual
   dispatch), write `ClassX *q = this; q->slot();`. (2) A zeroed pair that the image stores after the
   vtable and before the EH state (`mov [esp+0x1c],ebx`) is a member with its own inline constructor
@@ -1892,13 +1891,13 @@ it here.
   target. (4) A derived constructor that stores two vtables (base then own) and has the base's field
   inits between is a base class with an inline constructor, not a call.
 - `[vc8 rtm]` (Superseded: "plain `ret` with `ecx` is a dead end"; see sections 1 and 13.)
-- `[vc8]` 2026-11-08 (Commandos, EH-free destructors): a destructor the image has with no `fs:0`
+- `[vc8]` **EH-free destructors.** a destructor the image has with no `fs:0`
   frame, that sets a vtable, frees a field and calls a base destructor, must be written with raw
   field stores (`vtabla = 0x...; operator delete(datos); f = 0; Base();`) in a plain struct.
   Modelling the same thing as a member with its own inline virtual destructor (or a base class with
   a non-`throw()` destructor) makes VC8 add an unwind frame, and then it is also not inlined into
   the vector deleting destructor.
-- `[vc8 rtm]` 2026-11-08 (Commandos, twin groups and open families): (1) group every unmatched
+- `[vc8 rtm]` **Twin groups and open families.** (1) group every unmatched
   function by its masked bytes (calls and absolute addresses zeroed): a group of two or more is one
   source shape, and one match pays for all (the brightness-from-angle pair, the text-cut-at-`\n`
   pair came this way). (2) Open families, each seen 3+ times, not solved by statement order or
@@ -1906,7 +1905,7 @@ it here.
   right after the base call (the image); the byte flag/result kept in a different register (`edx` vs
   `eax`); a loop's list/count registers swapped (`edi`/`esi`); the full-buffer branch laid out after
   the epilogue. Note them and park quickly.
-- `[vc8]` 2026-11-08 (Commandos, small-method tricks): (1) a chain of `sub eax,0 / sub eax,2` tests
+- `[vc8]` **Small-method tricks.** (1) a chain of `sub eax,0 / sub eax,2` tests
   in the image is a `switch`; an if/else chain with the same cases compiles differently, so write
   the `switch`. (2) A zero kept in a register through the whole body is reproduced by `int z = 0;`
   that is also the return value (`z = 1;` on the success path, `return z;`), not by a plain `return
@@ -1919,7 +1918,7 @@ it here.
   (6) `memmove` and `strncpy` share the image address 0x651a70 in Commandos; a `memcpy` that will
   not link-match is usually `memmove`. (7) `a > b` and `b < a` can compile to different operand
   orders for float compares; try both before parking.
-- `[vc8]` 2026-11-08 (Commandos, more small-function tricks): (1) a function with a plain `ret`
+- `[vc8]` **More small-function tricks.** (1) a function with a plain `ret`
   whose only stack argument is read from `[esp+4]` and that never touches `ecx` is a `__cdecl` free
   function (a factory template `template<class T> void *__cdecl F(int a){ return new T(a); }`
   matched four of them), not a method. (2) Debug-text `InfoEstado` methods have an unused 8-byte gap
@@ -1929,14 +1928,14 @@ it here.
   st0 and reuse it; a non-const global is reloaded. (5) For a stack frame that is bigger than the
   visible locals, copy a short string literal through a struct (`struct T25{char c[25];}`) into a
   larger local array.
-- `[vc8]` 2026-11-08 (Commandos, allocator aliases): VC8 `new T[n]` of a plain struct calls
+- `[vc8]` **Allocator aliases.** VC8 `new T[n]` of a plain struct calls
   `operator new[]` (`??_U`), but a binary linked with identical-function folding may call the same
   code under the plain `operator new` address (0x651953 in Commandos) while real counted arrays use
   another (0x65014a). The `symbols.tsv` map is name to one address, so give that struct its own
   class-level `static void *operator new[](unsigned)` and map `??_U<Struct>@@SAPAXI@Z` to the
   image's address; the overflow guard (`xor ecx,ecx; mul; seto cl; neg ecx; or ecx,eax`) then comes
   out right, which a hand written `operator new(-(hi != 0) | lo)` does not (it emits neg/sbb).
-- `[vc8]` 2026-11-08 (Commandos, debug-text builders): the "InfoEstado" family (a text built for the
+- `[vc8]` **Debug-text builders.** the "InfoEstado" family (a text built for the
   debug window, then `Texto(title, name, buf)`) follows one recipe. A literal copied into a local is
   a struct assignment (`struct T9{char c[9];}; *(T9*)buf = *(const T9*)"ESTADO: ";`); a literal
   appended with `strcat` under `#pragma intrinsic(strcat)` compiles to the in-place word copies; a
@@ -1946,24 +1945,24 @@ it here.
   and add `symbols.tsv` lines for the string literals at their real addresses, or the call sites
   show as differences. `tools/symsync.py` mislearns string addresses when the code still differs;
   add them by hand instead.
-- `[vc8 rtm]` 2026-11-08 (Commandos, `and esp,-64` frames): a text builder whose prologue aligns the
+- `[vc8 rtm]` **`and esp,-64` frames.** a text builder whose prologue aligns the
   stack to 64 gets that prologue from an otherwise unused `__declspec(align(64))` local; the object
   itself is dead. The prologue then matches, but the slot placement of the other locals can stay a
   few bytes off, so park it.
-- `[vc8]` 2026-11-08 (Commandos, float tails): the decompiler can drop the end of a float function
+- `[vc8]` **Float tails.** the decompiler can drop the end of a float function
   (it showed two int casts where the image divides by the cell size). Read the disassembly past the
   decompiled end before writing it. Float locals that the image stores and reloads (`fstp [esp+N];
   fld [esp+N]`) are plain `float` locals in the source. Byte-identical unreferenced functions (a
   second copy of a destructor body) are found by hashing the function bytes and are written as a
   separate non-virtual member.
-- `[vc8]` 2026-11-08 (Commandos, hidden gaps): a function that is only declared `extern` in the
+- `[vc8]` **Hidden gaps.** a function that is only declared `extern` in the
   sources is still unreconstructed, but a gap list built from `symbols.tsv` treats it as done; build
   the list from the matcher's `ok` lines instead. When the definition of a callee is added to the
   same file as its callers, VC8 sees its register use and the callers' code changes (a matched
   caller broke); keep such a definition `__declspec(noinline)` or in a file that does not call it. A
   dead `delete[] p` of a polymorphic element type compiles to `if (count==0) free(&count) else vcall
   slot 0 (3)`; an array of plain-destructor elements to the helper `0x651c04`.
-- `[vc8]` 2026-11-08 (Commandos, sweep lessons): (1) a `mov eax,1` before `add [esi],eax` means the
+- `[vc8]` **Sweep lessons.** (1) a `mov eax,1` before `add [esi],eax` means the
   function returns 1 and the compiler reuses the register; give it an `int` return. (2) `shr 2; add
   r,r; add r,r` is `x / 4 * 4` on an unsigned. (3) A comparison that loads zero with `fldz` is
   written `f < 0` (int zero); `0.0f > f` gives a double constant. (4) A float compared against a
@@ -1971,7 +1970,7 @@ it here.
   copied with `fld`/`fstp` only if it has a user copy constructor. (6) A caller keeps `this` in
   `ecx` across a call only when the callee is defined in the same file. (7) Unsigned count `> 0`
   gives `jbe`; plain truth gives `je`.
-- `[vc8 rtm]` 2026-11-08 (Commandos, message senders): the unmatched functions that call the
+- `[vc8 rtm]` **Message senders.** the unmatched functions that call the
   `BuscarMensaje` thunk are a good source of small matchable functions (a function-local `static int
   m = BuscarMensaje("...")`, then a virtual call on an actor or organ). Findings: (1) two zeroed
   reply slots of which one is passed are `int r[2] = {0, 0}` (a pair of separate ints drops the
@@ -1982,20 +1981,20 @@ it here.
   local struct and given a new mangled name in `symbols.tsv`; a function that returns a value the
   symbol calls `void` needs its own symbol line with the real return type. (5) Fixing a float
   compare: `fucompp` vs `fcomp [mem]` depends on how the operand is declared; not solved by `const`.
-- `[vc8]` 2026-11-08 (Commandos, debug text with a hidden gap): a text builder whose frame is bigger
+- `[vc8]` **Debug text with a hidden gap.** a text builder whose frame is bigger
   than its visible locals has an unused gap between two of them. A bare `char gap[12]` is dropped as
   dead; put the neighbouring buffers and the gap in one struct of used members (`struct { Req e;
   char pos[0x44]; char gap[12]; }`, declared below the large buffer) and the frame and displacements
   line up. Unmatched functions that call the debug-window text thunk are the way to find more of
   these.
-- `[vc8]` 2026-11-08 (Commandos, the register-argument functions): a function with an argument in
+- `[vc8]` **The register-argument functions.** a function with an argument in
   `eax` (first line `test eax,eax`, no prologue, stack arguments cleared by the caller) is a
   `static` function: VC8 gives internal-linkage functions a custom register convention (the object
   in `eax`) and still emits a standalone COMDAT copy, which is what the image has. Write it `static
   __declspec(noinline) T F(Obj *o, int x)` and keep it alive with an exported function that calls
   it. The symbol is a static (storage class 3) one, so the matcher must compare those too. This
   turns the "eax argument" family from unsolvable into routine.
-- `[vc8 rtm]` 2026-11-08 (Commandos, static functions, details): (1) which registers take the
+- `[vc8 rtm]` **Static functions, details.** (1) which registers take the
   arguments is chosen by the compiler (first argument in `eax`, then `ecx`; a parameter used only
   through its address stays on the stack); swapping the declared order of two pointer parameters
   swapped their registers (`Insertar48a6f0`). (2) A static function may use `esi`/`ebx`/`edi` for
@@ -2005,7 +2004,7 @@ it here.
   also use `this`-style access to it (`Reenviar5d48e0`) stayed in `ecx` and are parked. (5) A scan
   for "first instruction reads eax" over-reports: ordinary `cdecl` functions with `xor eax,eax`
   first, and mid-function pieces, look the same.
-- `[vc8]` 2026-11-08 (Commandos, destructor bodies): a game with `dtor()` placeholders (a method
+- `[vc8]` **Destructor bodies.** a game with `dtor()` placeholders (a method
   whose body was never written) hides real destructors. Match them from the instructions: `mov
   [esi],vtable` first = a virtual destructor of the class, the `push -1; push handler` frame plus
   `mov [esp+X],state` writes = members with destructors, a final `call base` at state -1 = the
@@ -2019,13 +2018,13 @@ it here.
   (4) The RTTI hierarchy (`??_R3...` byte +8 = number of bases) must list the real intermediate
   bases, otherwise the destructor shows as different with 0 bytes differing; adjusting thunks
   `??_E...W7AE` need their own symbol line.
-- `[vc8]` 2026-11-08 (Commandos, register of the first stack argument): a member function whose
+- `[vc8]` **Register of the first stack argument.** a member function whose
   first stack argument is read into `edx` instead of `ecx` is passing `this` on (ecx still live):
   look for a call to another member with no `mov ecx,...` before it, and make the callee a member,
   not a free function. And the order of the code blocks of a `switch` in the image is the order of
   the `case`s in the source, not the numeric order: when every block matches but the short-jump
   offsets differ, reorder the cases.
-- `[vc8]` 2026-11-08 (Commandos, vtable-store order solved): a constructor whose image stores floats
+- `[vc8]` **Vtable-store order solved.** a constructor whose image stores floats
   (or other constants) *right after* the vtable store and before the registration call has those
   stores in a **member with an inline constructor** (`struct Cero3 { float x, y, z; Cero3() { z = 0;
   y = 0; x = 0; } }`, the order is the constructor's own), because the vptr is set after the bases
@@ -2034,7 +2033,7 @@ it here.
   a whole family of "vtable store comes after the first float store" parks into matches
   (`ClassAcDejarRastro`, `Puente12`, `Submarino`, `Lapa`, `ClassAUUsar`): look at the order the
   stores are written in the image and ask which of them precede the registration call.
-- `[vc8 rtm]` 2026-11-09 (Commandos, conditional expressions and `add -1`): two branches that store
+- `[vc8 rtm]` **Conditional expressions and `add -1`.** two branches that store
   the same value (`if (a < b) x = a; else x = b;` shapes) match only as one conditional expression
   (`x = c ? p : q;`), which shares the store and tail. `add reg,-1` (instead of `sub reg,1`) comes
   out for `switch (x - 1)` and for a counted `if (n > 0) n--` stored back; a plain `x - 1`
@@ -2042,11 +2041,11 @@ it here.
   eax,-1` (`AnimacionTile::Anterior`) is still unexplained. Merging tiny source files: header-less
   files each declare their own copies of classes, so they cannot be concatenated without a shared
   header.
-- `[vc8]` 2026-11-09 (Commandos, unnamed-function pass): build the work list from addresses that
+- `[vc8]` **Unnamed-function pass.** build the work list from addresses that
   appear neither in `symbols.tsv` nor as `0xADDR` in any source comment (the named-but-unwritten
   list misses functions with no symbol at all; a scan of `kuna` function starts found ~1800,
   smallest first). It paid off quickly: 40 more functions in one pass.
-- `[vc8]` 2026-11-09 (Commandos, idioms found): (1) `strcmp(a,b)` of two pointers with `#pragma
+- `[vc8]` **Idioms found.** (1) `strcmp(a,b)` of two pointers with `#pragma
   intrinsic(strcmp)` gives the image's expanded compare loop (`sbb eax,eax / sbb eax,-1`); a literal
   operand gives `repe cmpsb`; `memcmp` does neither. (2) `p->T::T();` (explicit constructor call on
   an existing object) calls the constructor without the null test that placement `new` adds. (3) A
@@ -2064,7 +2063,7 @@ it here.
   object carrying the method called on it (`Clave c; c.v = x; y = c.Codigo();`) gives `lea
   ecx,[esp+N]; call`. (11) `static int id = Buscar("NAME");` inside a function gives the EH frame
   and the init guard for free.
-- `[vc8]` 2026-11-09 (Commandos, pitfalls): (1) a function whose mangled name differs from its
+- `[vc8]` **Pitfalls.** (1) a function whose mangled name differs from its
   `symbols.tsv` line (a `struct` forward declaration where the image has `class`, `PAU` vs `PAV`) is
   neither reported nor counted by the matcher; look for the function in `bytematch.py -v` output
   before judging it. (2) A merge script that deletes its target on rollback must refuse a target
@@ -2072,13 +2071,13 @@ it here.
   `0x6e0280`-like may just be `""`. (4) When a register-argument function (`eax`/`edi` set by the
   caller) looks unwritable, it is a `static __declspec(noinline)` function: `EscribirFase4a8930`
   (path in eax, number in edi) matched that way.
-- `[vc8 rtm]` 2026-11-09 (Commandos, 0/1 argument by branch): an image that pushes `0` or `1`
+- `[vc8 rtm]` **0/1 argument by branch.** an image that pushes `0` or `1`
   through a `jcc` (`push 0 / jmp / push 1`) where a ternary or `cond ? 1 : 0` gives `setcc`/`sete`
   was written as an `if/else` with **two calls**, one per constant; the compiler merges the calls
   into one push. The branch polarity follows the test written: to get `jge L1; push 0; jmp L2; L1:
   push 1` write `if (h < 0) f(0); else f(1);` (the second arm is the taken one). Three parked
   functions matched this way.
-- `[vc8]` 2026-11-09 (Commandos, bit tests and tails): `test byte [m],0x60; jnz L; xor eax,eax; ret;
+- `[vc8]` **Bit tests and tails.** `test byte [m],0x60; jnz L; xor eax,eax; ret;
   L: mov eax,1; ret` is `return (b & 0x20) || (b & 0x40);` (two single-bit tests on one byte merge
   into one `test` and keep the branch; `(b & 0x60) != 0` and `if (b & 0x60)` give `neg/sbb`). A
   shared `mov eax,1` tail reached by a taken branch plus a second `mov eax,1; ret` for one arm is
@@ -2091,7 +2090,7 @@ it here.
   (`f(a, b, ((V *)((char *)this + vt[1]))->g(10))`) matches where a pointer local does not. Copying
   a three-int member to another is a struct assignment (`o->pos = pos;`), which gives the `lea` of
   the source once.
-- `[vc8 rtm]` 2026-11-09 (Commandos, `fcomp [mem]` after a call): `call f; fcomp dword ptr [m];
+- `[vc8 rtm]` **`fcomp [mem]` after a call.** `call f; fcomp dword ptr [m];
   fnstsw ax; test ah,0x41` (the compare operand in the image's constant pool, often 0.0f at an
   address like 0x6dc058) is `f() > 0.0f` / `f() == 0.0f` with **`f` returning `float`** and a
   *literal*, not a named `extern float`. VC8 emits `fcomp DWORD PTR __real@...` for a float result
@@ -2101,7 +2100,7 @@ it here.
   functions.
 - `[vc8 rtm]` (Superseded: `jb` against `jl` was the RTM compiler; `add reg,-1` is still open; see
   sections 1 and 12.)
-- `[vc8]` 2026-11-09 (Commandos, zero held in eax across a scan): when the image starts with `xor
+- `[vc8]` **Zero held in eax across a scan.** when the image starts with `xor
   eax,eax` and compares table slots with `cmp [tab+esi*4],eax`, then returns that same eax at the
   loop's end, declare `unsigned r = 0;` before the loop, assign it only on the found path (`r = h |
   0x80000000; break;`) and `return r;` after the loop. A literal `return 0` and an `r` that is
@@ -2109,7 +2108,7 @@ it here.
   unchanged across the loop. (`Reservar5d6d80`: 87 bytes off -> 66; the image's late `push edi`
   remains.)  Also: a 16-entry count table indexed from the handle less 0x3f is a separate array
   whose base is the handle-indexed base plus 4*0x3f; use the `h - 0x3f` index form.
-- `[vc8]` 2026-11-09 (Commandos, **check the compiler revision first**): a Rich header lists only
+- `[vc8]` **Check the compiler revision first.** a Rich header lists only
   the major build (`50727`), so the VC8 RTM (14.00.50727.42) and SP1 (14.00.50727.762) compilers
   look identical in the executable, but their code generators differ: with RTM about 650 functions
   stayed a few bytes off in families that no source spelling fixed (`for (unsigned i = 0; i < N;
@@ -2127,7 +2126,7 @@ it here.
   declare the non-zero constant first (`int b = 5; int a = 0;`) to get `mov b,5`. Also: `link /ltcg`
   runs under the host once OLEAUT32 ordinals 2/6 (`SysAllocString`/`SysFreeString`) are implemented,
   and `/GL` code generation did not change any of those families.
-- `[vc8]` 2026-11-09 (Commandos, `switch` that matches in bytes but fails on `$LN` labels): when
+- `[vc8]` **`switch` that matches in bytes but fails on `$LN` labels.** when
   every code byte is identical and the check only reports labels whose address differs, the
   case-to-block mapping is wrong, not the code. Read the jump table words from the image (the dword
   array right after the function, e.g. `25055c00 39055c00 2b055c00 32055c00` = `[0x5c0525, 0x5c0539,
@@ -2136,7 +2135,7 @@ it here.
   2`). Also: a test of a pointer's field followed by a `switch` on the same field reloads the field
   in the image only when the test goes through the container (`if (list[i]->kind)` then `switch
   (p->kind)`); with one local for both the compiler folds the load.
-- `[vc8]` 2026-11-09 (Commandos, **register-argument helpers are `/GL` code**): a function in the
+- `[vc8]` **Register-argument helpers are `/GL` code.** a function in the
   image whose first instruction uses `edi`/`ebx`/`esi` as an argument, with the caller loading them
   just before `call` and stack arguments cleared by the caller, comes from `/GL` + `link /ltcg`
   (whole-program code generation). It cannot be reproduced with plain `/O2` (that only gives the
@@ -2149,7 +2148,7 @@ it here.
   compiles as `mov eax,[arg]; sub eax,1; jnz` is `switch (x) { case 1: ...; break; default: return
   0; }` (`x != 1` gives `cmp [arg],1`, `x - 1` gives `add eax,-1`). First result: 0x5f7520 and its
   two wrappers identical.
-- `[vc8]` 2026-11-09 (Commandos, **make the `/GL` check as strict as the object check**): masking
+- `[vc8]` **Make the `/GL` check as strict as the object check.** masking
   call targets and absolute addresses (`glmatch.py`) lets a wrong global or string pass. Give every
   symbol the source leaves unresolved a stub of its own instead: read the names from the linker's
   `LNK2001` messages (`/force:unresolved`), assemble `PUBLIC name` + 16 bytes per name with the
