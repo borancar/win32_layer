@@ -279,6 +279,18 @@ Every game repo gets a lean `CLAUDE.md` that carries these standing rules
   platform-neutral and the layer seam is clean.
 - **Keep updating this skill and `win32_layer`, and push** straight to
   `master` on `win32_layer`.
+- **Prune `STATUS.md` regularly; it must stay short (about 100 lines).** It
+  holds only the current state: the goal, the numbers (matched, ported, hooked,
+  still original), the rules in force, how to work, the known defects and the
+  next steps. Do not append a log line per session or per batch: replace the
+  stale numbers, delete what is done, and move findings to `docs/`. The old
+  text stays in git history. A status file that grows without bound becomes a
+  bottleneck: every new agent reads it first, and on Commandos it reached
+  285 KB (about 70k tokens) and used up agent context before any work started.
+  Prune it whenever it passes about 150 lines, after every milestone and
+  before briefing agents, and brief agents with a short `docs/PORTING.md`
+  (rules, tooling, how to derive a function) instead of telling them to read
+  the status or this skill whole.
 
 Create the scaffolding at the start: `CLAUDE.md`, `STATUS.md`, `docs/`
 (`00-recon.md` for installer/PE/assets, `01-loader.md` for loader and
