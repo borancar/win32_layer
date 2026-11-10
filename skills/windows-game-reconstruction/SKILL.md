@@ -54,7 +54,8 @@ Start from `ArmyMen2/src/hybrid/loader.cpp` (`WinMain`, `bind_imports`,
      is empty, load at `ImageBase` only and treat every address as a stable VA.
    - List every `DLL!name` from the import directory; that is the work list.
      Count by DLL and separate system DLLs from third-party ones (`mss32`,
-     `smackw32`, `binkw32`, `ddraw` via COM).
+     `smackw32`, `binkw32`, `ddraw` via COM); for the third-party ones see
+     `docs/middleware.md`.
    - Resolve ordinal imports (`0x80000000` bit) from an ordinal table
      (`dsound #1` is `DirectSoundCreate`; `wsock32` is mostly ordinal).
    - Do not plan on symbols or a PDB.
@@ -111,9 +112,13 @@ Read `docs/pitfalls.md` before writing a loader. Add new pitfalls there.
 - Implement allocators for real (`AIL_mem_alloc_lock` -> `malloc`).
 - Use the log of first calls as the work list for the real implementation.
 
-### Third-party providers and licensing
+### Middleware and libraries
 
-Read `docs/middleware.md` before wiring Miles (`mss32`) or Smacker.
+When the game imports a third-party DLL (`mss32`, `smackw32`, `binkw32`), or
+you need an outside library to stand in for one, read `docs/middleware.md`
+first: which provider to use, how to wire it into the loader, and what its
+licence allows. Stub the module (above) until then. Record each new provider
+there.
 
 ## Project scaffolding
 
