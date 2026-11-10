@@ -352,6 +352,18 @@ side by side, live, on the same input**, compared as they go.
   hybrid or the port, at the same pump. The boundary tells which functions the
   game uses on a path (callers of the calls it makes), what a port must call in
   the same order, and where the two programs first diverge.
+- **Hot patch functions in the hybrid with the reconstructed versions.** The
+  hybrid keeps the original image mapped; write a `jmp` at an original function's
+  entry to the reconstructed one and compare frames side by side with the
+  untouched hybrid. The memory must match between the two: every global,
+  vtable and string the reconstruction owns has to sit at the ORIGINAL address
+  (a linker script, or absolute symbols generated from `symbols.tsv`), and
+  externs to the original's data are plain absolute addresses into the
+  still-mapped image. Watch the ABI when the reconstruction is built with a
+  host compiler: member functions are `thiscall` (this in ecx) and need the
+  attribute; MSVC vtable/destructor layout differs from Itanium, so a class with
+  virtuals must store the original vtable address itself. Start with non-virtual,
+  non-constructor functions and widen from there.
 - **A port must not lean on the original executable.** It carries its own
   structures and globals; assets are data. Port existing reconstructed
   functions only (no invented functions); keep the byte-match baseline
