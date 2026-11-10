@@ -655,7 +655,9 @@ Every item raised the count or closed a question when it landed.
 
 ## 7. Register allocation: the measured model
 
-`[vc6]` Full detail is in ArmyMen2's `docs/vc6-regalloc.md`. `[vc8]` The
+`[vc6]` Full detail, with the experiment behind each rule and the traces of the
+code generator's passes, is in [`vc6-regalloc.md`](vc6-regalloc.md), beside this
+file. `[vc8]` The
 Commandos observations are in [`vc8-regalloc.md`](vc8-regalloc.md), beside this
 file; no VC8 model exists yet. The VC6 parts that decide most stuck functions:
 

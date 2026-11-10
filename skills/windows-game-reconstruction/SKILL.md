@@ -537,7 +537,8 @@ original does not have, hacks that went stale, and a "ceiling" that was a
 missing struct all lowered the number first.
 
 Every matching idiom lives there, none here: the measured VC6 register model
-is its section 7, the VC8 register observations are `docs/vc8-regalloc.md`, and
+is its section 7 (long form, with the experiments: `docs/vc6-regalloc.md`), the
+VC8 register observations are `docs/vc8-regalloc.md`, and
 the raw VC8 record (found in order, no status yet) is its section 14. When a stage teaches a matching idea, add it there, not here:
 
 - Tag it with the compiler (`[vc6]`, `[vc8]`, ...). An idea from one compiler
