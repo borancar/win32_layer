@@ -1659,3 +1659,13 @@ mostly header-less, so the lever is what else is defined in the unit.
   Look for these first.
 - **Hook builder:** `extern int a, b;  // 0x.., 0x..` gives both names the first
   address; declare one global per line.
+
+- **After a port fix that changes the frame, re-run the scripted variants:**
+  the frame size shifts every esp offset, so earlier byte counts mislead.
+- **Check symbols for a second line at the same address** (a plain caller name
+  next to the `~` port) before matching; bytematch skips such functions.
+- **Store order wrong:** try the order inside an inline setter's body; the
+  argument order and local copies do not move it. An inline accessor on the
+  middle struct (`hijo ? hijo->alto : 0`) gives an eax-chained null test; a flag
+  stored as 1 at the top and cleared by a branch is `int f = 1; if (!(a > b))
+  f = 0;`. `[vc8]` **held.**
