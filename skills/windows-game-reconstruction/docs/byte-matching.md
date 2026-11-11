@@ -1759,3 +1759,19 @@ mostly header-less, so the lever is what else is defined in the unit.
   callee's type also explained 12 extra frame bytes (0x4b4620).
 - **Comparison tooling:** filter the image's `nop`/`lea r,[r+0]` padding before
   side-by-side diffs, or later lines look shifted.
+
+- **After a functional-porting phase, run bytematch with the `~` marks stripped:**
+  seven ports were already byte-identical and only needed their marks removed.
+- **Ports written for another build target often emulate constructors** (`operator
+  new` plus a member call, placement new). Restore `new T()` with a declared
+  constructor (add its name to the symbols file): the EH frame follows in one step.
+- **A `sub eax,K; je` chain is a `switch`;** VC8 chooses the arm order itself, an
+  if/else-if chain cannot reproduce it. `[vc8]` **held** *(match)*.
+- **Matching beside another agent:** keep an origin snapshot per file (`.orig`) and
+  check `HEAD:path` against it before committing; `git log` since a base is not enough.
+- **A caller that calls members without reloading ecx, or passes arguments in
+  eax/ecx to a static function, is a `/GL` case** (candidates for the gl list with
+  their callees).
+- **An `int` local prevents narrowed word loads; `if (x) {body}` instead of an
+  early return gives `mov eax,[m]; test eax,eax`;** access through repeated casts
+  rather than a typed local changes the `fadd` operand order. `[vc8]` **held** *(match)*.
