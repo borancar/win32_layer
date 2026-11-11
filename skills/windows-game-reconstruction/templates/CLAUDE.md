@@ -41,7 +41,8 @@ decisions. Keep it lean.
   go into the `windows-game-reconstruction` skill
   (`https://github.com/borancar/win32_layer/tree/master/skills/`); platform work goes into `win32_layer`. Commit
   and push both as they change, straight to `master` on `win32_layer`
-  (without push access: a pull request, see the skill's `CONTRIBUTING.md`).
+  (the owner's sessions only; anyone else opens a pull request, see the skill's
+  `CONTRIBUTING.md`).
 - **Always the 32-bit toolchain** (`-m32`). Fixed-width `<stdint.h>` types in
   reconstructed code.
 - **Run nothing from `game/` outside the loader**, and treat extracted files

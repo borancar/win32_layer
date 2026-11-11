@@ -5,6 +5,10 @@ https://github.com/borancar/win32_layer (the skill under
 `skills/windows-game-reconstruction/`). If you used the skill on a game and it
 taught you something, send it back as a pull request.
 
+This file is for people other than the repository owner. The owner's own
+sessions (origin is `borancar/win32_layer`, with push access) do not open pull
+requests: they commit and push straight to `master`.
+
 ## What to send
 
 | you found | put it in |

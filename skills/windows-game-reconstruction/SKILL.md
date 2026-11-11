@@ -12,10 +12,11 @@ the original as the oracle: call nothing done because it looks right on screen.
   `https://github.com/borancar/win32_layer`. DOS games: use the `dos-game-reconstruction` skill.
 - When a stage teaches something, write it into the matching file under
   `docs/`, keep this file to instructions, and add one line to `CHANGELOG.md`.
-- **Send what you learn back.** If you are not the repository owner, open a
-  pull request against https://github.com/borancar/win32_layer as
-  `CONTRIBUTING.md` (beside this file) describes: new matching ideas, tags
-  confirmed on another compiler, pitfalls, missing imports.
+- **Send what you learn back.** Check `git -C <win32_layer> remote get-url
+  origin`. If it is `borancar/win32_layer` and you can push (the owner's own
+  sessions), commit and push straight to `master`: no branch, no pull request.
+  Anyone else: open a pull request as `CONTRIBUTING.md` (beside this file)
+  describes.
 
 ## Stage 1: the hybrid layer
 
@@ -136,8 +137,8 @@ Create at the start: `CLAUDE.md` (from `templates/CLAUDE.md`, fill `<...>`),
   its own `Makefile`, `README.md` and `LICENSE`, no loader, layer or
   reverse-engineering detail.
 - Put decompiled functions that call Win32 in `reconstruct/src/win32/`.
-- Update this skill and `win32_layer` as you learn. With push access, push
-  straight to `master`; without it, open a pull request (`CONTRIBUTING.md`).
+- Update this skill and `win32_layer` as you learn. The owner's sessions push
+  straight to `master`; other users open a pull request (`CONTRIBUTING.md`).
 - Keep `STATUS.md` near 100 lines: goal, numbers, rules in force, how to work,
   known defects, next steps. Replace stale numbers, delete what is done, move
   findings to `docs/`. Prune it when it passes 150 lines, after every
