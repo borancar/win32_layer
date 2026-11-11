@@ -853,6 +853,29 @@ an item says otherwise.
 - `[vc8]` **Checking a shared header change.** Rebuild every dependent file
   with the old and new header and diff the asm: 234 files in about 11 seconds
   for `lista.h`; only the two instantiations that should change did.
+- `[vc8]` **x87 zero tests and comparisons by constant side.** For a zero test
+  the constant on the left (`0.0f == x`) gives `fld x; fldz; fucom st(1)`;
+  `x == 0.0f` gives `fldz; fcom [mem]`. `s > 0.0f` gives `fldz; fcomp [s]`
+  while `0.0f < s` gives `fld s; fcomp [0.0 as a double]`; `xmax >= x` against
+  `!(xmax < x)` and `x >= x0 - r` select different forms. Integer: `if/else`
+  producing 1/0 instead of `setle`. Commutative operands written in the order
+  opposite to the image's (`campo24 + o[e]`, `pos + ini`). **Held.**
+- `[vc8]` **Aliasing, not statement order.** A block of int stores scheduled in
+  another order, or a field rematerialised in place, follows from naming the
+  same address through a different expression (`&c->origen` against a pointer
+  `o`): it is the alias analysis. Naming the member instead of a pointer that
+  already holds it changes scheduling. Declaring a local after a store fixes a
+  read the compiler hoisted. A path with no `return`. **Held.**
+- `[vc8]` **Constructor hints.** A thiscall whose first instruction moves
+  `this` into eax and keeps it to the end is a constructor (it returns `this`).
+  An argument object built straight in the outgoing argument area means its
+  class has a non-trivial copy constructor: declaring one (not defining it)
+  reproduces this, and a member-initialiser copy constructor gives
+  float-by-float copies. Real constructors for `Construir()` bodies on a base
+  with list members need the list constructor specialised and a complete
+  element type (otherwise the list destructor loses its virtual delete).
+  Switch cases are laid out in reverse source order. A callee that ignores ecx
+  is still a member function. **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1494,6 +1517,9 @@ mostly header-less, so the lever is what else is defined in the unit.
   order for adds and multiplies of plain locals and fields; the helper trick of
   section 5 only works when the destination is reached through a parameter
   pointer (0x438e70 block 1, 0x52c4a0, 0x53bf90).
+- `[vc8]` **Open:** a load compared in memory and then reloaded in the next
+  block (`cmp [x],0; je; mov eax,[x]`) that no source form tried reproduces
+  (0x624140, 0x5a15e0).
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
