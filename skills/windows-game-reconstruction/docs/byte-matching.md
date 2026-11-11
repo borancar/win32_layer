@@ -1735,3 +1735,27 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A search whose empty-list exit and miss share `xor eax,eax`:** initialise the
   result to a sentinel (`d = -1`) and test once after the loop so VC8 merges the
   exits. `[vc8]` **held** *(match)*.
+
+- **A `~` comment's diagnosis can be wrong.** A "scheduling" near miss was a
+  functional bug (the image calls `Soltar()` on both paths, the port only on
+  one): read the image's branch targets before tuning order (0x4cc350).
+- **A value in eax on every exit of a void port means the function returns it;**
+  that fixes the register choice for the whole function. `[vc8]` **held** *(match)*.
+- **VC8 folds a constant return through an early `return K` but not through a
+  variable cleared in an if:** `int r = 1; if (c) r = 0; return r;` keeps the 1 in
+  a callee-saved register across a call; `{ r = i; break; }` keeps the zero in eax.
+  `[vc8]` **held** *(match)*.
+- **Nested flag test shape:** `if (a) { if (!b && !c) v = 0; } else if (!c) v = 0;`
+  instead of `!(a&&b)&&!c`; one fix matched three ports sharing the tail.
+  Grep other `~` ports for the same tail code. `[vc8]` **held** *(match)*.
+- **A store through the same base as a later load lets VC8 hoist the load above
+  it;** a separate pointer stops that. `[vc8]` **held** *(match)*.
+- **Bounds-checked accessor in a do-while** (`do { if (t->Usado(i)) return i; }
+  while (++i < n);`) gives the image's entry `jae` into the increment.
+- **Named element pointer** (`int *s = p[i]; r = (s[0]==3)|(s[0]==1);`) puts the
+  `setcc` result in eax.
+- **Resolve an unexpected thunk call in a near miss:** bytes under relocations are
+  masked, a wrong call target only shows as a note under the DIFF line. The real
+  callee's type also explained 12 extra frame bytes (0x4b4620).
+- **Comparison tooling:** filter the image's `nop`/`lea r,[r+0]` padding before
+  side-by-side diffs, or later lines look shifted.
