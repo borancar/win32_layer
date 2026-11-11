@@ -709,6 +709,10 @@ an item says otherwise.
   initialised to 0 that the image stores only after the first `if (...) return`
   block is declared at that point, not at the top; at the top ours schedules
   the `mov [esp+x],0` into the early-return block (0x59bad0). **Held.**
+- `[vc8]` **An indexed store right after zeroing the index blocks folding.**
+  `n = 0; a[n] = -28;` keeps the later increments of `n` as separate
+  instructions where `n = 0; ...; n = 1;` folds them into a constant
+  (0x646d10). **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -981,6 +985,15 @@ an item says otherwise.
 - `[vc8]` **A later argument pushed before a call nested in another
   argument.** The image pushes `[x+4]` first and then calls: read that argument
   into a local before the call expression (0x5a89f0). **Held.**
+- `[vc8]` **A list walk written with the project's iterator class gives the
+  image's walk.** `RecorridoLista` (lista.h) reproduces the iterator shape and
+  its inlined insertion where a hand-written pointer loop does not (0x619630,
+  0x6199f0, 0x59b110); other list walkers matched this way are likely
+  candidates when a loop differs only in register or block placement. **Held.**
+- `[vc8]` **Inline budget.** VC8 inlined four uses of a small helper but not a
+  fifth: `__forceinline` on the helper when the image has it inline in every
+  caller (0x6412f0). A function-local static's guard stays where the source
+  declares the static, so move the declaration to the image's position. **Held.**
 
 ## 7. Register allocation: the measured model
 
@@ -1261,6 +1274,9 @@ mostly header-less, so the lever is what else is defined in the unit.
   the source declares (a 6th entry with no action, `maxState` 6 for 5 function
   statics) while the code is identical to the byte, 1 byte differing at +4
   (0x6095b0, 0x607410, 0x607840, 0x606e10, 0x6060e0). No source shape found.
+- `[vc8]` **Open:** a zero `V3` temporary whose copies the image sinks past
+  later stores, or two zero temporaries sharing one stack slot where ours uses
+  two (0x5102a0, 0x6214c0); no source shape reproduced either.
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
