@@ -1699,3 +1699,20 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A count loop** `for (int i = n; i > 0; i--, d++)` keeps the counter in the
   dead pointer parameter's slot; a last choice test is `else if (e == 5) n = A;
   else n = B;`.
+
+- **Commutative x87 product operand order follows how the operand is addressed**
+  (array index vs struct field through a pointer), not the source order: read
+  the vector through a three-float struct pointer when every term order fails.
+  `[vc8]` **held** *(match)*.
+- **VC8 duplicates small return tails itself.** When two copies of a tail differ
+  only in SIB order or register, write one shared `return` after the if/else.
+  `[vc8]` **held** *(match)*.
+- **`add reg,-imm` where `sub` is expected** means the subtraction is shared with
+  a compare or sign test: write the test on the expression (`fotograma - 1 >= 0`),
+  not on a local. `[vc8]` **held** *(match)*.
+- **A vtable tail call jumps through eax only when its value is returned through
+  a typed function pointer;** otherwise it goes through edx. `[vc8]` **held.**
+- **Iterator structs:** VC8 keeps a three-word struct in memory and scalarises a
+  two-word one; choosing which three words it holds (list, cursor, start)
+  reproduces the image's frame. `[vc8]` **held** *(match)*.
+- **Check that a recorded "near miss" is really in the tree** before chasing it.
