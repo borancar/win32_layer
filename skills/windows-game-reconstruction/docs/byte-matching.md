@@ -743,6 +743,17 @@ an item says otherwise.
   destination. Float to unsigned (`fnstcw ... fistp`) also forces the aligned
   frame (`push ebp; and esp,-8`). `fabs` on a float uses the `<math.h>` float
   overload. **Held.**
+- `[vc8]` **Where stores after an EH-state store belong.** Stores that follow a
+  member's EH-state store belong to the containing constructor's body; a
+  count-down `jns` loop after them is a body loop, not member-array
+  construction (0x54b210). A three-float local with only two fields set gives
+  12-byte slots, and `p->z += 0.0` reproduces a constant z (0x550140). A float
+  zero local keeps `0*0` from being folded (0x591940). `fadd dword 2^32` means
+  an unsigned-to-float conversion. **Held.**
+- `[vc8]` **Aligned frame from a union.** A `LARGE_INTEGER`-like union local
+  gives the `and esp,-8` frame; a plain `__int64` does not (0x647540). A dead
+  `strcpy` into an unused local buffer keeps a read loop and the /GS frame
+  (0x577cd0). **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1043,6 +1054,13 @@ an item says otherwise.
   the base constructor in the caller's file. A character tested from a register
   while copying: keep the dead buffer copy (`*d++ = c`) in the source; the
   optimiser drops the store but keeps the register load. **Held.**
+- `[vc8]` **Tail merges and temporaries.** A call reached by `push; jmp` from
+  each branch means the call is written in each branch. The `new` temporary
+  shares its slot with a local declared in a later nested block (frame 8
+  instead of 0xc, 0x562ce0). A test written as an inline `int` member puts the
+  failure block inline. `operator new` plus placement or `->CtorXXX()` should be
+  a plain `new T(args)` with a symbols line for the real constructor at its
+  thunk (0x5776e0, 0x466e20, 0x4568d0). **Held.**
 
 ## 7. Register allocation: the measured model
 
@@ -1333,6 +1351,10 @@ mostly header-less, so the lever is what else is defined in the unit.
   0x47d680, 0x438e70). A custom calling convention of a callee (esi/ebx/edi,
   link-time code generation) that plain C++ cannot produce keeps its callers
   from matching (0x48c0b0 calling 0x48bd50).
+- `[vc8]` **Lead on the open EH entry:** unwind states with no code of their
+  own may come from an inlined function's statics that constant arguments
+  removed (0x54e650 inlines the soldier-kind setter 0x54c720 with kind 3);
+  worth testing on the "sixth unwind entry" family (0x6095b0 and four others).
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
