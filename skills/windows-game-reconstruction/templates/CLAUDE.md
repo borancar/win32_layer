@@ -4,7 +4,7 @@
 reconstructed piece by piece. This file is **policy**: standing rules and
 decisions. Keep it lean.
 
-- **Status goes in `STATUS.md`.** What works, what is blocked, what is next. Keep it short (about 100 lines) and **prune it regularly**: current state only, no running log; history is in git.
+- **Status goes in `STATUS.md`.** What works, what is blocked, what is next. **Lead with how much is matching** (functions and bytes, from a script that sums the matched functions' sizes). Keep it short (about 100 lines) and **prune it regularly**: current state only, no running log; history is in git.
 - **Findings go in `docs/`.** Every measurement, format, war story and
   decision record lives there (index below), never here.
 - Edit this file only when a standing rule changes.

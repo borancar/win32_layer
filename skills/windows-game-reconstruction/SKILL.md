@@ -139,6 +139,9 @@ Create at the start: `CLAUDE.md` (from `templates/CLAUDE.md`, fill `<...>`),
 - Put decompiled functions that call Win32 in `reconstruct/src/win32/`.
 - Update this skill and `win32_layer` as you learn. The owner's sessions push
   straight to `master`; other users open a pull request (`CONTRIBUTING.md`).
+- `STATUS.md` leads with how much is matching, in functions and in bytes (a small
+  script sums the sizes of the matched functions against the game's code bytes);
+  update that line in place every time, never as a log entry.
 - Keep `STATUS.md` near 100 lines: goal, numbers, rules in force, how to work,
   known defects, next steps. Replace stale numbers, delete what is done, move
   findings to `docs/`. Prune it when it passes 150 lines, after every
