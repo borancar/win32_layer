@@ -1601,3 +1601,19 @@ mostly header-less, so the lever is what else is defined in the unit.
   `/OPT:REF` and no COMDAT folding the image keeps every out-of-line inline
   member and every identical copy. Emit a wanted copy from another object
   file; once emitted in a file, VC8 stops inlining it there.
+
+- **A `.rdata` literal moves the vptr store.** `[vc8]` **held** *(match)*. A
+  constructor whose member takes a float argument: with a global the vptr store
+  comes early, with the literal it sinks to just before the member's call, as
+  in the image (0x528570, 0x4228d0).
+- **`??_R3` numBaseClasses off by one is a wrong base chain.** `[vc8]` **held**
+  *(match)*. Read the real hierarchy from the image's `??_R2` array.
+- **Inline asm `pusha`/`popa` assemble as the 16-bit forms.** `[vc8]` **held.**
+  Write `pushad`/`popad`.
+- **A function mixing C++ and `__asm` has a frame the source cannot steer.**
+  `[vc8]` **held.** VC8 places the asm-referenced locals regardless of names,
+  scope or declaration order; if the frame differs, the original was whole asm:
+  use the naked form (evidence in the project's asm doc).
+- **Still open:** the image returns the argument where ours folds the constant
+  0 on an empty or null path (0x49cbd0, 0x536f50); taking the parameter's
+  address does not stop the fold.
