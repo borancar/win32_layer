@@ -1635,3 +1635,27 @@ mostly header-less, so the lever is what else is defined in the unit.
   `[vc8]` **held.** Write `int n = 1; new T[n];` with `<new>` included.
 - **An unrolled run of word copies** is one assignment per word; a loop stays a
   loop. `[vc8]` **held.**
+
+- **Separate cases with identical bodies stay separate jump-table targets:**
+  write them separately, in the image's layout order. `[vc8]` **held** *(match)*.
+- **A by-value point constructor plus an inline two-pointer sum helper**
+  reproduces a "store first, reload second" pair. `[vc8]` **held.**
+- **A new ternary local gets a frame slot** that reassigning an existing
+  variable does not share; a `{}` scope on a second count lets it share the
+  first `new` temporary's slot. `[vc8]` **held.**
+- **Win32 descriptor structs with `char` padding get a `/GS` cookie:** pad with
+  ints, exact size. `[vc8]` **held** *(match)*.
+- **The image's `setcc` is the negation of the source condition**
+  (`x <= K ? a : b` gives `setg`). `[vc8]` **held.**
+- **x87 add operand order follows the whole expression shape**, not source
+  order; `a*b + c*d + e` can flip when unrelated code nearby changes: re-test
+  after other fixes. `[vc8]` **held.**
+- **A caller-saved register (edx) live across a call proves `/GL`.** Move such a
+  function to the gl list.
+- **"N bytes differ" is inflated by a frame-size or length shift:** fix `sub esp`
+  first.
+- **A port that cannot match often hides a functional bug:** an empty-class
+  member array (size 1), or an output buffer smaller than what the callee writes.
+  Look for these first.
+- **Hook builder:** `extern int a, b;  // 0x.., 0x..` gives both names the first
+  address; declare one global per line.
