@@ -876,6 +876,13 @@ an item says otherwise.
   element type (otherwise the list destructor loses its virtual delete).
   Switch cases are laid out in reverse source order. A callee that ignores ecx
   is still a member function. **Held.**
+- `[vc8]` **Opaque field stores block scheduling.** A store through a `char[]`
+  field or `*(int *)((char *)this + k)` cannot be scheduled past later loads; a
+  typed field, or a typed local overlay struct, lets it sink (0x637230). A
+  `.rdata` "global" loaded with `fld` and hoisted above integer stores is a
+  float literal; a named float local is stored and reloaded instead. Reusing a
+  dead parameter (`pos %= periodo`) or a parameter-derived local puts the value
+  in the argument slot the image uses (0x62e570). **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1238,6 +1245,16 @@ an item says otherwise.
   left (`s->a * x + s->b * y + s->c`); the same expression through `float *pl`
   (`pl[0] * x`) keeps the wrong order. Worth retrying on 0x529440, 0x5091e0,
   0x5b6480, 0x461790 and 0x45d540. **Held** on one function.
+- `[vc8]` **Forwarding constructors and inlined callees.** An inline
+  forwarding constructor works out its arguments before the pushes: declare
+  the wrapper constructor (not inline) and point it at the base's address with a
+  `~` line (0x632dc0 contexts). A callee the image inlines while the port calls
+  it: a `static inline` copy of its body in the caller's file (0x44d3e0 inlines
+  `PonerEstado(0, 0)`). x87 bound tests with the parameter kept on the stack:
+  `if (x < xmin || x > xmax) return 0;`; early returns also move the
+  callee-saved pushes below the early exits (0x610870). A vptr store that falls
+  between two runs of field stores: the later run as a member array cleared by a
+  loop, or the earlier run as member sub-objects (0x5006b0). **Held.**
 
 ## 7. Register allocation: the measured model
 
