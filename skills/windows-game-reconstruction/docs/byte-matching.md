@@ -798,6 +798,23 @@ an item says otherwise.
   above the temporary. A flag computed inside a constructor argument, not in a
   named local. A function returning through `else r = 1;` into the shared tail.
   **Held.**
+- `[vc8]` **Constructors that store several vtables by hand.** Write the real
+  class with its bases and member initialisers, and declare every override found
+  by comparing the class's vtable slots with the base's (following thunks); any
+  undeclared override shows up as a vtable relocation mismatch, and the
+  `??_E...@W7AE` adjustor then matches at its own address. This matched the
+  `Sim*` constructors (0x45e2a0, 0x45e090, 0x461070, 0x45fc60, 0x45c870) and
+  should work for other hand-written-vtable constructors. Within a constructor,
+  its own virtuals are called through a copy of `this` to stay virtual.
+  **Held.**
+- `[vc8]` **Nested-block locals and typed parameters.** A local initialised from
+  a parameter that the image keeps in the parameter's own slot (`mov eax,[arg];
+  test; mov [arg],eax`, frame 4 bytes smaller) is declared in a nested block
+  starting after the parameter's last use. An `int`-typed pointer parameter
+  costs an extra frame slot: give it its real pointer type. An array-of-members
+  loop stepping by 1 byte means the element type is empty: give it its real
+  size. A member address computed before a `new` that takes it: read the value
+  into a local before the new-expression. **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1148,6 +1165,18 @@ an item says otherwise.
   ListaObjetos<T>::ListaObjetos(...)`) with `<new>` for `operator new[]`. A
   dead EH state between statics is an inlined callee called with constant
   arguments: move the function next to that callee's definition. **Held.**
+- `[vc8]` **COM chains and x87 forms.** A COM call chain with `jl` to one
+  failure block and callee-saved registers that `&&` does not reproduce: write
+  it as an `hr` chain (`long hr = ...; if (hr >= 0) hr = ...`). `fld [x]; fmul
+  st,st` means the expression is written twice (`a->r * a->r`); a named local
+  stores and reloads it. An x87 compare whose left operand is loaded first
+  (`p.z > Altura(...) + 1.0`) gives `fld z; ...; fcompp; test ah,5; jp`.
+- `[vc8]` **Partial answer to the x87 operand-order family.** A dot product
+  where ours always multiplied the y term first matched with an inline helper
+  taking a typed struct pointer and float by-value coordinates, fields on the
+  left (`s->a * x + s->b * y + s->c`); the same expression through `float *pl`
+  (`pl[0] * x`) keeps the wrong order. Worth retrying on 0x529440, 0x5091e0,
+  0x5b6480, 0x461790 and 0x45d540. **Held** on one function.
 
 ## 7. Register allocation: the measured model
 
