@@ -1804,3 +1804,15 @@ mostly header-less, so the lever is what else is defined in the unit.
   argument's call first, stores after"; `T *t = &a[i]; t->F(...)` moves the address
   computation between the pushes; a 12-byte float block is copied into a local,
   passed, and copied back whole. `[vc8]` **held** *(match)*.
+
+- **Port-specific workarounds look like scheduling diffs.** Uninitialised
+  out-parameters, and calls the image routes through an interface pointer
+  (`((ISavRW *)&r)->Leer` instead of `r.Leer`, which compiles to a direct call),
+  are typical of ports written for another target: check for them before tuning
+  scheduling. An out-parameter the image keeps in a callee-saved register: leave it
+  uninitialised and copy it into a local after the call; otherwise its escaped
+  address makes VC8 re-read the slot at every use. `[vc8]` **held** *(match)*.
+- **A first-byte store before a hand copy loop is a literal `nombre[0] = 0;`.**
+- **`__forceinline` on helpers that take function pointers** recovers the
+  image's inlined shape when the original wrote the code inline; values read
+  inside each arm must stay inside the arms.
