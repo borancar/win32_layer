@@ -6,10 +6,30 @@ compiler it was measured on and whether it lasted.
 
 ## Read this first
 
-This header is the part to read every time. Do not read the file whole: find
-the section for your symptom below, or grep for the instruction pattern
-(`grep -n -i 'setz\|lea eax,\[' byte-matching.md`), and read only the entries
-whose tag is your compiler.
+This header is the part to read every time. Do not read the file whole.
+
+**Tags.** Every entry names the compiler it was measured on:
+
+| tag | compiler |
+|---|---|
+| `[vc6]` | Visual C++ 6.0, build 12.00.8168, `/O2 /GX` |
+| `[vc8]` | Visual C++ 2005 SP1, 14.00.50727.762, `/O2 /Gy /GR /EHsc` |
+| `[vc8 rtm]` | Visual C++ 2005 RTM, 14.00.50727.42; not rechecked on SP1 |
+| `[vc6, vc8]` | several tags in one bracket: measured on each, same behaviour |
+
+**How to look something up**
+
+1. Find the section for your symptom in the table below, or grep for the
+   instruction pattern (`grep -n -i 'setz\|lea eax,\[' byte-matching.md`).
+2. Read the entries whose tag includes your compiler first.
+3. If none fits, read the other compilers' entries for the same symptom and
+   try them as hypotheses. An idea from another compiler often carries over,
+   and sometimes inverts.
+4. When another compiler's idea matches on yours, add your tag to that entry's
+   bracket (`[vc6]` becomes `[vc6, vc8]`). When it fails or inverts, add one
+   line under the entry: your tag, "opposite" or "no effect", and what
+   happened. For a compiler with no tag yet, add a row to the table above and
+   its build and flags to *Tags, statuses and figures*.
 
 **The rules** (each is a reversal recorded in section 1):
 
@@ -50,8 +70,7 @@ whose tag is your compiler.
 | about to call something unsolvable | 12 |
 | `/GS` cookies, `/GL`, static functions, service packs | 13 |
 
-**Reading an entry.** `[vc6]`, `[vc8]`, `[vc8 rtm]`, or several at once (`[vc6, vc8]`), name the
-compiler; **held**,
+**Reading an entry.** The tag names the compiler; **held**,
 **number win**, **reverted/superseded**, **no effect** say what became of the
 idea; *(match)* and *(record)* say how far it was checked. Definitions follow.
 

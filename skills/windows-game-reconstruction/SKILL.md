@@ -174,8 +174,12 @@ instruction pattern. The register notes are `docs/vc6-regalloc.md` and
    by name.
 4. **On a mismatch, re-read the asm, then look the difference up in
    `docs/byte-matching.md`** (its symptom index, or grep the instruction
-   pattern; read only entries with your compiler tag) before changing the C. When a family of near misses resists
-   every spelling, try the other compiler revisions before tuning further.
+   pattern) before changing the C. Read the entries tagged for your compiler
+   first; if none fits, try the other compilers' entries as hypotheses. When
+   one of those matches, add your compiler to its tag (`[vc6]` becomes
+   `[vc6, vc8]`); when it fails, note that under the entry. When a family of
+   near misses resists every spelling, try the other compiler revisions before
+   tuning further.
 5. **Tune Kuna only when its C is wrong:** one `--option` at a time
    (`kuna docs options`); `--assert` for known prototypes (`--jobs 1`, no
    `--stream`).
