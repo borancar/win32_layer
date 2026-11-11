@@ -557,6 +557,12 @@ an item says otherwise.
   identical found-returns are one `goto` target after the `return 0`.
 - `[vc8 rtm]` A short tail the image jumps to and VC8 duplicates did not move
   with case order or `goto`.
+- `[vc8]` **Loop shapes with two exits.** Read at the top, compare at the
+  bottom: `do { r = Read(); if (bad) return 1; } while (strcmp(...) != 0);`
+  (0x62a710). A copy loop that stops on a separator or the terminator:
+  `do {...} while (c != '\\' && c); if (!c) fin = 1; else p[k-1] = 0;`; a
+  `goto`, or a `for (;;)` with two `break`s, gives a peeled or rotated loop
+  instead (0x62ae30). **Held.**
 
 ## 4. Variables, loads and stores
 
@@ -629,6 +635,14 @@ an item says otherwise.
   two-line body). Only then try orders: all 24 for four stores, a pairwise hill
   climb (`hcstores.py`) for more (0x5655d0, 0x59d5b0 *(match)*). Brute force
   ruled order out for several parks; those were something else.
+  Symptoms that name the structure: fields written through one base register
+  (`lea edi,[esi+0x68]` then `[edi+0x4c]`) are a sub-object with its own inline
+  constructor and the body writes the rest through a pointer to it (0x4fda00,
+  0x4e8470); a store of 0 then of 1 to the same field, both kept, is a member
+  constructor's dead store under a body that overwrites it (0x4e3980); one
+  instruction (`lea`, `push`) sitting between two store pairs means the block
+  is two members (`Lugar { y=0; x=0; }`, `Tamanyo { ancho=1; alto=1; }`,
+  0x642140, one match). `[vc8]` **held.**
 - **A float stored and reloaded before a compare.** `[vc8]` **number win.**
   `volatile float` reproduces the `fstp/fld` pair and the frame size
   (`Radio4364e0::Radio` 0x4364e0, 0x4ea6a0, 0x4803b0). A plain `float` local
@@ -691,6 +705,10 @@ an item says otherwise.
   literal: name it. Write accents as octal escapes. `lea r,[eax+1]` after a
   length call is `n + 1` written at each use. Force a real call with `#pragma
   function`.
+- `[vc8]` **A zero stored after an early return is declared there.** A local
+  initialised to 0 that the image stores only after the first `if (...) return`
+  block is declared at that point, not at the top; at the top ours schedules
+  the `mov [esp+x],0` into the early-return block (0x59bad0). **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -951,6 +969,18 @@ an item says otherwise.
 - `[vc8 rtm]` A frame-less destructor that frees a field and calls its base was
   reached only with raw field stores in a plain struct; a member with its own
   destructor adds a frame. Treat as a number win until rechecked.
+- `[vc8]` **Read the unwind map to find the members.** A funclet
+  `mov ecx,[ebp-0x10]; add ecx,N; jmp dtor` names a member at +N that has that
+  destructor: declare it, and put its out-of-line constructor in the
+  member-initialiser list (the call then sits between the vptr store and the
+  body, 0x51c840; an initialiser with an argument, 0x520230). A `new T` with no
+  EH state around it in the image means `T()` is `throw()`, and the image's
+  `push 0xNN` before `operator new` is `T`'s real size, so give `T` that size
+  (0x60cfd0). **Held**; extends the entry on reading destructor targets in
+  `vc8-regalloc.md`.
+- `[vc8]` **A later argument pushed before a call nested in another
+  argument.** The image pushes `[x+4]` first and then calls: read that argument
+  into a local before the call expression (0x5a89f0). **Held.**
 
 ## 7. Register allocation: the measured model
 
@@ -1227,6 +1257,10 @@ mostly header-less, so the lever is what else is defined in the unit.
   bytes; 0x63d460); a tail `jmp` lost to cached arguments (0x62fcf0); a static
   function whose object stays in `ecx` (0x5d48e0, 38 bytes). Cause unknown for
   each.
+- `[vc8]` **Open:** the image's `__ehfuncinfo` has one more unwind entry than
+  the source declares (a 6th entry with no action, `maxState` 6 for 5 function
+  statics) while the code is identical to the byte, 1 byte differing at +4
+  (0x6095b0, 0x607410, 0x607840, 0x606e10, 0x6060e0). No source shape found.
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
