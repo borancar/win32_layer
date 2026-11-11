@@ -834,6 +834,25 @@ an item says otherwise.
   local stored only after its zero test: reassign the same value inside the
   block. A symbols line at a `jmp` thunk compares the thunk: name the function
   body. **Held.**
+- `[vc8]` **Constructor on a real base.** Write the real base class with an
+  inline constructor and a virtual destructor, and the derived fields as
+  members with inline constructors; a class defined locally in the
+  constructor's own file is enough when the shared header's layout is wrong
+  (0x47cb50, 0x481c30, 0x485c40, 0x5a00d0, 0x64bcb0). Declare every vtable
+  slot so the hook DLL gets a correct vtable, and give unnamed slots `~` alias
+  lines. A guarded block that constructs objects at fixed addresses with one
+  guard bit is a function-static array built from temporaries; the zero vector
+  temporary's store order selects which constructor to use. **Held.**
+- `[vc8]` **Virtuals and scheduling barriers in constructors.** A virtual call
+  the image keeps inside a constructor: VC8 devirtualises calls on `this`, so
+  call through a pointer copy (`PonerBanderas(0)` in 0x64bcb0). A vptr store
+  kept after a run of field stores: write the long zero run as a loop over the
+  member array, which acts as a scheduling barrier. A port that calls a function
+  conditionally where the image always calls it: check where the `je` lands
+  (0x627560 was a real behaviour bug). **Held.**
+- `[vc8]` **Checking a shared header change.** Rebuild every dependent file
+  with the old and new header and diff the asm: 234 files in about 11 seconds
+  for `lista.h`; only the two instantiations that should change did.
 
 ## 5. Structures, types and parameters
 
