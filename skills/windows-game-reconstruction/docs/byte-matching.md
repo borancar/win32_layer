@@ -1716,3 +1716,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   two-word one; choosing which three words it holds (list, cursor, start)
   reproduces the image's frame. `[vc8]` **held** *(match)*.
 - **Check that a recorded "near miss" is really in the tree** before chasing it.
+
+- **Audit `ret N` for every port once.** `[vc8]` **held** *(match)*. A wrong
+  arity or calling convention is a byte mismatch and a functional stack bug
+  (constructor 0x5b4f80 took two radii, 0x4bb230 four arguments, 0x63d460 and
+  0x5ecf00 were `__stdcall`). `{0, N}` in our listing against `{N}` in the image
+  is not a mismatch: the extra `ret 0` belongs to EH stubs.
+- **By-value struct parameter vs separate floats:** same stack layout, different
+  x87 scheduling; the caller's `sub esp,N` followed by field-by-field `fld/fstp`
+  copies is the sign. Only the mangled name changes. `[vc8]` **held** *(match)*.
+- **Prefer the natural loop to a hand-rotated one.** VC8 rotates and strength-reduces
+  itself. Not always a plain `for`: try the `while` whose condition order mirrors
+  the image's tests (`while (!r && n--) {...}` keeps the result re-test), 2 of 6
+  hand-rotated ports matched. `[vc8]` **held** *(match)*.
+- **A count compared in memory on every pass:** make the data a member
+  sub-object with inline accessors and read through the member at each use; a
+  local pointer to the list keeps the count in a register. `[vc8]` **held** *(match)*.
+- **A search whose empty-list exit and miss share `xor eax,eax`:** initialise the
+  result to a sentinel (`d = -1`) and test once after the loop so VC8 merges the
+  exits. `[vc8]` **held** *(match)*.
