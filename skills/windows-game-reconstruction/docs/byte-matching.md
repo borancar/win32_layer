@@ -1786,3 +1786,21 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A float triple copied from ints:** a local struct assigned whole
   (`V3 v = {(float)x, (float)y, (float)z};`, then the clears, then
   `*(V3 *)&r->x = v;`). `[vc8]` **held** *(match)*.
+
+- **Ports written for another build target: look for structural causes first.**
+  Emulated constructors and destructors (`Crear()` plus a hand-stored vtable
+  becomes a real constructor with a base initialiser and a declared base
+  destructor; callers use `new Sub(...)`, each subclass its own size, or VC8 merges
+  the two `push size`), a hand-made release call where the image has an EH state
+  (declare the destructor), `operator new` for `new T[]`, `memcpy` for CRT
+  `strncpy` (`call 0x651a70` with dst, src, n), wrong buffer sizes. Most of one
+  round's 16 matches came from these.
+- **Gaps in the image's frame layout** (between the last local and the cookie, or
+  shared slots) reveal wrong array sizes and missing `{ }` block scopes: give each
+  use of a shared slot its own block scope.
+- **A static I/O helper may need `__forceinline` and access to members** (a
+  template over the owner) so the image's member re-reads come back.
+- **Rect built late:** an inline `Rect(a, b, c, d)` constructor gives "last
+  argument's call first, stores after"; `T *t = &a[i]; t->F(...)` moves the address
+  computation between the pushes; a 12-byte float block is copied into a local,
+  passed, and copied back whole. `[vc8]` **held** *(match)*.
