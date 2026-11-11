@@ -713,6 +713,19 @@ an item says otherwise.
   `n = 0; a[n] = -28;` keeps the later increments of `n` as separate
   instructions where `n = 0; ...; n = 1;` folds them into a constant
   (0x646d10). **Held.**
+- `[vc8]` **The `lea eax,[reg+1]` result: a counter, not a flag.** Declare
+  `int r = 0;` before the work (at the top when the image's `xor` is early),
+  then `if (cond) r++; return r;`. Neither `r = 1` nor `r += (x != 0)` gives
+  it. This closed 0x45b910, 0x4a3e10, 0x4305b0 and 0x4305e0. **Held.**
+- `[vc8]` **Pair temporaries with an inline constructor.** `p = ParCero();` or
+  `de = ParEnteros(o->b, o->a);` gives two `xor` zero registers, both loads
+  before both stores, or a constant copied with `mov edx,eax`; the
+  constructor's store order picks which store comes first. **Held.**
+- `[vc8]` **Member array with an inline element constructor.** `lea
+  esi,[zero+N-1] ... sub esi,1; jns` is the construction of a member array whose
+  element has an inline constructor. A by-value argument taken from a local
+  copy (`T t = f->tam; F(t);`) loads both words before `sub esp` when `T` has a
+  user copy constructor. **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -994,6 +1007,17 @@ an item says otherwise.
   fifth: `__forceinline` on the helper when the image has it inline in every
   caller (0x6412f0). A function-local static's guard stays where the source
   declares the static, so move the declaration to the image's position. **Held.**
+- `[vc8]` **Control-flow and member-path shapes that moved the allocator.**
+  A virtual slot loaded before the branch (`cmp [this+f],0; mov ecx,eax`):
+  write the member path at each use (`if (panel->visible) panel->Mostrar(0);
+  else panel->Mostrar(1);`), not a local pointer. A shared `ret` returning the
+  tested value: nest the rest under the inverse test (`if (e != 0xc) {...}
+  return e;`) and re-read members instead of a local copy. A list walk to the
+  tail: `while (h && h->siguiente) h = h->siguiente;`. **Held.**
+- `[vc8]` **The extra x87 rounding around a root.** `fstp/fld` around
+  `__CIsqrt` plus the local's own store is the `<math.h>` float `sqrt(float)`
+  overload, or an inline `float f(float v) { return (float)sqrt((double)v); }`
+  called on the expression (0x62d8d0). **Held.**
 
 ## 7. Register allocation: the measured model
 
@@ -1265,8 +1289,7 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **Open on SP1**, no source lever found: `add eax,-1` for a read-only
   `x - 1` (0x552d80, 0x552ee0; `switch (x - 1)` and a stored-back `n--` do give
   it); the `eax` temporary of `vc8-regalloc.md`; `jmp eax` slot forwarders (0x607ab0,
-  0x621bc0); a zero or one kept in a register that SP1 did not close (0x45b910,
-  0x5de170, 0x4261e0, 0x5d6d80 at 66 bytes); frame slot placement (0x4f7240, 2
+  0x621bc0); a zero or one kept in a register that SP1 did not close (0x5de170, 0x4261e0, 0x5d6d80 at 66 bytes); frame slot placement (0x4f7240, 2
   bytes; 0x63d460); a tail `jmp` lost to cached arguments (0x62fcf0); a static
   function whose object stays in `ecx` (0x5d48e0, 38 bytes). Cause unknown for
   each.
@@ -1277,6 +1300,9 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **Open:** a zero `V3` temporary whose copies the image sinks past
   later stores, or two zero temporaries sharing one stack slot where ours uses
   two (0x5102a0, 0x6214c0); no source shape reproduced either.
+- `[vc8]` **Open:** a three-float local reproduces a 12-byte frame, but the
+  image's load order (x before y) and rounding temporaries placed in a dead
+  argument slot are not reproduced (0x529440, 0x5091e0, 0x426c70).
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
