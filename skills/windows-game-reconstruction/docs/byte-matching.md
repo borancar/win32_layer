@@ -726,6 +726,23 @@ an item says otherwise.
   element has an inline constructor. A by-value argument taken from a local
   copy (`T t = f->tam; F(t);`) loads both words before `sub esp` when `T` has a
   user copy constructor. **Held.**
+- `[vc8]` **Result variables on shared exits.** A zero kept in a callee-saved
+  register as the return: `int r = 0; if (o) r = o->F(); return r;`. A global
+  set on two tail-duplicated exits through `eax`: a result variable, then
+  `g = r; return r;`. `-1` returned through the shared `ret`: `if (i != -1)
+  i = F(); return i;`. A call result stored and reloaded before use is a named
+  float local. **Held.**
+- `[vc8]` **Local pointer copy before a member call.** `mov eax,[p+N]; lea
+  ecx,[eax+0x44]` comes from `q = p->x; q->m()`; the direct `p->x->m()` gives
+  `mov ecx; add ecx`. Testing a member just stored: `quien = p->quien; if
+  (quien)`. A fallback that reuses a loaded register: re-read the member chain
+  at each use instead of a local copy. **Held.**
+- `[vc8]` **Float copies and conversions.** A float vector copied with
+  `fld`/`fstp` is a user `operator=` plus `d = V3(...)`. A conditional float
+  adjustment with no rounded intermediate: a ternary straight into the
+  destination. Float to unsigned (`fnstcw ... fistp`) also forces the aligned
+  frame (`push ebp; and esp,-8`). `fabs` on a float uses the `<math.h>` float
+  overload. **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1018,6 +1035,14 @@ an item says otherwise.
   `__CIsqrt` plus the local's own store is the `<math.h>` float `sqrt(float)`
   overload, or an inline `float f(float v) { return (float)sqrt((double)v); }`
   called on the expression (0x62d8d0). **Held.**
+- `[vc8]` **More constructor and loop shapes.** An int store before the third
+  store of a zero vector: write the int assignment before the zero-`V3`
+  temporary. A count stored after a member array's construction loop: the count
+  and the array are one member struct whose inline constructor sets the count.
+  Base-class stores before the derived vtable store: an `inline` definition of
+  the base constructor in the caller's file. A character tested from a register
+  while copying: keep the dead buffer copy (`*d++ = c`) in the source; the
+  optimiser drops the store but keeps the register load. **Held.**
 
 ## 7. Register allocation: the measured model
 
@@ -1303,6 +1328,11 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **Open:** a three-float local reproduces a 12-byte frame, but the
   image's load order (x before y) and rounding temporaries placed in a dead
   argument slot are not reproduced (0x529440, 0x5091e0, 0x426c70).
+- `[vc8]` **Open:** the x87 operand order of a "field op stack argument" and
+  of `p->x + this->vx`: no written order of the operands changes it (0x53bf90,
+  0x47d680, 0x438e70). A custom calling convention of a callee (esi/ebx/edi,
+  link-time code generation) that plain C++ cannot produce keeps its callers
+  from matching (0x48c0b0 calling 0x48bd50).
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
