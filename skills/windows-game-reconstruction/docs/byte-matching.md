@@ -1669,3 +1669,12 @@ mostly header-less, so the lever is what else is defined in the unit.
   middle struct (`hijo ? hijo->alto : 0`) gives an eax-chained null test; a flag
   stored as 1 at the top and cleared by a branch is `int f = 1; if (!(a > b))
   f = 0;`. `[vc8]` **held.**
+
+- **Walk of the game's own list type: use its iterator first.** `[vc8]` **held**
+  *(match)*. When the image tests a member list's own address (`lea ebp,[esi+0x1d0];
+  test ebp,ebp; je`), write the loop with the project's iterator shape
+  (`if (m) { it.cur = it.beg = m->datos; } while (it.Ok(m->cuenta)) { ...; it.cur++; }`);
+  a hand-written pointer loop hoists the first load instead.
+- **A value kept in a register and reloaded from its frame slot after an inline
+  string intrinsic** is a register variable with a home slot; if ours lives only
+  in memory the cause is elsewhere in the function.
