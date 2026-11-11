@@ -48,3 +48,4 @@ One line per change to the skill, oldest first. Matching idioms go in
 - 2026-11-11: `SKILL.md` trimmed to the stage 1 method, scaffolding and the byte-match loop; pitfalls, middleware, verifying a port, the ArmyMen2 lessons and the original-compiler host are files under `docs/`, referenced from it.
 - 2026-11-11: home-relative paths replaced by https GitHub origin links throughout the skill.
 - 2026-11-11: `docs/byte-matching.md` compacted: a read-this-first header (rules, symptom index); the raw VC8 record folded into the themed sections with duplicates merged and names dropped; tags may combine (`[vc6, vc8]`); no dates.
+- 2026-11-11: `CONTRIBUTING.md` added (pull requests against borancar/win32_layer); `SKILL.md` and the `CLAUDE.md` template call it out.

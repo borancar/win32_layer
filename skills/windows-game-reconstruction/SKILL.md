@@ -12,6 +12,10 @@ the original as the oracle: call nothing done because it looks right on screen.
   `https://github.com/borancar/win32_layer`. DOS games: use the `dos-game-reconstruction` skill.
 - When a stage teaches something, write it into the matching file under
   `docs/`, keep this file to instructions, and add one line to `CHANGELOG.md`.
+- **Send what you learn back.** If you are not the repository owner, open a
+  pull request against https://github.com/borancar/win32_layer as
+  `CONTRIBUTING.md` (beside this file) describes: new matching ideas, tags
+  confirmed on another compiler, pitfalls, missing imports.
 
 ## Stage 1: the hybrid layer
 
@@ -132,8 +136,8 @@ Create at the start: `CLAUDE.md` (from `templates/CLAUDE.md`, fill `<...>`),
   its own `Makefile`, `README.md` and `LICENSE`, no loader, layer or
   reverse-engineering detail.
 - Put decompiled functions that call Win32 in `reconstruct/src/win32/`.
-- Update this skill and `win32_layer` as you learn, and push straight to
-  `master` on `win32_layer`.
+- Update this skill and `win32_layer` as you learn. With push access, push
+  straight to `master`; without it, open a pull request (`CONTRIBUTING.md`).
 - Keep `STATUS.md` near 100 lines: goal, numbers, rules in force, how to work,
   known defects, next steps. Replace stale numbers, delete what is done, move
   findings to `docs/`. Prune it when it passes 150 lines, after every
@@ -201,3 +205,4 @@ instruction pattern. The register notes are `docs/vc6-regalloc.md` and
 | ArmyMen2 policy and findings | `ArmyMen2/CLAUDE.md`, `docs/`, `STATUS.md` |
 | Commandos | `https://github.com/retro-foundry-games/CommandosBEL` (`game/` is the extracted GOG 1.1, build 23145) |
 | Changes to this skill | `CHANGELOG.md` |
+| How to contribute | `CONTRIBUTING.md` |
