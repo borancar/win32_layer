@@ -754,6 +754,18 @@ an item says otherwise.
   gives the `and esp,-8` frame; a plain `__int64` does not (0x647540). A dead
   `strcpy` into an unused local buffer keeps a read loop and the /GS frame
   (0x577cd0). **Held.**
+- `[vc8]` **Identify the class from the vtable.** An image vtable's RTTI name
+  and its non-pure slots name the class a constructor really belongs to
+  (0x58ade0 is `ClassElemIntroScript`'s constructor, not a base's). A typed
+  global array explains `[esi+GLOBAL]` byte-offset indexing next to a separate
+  index register (0x5c0b50). A zero struct temporary assigned to a global
+  struct gives the `fldz`/stack temporary/dword-copy shape (0x5d87b0). A field
+  read inside the first test of an `||` chain is read there, not hoisted into a
+  local. **Held.**
+- `[vc8]` **Compare and string forms.** `strcmp` gives `repe cmpsb` with length
+  + 1, `memcmp` does not; `int c = 0; c = F(v, c);` moves the `xor` before the
+  call; `x < lim` selects `test 0x41`; `d < 0 ? -a : a` is the negate-select.
+  **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1081,6 +1093,14 @@ an item says otherwise.
   `strcpy`. A count read once and decremented at the top of the loop is `for (k
   = n; k != 0; p++) { k--; ... }`. A hidden return pointer plus an unused zeroed
   flag slot means the function returns the class by value. **Held.**
+- `[vc8]` **Array new and devirtualised locals.** A function-local `new T[n]`
+  reproduces SP1's count-overflow check (`mul; seto; neg; or`): do not
+  hand-write the size computation. A virtual of a local object that shows up
+  inlined was devirtualised by the compiler; defining it `inline` in the file
+  reproduces that. **Held.**
+- `[vc8]` **Hypothesis, partly reproduced:** a member load repeated after float
+  stores may mean the stores went to memory the compiler treats as escaped, such
+  as a reused address-taken argument slot (0x583640). Unconfirmed.
 
 ## 7. Register allocation: the measured model
 
