@@ -1061,6 +1061,26 @@ an item says otherwise.
   failure block inline. `operator new` plus placement or `->CtorXXX()` should be
   a plain `new T(args)` with a symbols line for the real constructor at its
   thunk (0x5776e0, 0x466e20, 0x4568d0). **Held.**
+- `[vc8]` **Unwind entries with no action are an inlined callee's dead
+  statics.** The image's `__ehfuncinfo` has more entries than the source
+  declares when a callee with function statics is inlined and constant
+  arguments remove the code that uses them: the statics still take EH states
+  (dead ones come after the caller's, live ones at their source position). Put
+  the callee's definition in the same file, above the caller, and call it with
+  the constants (`Cambiar(1, 0)`); a sibling call with other constants stays out
+  of line. This closed 0x54e650 (inlining 0x54c720 with kind 3) and the window
+  `Mensaje` family (0x6095b0, 0x607410, 0x607840, 0x606e10, 0x6060e0, 0x606970).
+  A temporary whose destructor is `throw()` has no `state = -1` store before the
+  destructor call. **Held.**
+- `[vc8]` **More small shapes.** `d >>= 1;` as its own statement moves the
+  `sar` up to the merge point; `ActorSarg *yo = actor; m.quien = yo;` changes
+  which scratch register holds the value. With a named float `d`, `d < 4.0f`
+  loads the literal first; `4.0f > d` loads `d` first but against a qword
+  constant; `(float)(expr) < 4.0f` gives `fld d; fcomp dword [4.0]`; an int zero
+  gives `fldz`. An inline `mov cl,[eax]; mov [edx+eax],cl` copy loop is
+  `strcpy`. A count read once and decremented at the top of the loop is `for (k
+  = n; k != 0; p++) { k--; ... }`. A hidden return pointer plus an unused zeroed
+  flag slot means the function returns the class by value. **Held.**
 
 ## 7. Register allocation: the measured model
 
@@ -1336,25 +1356,6 @@ mostly header-less, so the lever is what else is defined in the unit.
   bytes; 0x63d460); a tail `jmp` lost to cached arguments (0x62fcf0); a static
   function whose object stays in `ecx` (0x5d48e0, 38 bytes). Cause unknown for
   each.
-- `[vc8]` **Open:** the image's `__ehfuncinfo` has one more unwind entry than
-  the source declares (a 6th entry with no action, `maxState` 6 for 5 function
-  statics) while the code is identical to the byte, 1 byte differing at +4
-  (0x6095b0, 0x607410, 0x607840, 0x606e10, 0x6060e0). No source shape found.
-- `[vc8]` **Open:** a zero `V3` temporary whose copies the image sinks past
-  later stores, or two zero temporaries sharing one stack slot where ours uses
-  two (0x5102a0, 0x6214c0); no source shape reproduced either.
-- `[vc8]` **Open:** a three-float local reproduces a 12-byte frame, but the
-  image's load order (x before y) and rounding temporaries placed in a dead
-  argument slot are not reproduced (0x529440, 0x5091e0, 0x426c70).
-- `[vc8]` **Open:** the x87 operand order of a "field op stack argument" and
-  of `p->x + this->vx`: no written order of the operands changes it (0x53bf90,
-  0x47d680, 0x438e70). A custom calling convention of a callee (esi/ebx/edi,
-  link-time code generation) that plain C++ cannot produce keeps its callers
-  from matching (0x48c0b0 calling 0x48bd50).
-- `[vc8]` **Lead on the open EH entry:** unwind states with no code of their
-  own may come from an inlined function's statics that constant arguments
-  removed (0x54e650 inlines the soldier-kind setter 0x54c720 with kind 3);
-  worth testing on the "sixth unwind entry" family (0x6095b0 and four others).
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
