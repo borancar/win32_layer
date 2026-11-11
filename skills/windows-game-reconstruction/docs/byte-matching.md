@@ -783,6 +783,21 @@ an item says otherwise.
   `fld`/`fstp` copy. A three-float array gives the 12-byte slot and the x,y,z
   frame order. An argument slot reused for a result: reassign the argument
   (`n /= cnt`). **Held.**
+- `[vc8]` **RTTI differences and real sizes.** When the image's `??_R3` differs
+  at +8 it is the base-class count: declare the bases under their RTTI names;
+  a vtable relocation that resolves to the base's slot means the class
+  overrides it. A large local's real size and its constructor/destructor come
+  from the frame gaps and the EH states (a reader that looked like 0x40 bytes
+  was a 0xf44-byte class). A box whose stores come in two separated pairs is
+  two pair types with inline constructors. **Held.**
+- `[vc8]` **Evaluation order and result locals.** An argument assigned inside a
+  later argument (`new T(j, p, (p = g->c)->Rect(), "X")`; VC8 evaluates right to
+  left) gives "read once, used as `this`, pushed after". A pointer-typed result
+  local gives `cmp reg, zero-reg` instead of `test` after a call. An int
+  constant assigned before a zero V3 temporary gets its register load hoisted
+  above the temporary. A flag computed inside a constructor argument, not in a
+  named local. A function returning through `else r = 1;` into the shared tail.
+  **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1126,6 +1141,13 @@ an item says otherwise.
   member-on-the-left gives `fld x; fcomp [m]; test ah,5; jp`. An inline
   sub-object method (`datos.Reset()`) sets the loop pointer's anchor field.
   **Held.**
+- `[vc8]` **Copies and template constructors.** A copy loop compiles to
+  `rep movsd`; `memcpy` of a large size and struct assignment call the library.
+  An inlined template constructor that differs from the out-of-line copy: an
+  explicit specialisation of the constructor (`template <> inline
+  ListaObjetos<T>::ListaObjetos(...)`) with `<new>` for `operator new[]`. A
+  dead EH state between statics is an inlined callee called with constant
+  arguments: move the function next to that callee's definition. **Held.**
 
 ## 7. Register allocation: the measured model
 
