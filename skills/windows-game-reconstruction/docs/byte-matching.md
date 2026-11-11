@@ -766,6 +766,23 @@ an item says otherwise.
   + 1, `memcmp` does not; `int c = 0; c = F(v, c);` moves the `xor` before the
   call; `x < lim` selects `test 0x41`; `d < 0 ? -a : a` is the negate-select.
   **Held.**
+- `[vc8]` **Source order is recoverable from statics and EH states.** Function
+  statics' guard bits and EH state numbers are assigned in source order, so they
+  give the order of switch cases and if/else branches. A member read into a
+  named local before the test gives `mov eax,[m]; test eax,eax` instead of
+  `cmp [m],0`; a pointer member re-tested after a ternary or `&&` chain means
+  the member is read in each expression (a local copy lets VC8 thread the
+  second test away). A signed bound test survives merging when written negated
+  on a signed local. An `int` flag, not `bool`. **Held.**
+- `[vc8]` **A zero vector temporary assigned last.** A zero `V3` temporary
+  whose z store is sunk past later stores: write the assignment after those
+  stores (may unlock the "zero V3 temporaries" open family in section 12:
+  0x5102a0, 0x433d80, 0x4efb60). A user `operator=` that copies floats gives an
+  `fld`/`fstp` struct copy instead of dword moves; an inline function returning
+  the vector difference by value plus that `operator=` gives the vector-difference
+  `fld`/`fstp` copy. A three-float array gives the 12-byte slot and the x,y,z
+  frame order. An argument slot reused for a result: reassign the argument
+  (`n /= cnt`). **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1101,6 +1118,14 @@ an item says otherwise.
 - `[vc8]` **Hypothesis, partly reproduced:** a member load repeated after float
   stores may mean the stores went to memory the compiler treats as escaped, such
   as a reused address-taken argument slot (0x583640). Unconfirmed.
+- `[vc8]` **Local objects with destructors, and float parameters.** A local
+  destroyed through an EH state: declare the destructor at the image's address
+  with its symbols line. An "int" parameter loaded with `fld dword` is a float
+  (also a correctness check for ports: 0x480f60). An int-word name type with
+  two inline strncpy constructors explains no /GS cookie. `if (m > x)` written
+  member-on-the-left gives `fld x; fcomp [m]; test ah,5; jp`. An inline
+  sub-object method (`datos.Reset()`) sets the loop pointer's anchor field.
+  **Held.**
 
 ## 7. Register allocation: the measured model
 
