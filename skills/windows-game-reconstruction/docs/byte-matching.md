@@ -815,6 +815,25 @@ an item says otherwise.
   loop stepping by 1 byte means the element type is empty: give it its real
   size. A member address computed before a `new` that takes it: read the value
   into a local before the new-expression. **Held.**
+- `[vc8]` **x87 operand order through typed inline helpers.** Squared length
+  with x loaded first (a 12-byte difference slot): pass a three-float
+  difference struct by value to an inline helper written `d.y*d.y + d.x*d.x`;
+  a float array, named floats, or a reference or pointer parameter keep y
+  first (five functions). Add into a field in the image's operand order: an
+  inline helper taking the destination struct by pointer and the addend by
+  const reference (`p->x = p->x + v.x; p->y = v.y + p->y;`) with typed two- or
+  three-float structs; VC8 follows the written order inside the helper, but a
+  member function (`this` as the pointer) or a by-value addend does not work
+  (five functions). A dot product against a typed normal through a
+  by-reference helper puts the x term first. `fld z; <sum>; fcompp; test ah,1;
+  je` is `!(k->z <= Helper(...))`. **Held.**
+- `[vc8]` **Small forms.** Two truncations into an `int q[2]` local converted
+  later in the other order (q[1] first). A by-value 32-byte name through the CRT
+  `strncpy` (0x651a70): an int-word name type whose constructor only calls
+  `strncpy`, with the `[0x1f] = 0` statement written after the next load. A
+  local stored only after its zero test: reassign the same value inside the
+  block. A symbols line at a `jmp` thunk compares the thunk: name the function
+  body. **Held.**
 
 ## 5. Structures, types and parameters
 
@@ -1452,6 +1471,10 @@ mostly header-less, so the lever is what else is defined in the unit.
   bytes; 0x63d460); a tail `jmp` lost to cached arguments (0x62fcf0); a static
   function whose object stays in `ecx` (0x5d48e0, 38 bytes). Cause unknown for
   each.
+- `[vc8]` **Open:** VC8 picks the x87 operand order independently of the source
+  order for adds and multiplies of plain locals and fields; the helper trick of
+  section 5 only works when the destination is reached through a parameter
+  pointer (0x438e70 block 1, 0x52c4a0, 0x53bf90).
 - `[vc8]` **Solved after being listed unsolved in the early record:** the `lea
   eax,[reg+1]` result, `jb` against `jl`, the switch's zero pushed as a
   register (all SP1); the materialised `== 0` (section 3); pointer-difference
