@@ -1678,3 +1678,24 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A value kept in a register and reloaded from its frame slot after an inline
   string intrinsic** is a register variable with a home slot; if ours lives only
   in memory the cause is elsewhere in the function.
+
+- **A second `~` line with the same name blocks a match** (the comparator keys
+  by name, and a thunk line for the same name counts). A plain line with another
+  name at the same address does not; those are references from other objects
+  and must stay. Delete the extra same-name `~` line when the body matches.
+- **Odd dead-slot reuse means struct-by-value parameters** (structs of shorts
+  read only as words); the caller's declaration often has the right signature.
+- **`lea [eax+sym-k]` is indexing from `n - 1` on the next symbol:** write
+  `&base[n - 1]`; the plain `&base[n]` gives `add`. `[vc8]` **held** *(match)*.
+- **A single `int r = 0;` set in every branch with one `return r`** keeps a zero
+  register; VC8 does not propagate constants along paths, so an early `return 1`
+  folds it. `[vc8]` **held** *(match)*.
+- **Debug-text functions hide behaviour bugs:** swapped sprintf arguments,
+  uninitialised record fields, accents dropped from strings (`"s\xed"`).
+  Compare against the image's literal bytes.
+- **In an `and esp,-N` frame** a large `char` array aligns to 16 and shifts
+  every local; the original was `char[0x100]` plus a 4-byte local, not
+  `char[0x104]`.
+- **A count loop** `for (int i = n; i > 0; i--, d++)` keeps the counter in the
+  dead pointer parameter's slot; a last choice test is `else if (e == 5) n = A;
+  else n = B;`.
