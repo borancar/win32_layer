@@ -1617,3 +1617,21 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Still open:** the image returns the argument where ours folds the constant
   0 on an empty or null path (0x49cbd0, 0x536f50); taking the parameter's
   address does not stop the fold.
+
+- **An unwind state with no action is a dead static in an inlined callee.**
+  `[vc8]` **held** *(match)*. Reproduce it with a `static __forceinline`
+  helper `if (x) { static int id = F(); ... }` called with a constant 0.
+- **Singletons with one EH state per `new`:** write each as `new T` with T's
+  constructor; if the code uses the pointer register, give T an inline
+  constructor that calls the out-of-line init. `[vc8]` **held** *(match)*.
+- **Inline virtuals emitted out of line** (e.g. `ClassDC2D::s06`, 0x563d00) mean
+  the original header defined them in the class; calling them on a local object
+  inlines them. VC emits the vtable and `??_G` in every file with an inline
+  constructor: harmless for the comparison.
+- **No value on some paths, one shared epilogue:** omit the `return` and reach
+  one `fin:;` label. A second `return x;` at the end of the if block lays a
+  branch's exit last and shrink-wraps the pushes. `[vc8]` **held** *(match)*.
+- **`new T[n]` keeps the overflow check only for a non-literal count.**
+  `[vc8]` **held.** Write `int n = 1; new T[n];` with `<new>` included.
+- **An unrolled run of word copies** is one assignment per word; a loop stays a
+  loop. `[vc8]` **held.**
