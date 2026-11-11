@@ -1775,3 +1775,14 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **An `int` local prevents narrowed word loads; `if (x) {body}` instead of an
   early return gives `mov eax,[m]; test eax,eax`;** access through repeated casts
   rather than a typed local changes the `fadd` operand order. `[vc8]` **held** *(match)*.
+
+- **Out-parameter locals: declare `int n;` without an initialiser.** `[vc8]` **held**
+  *(match)*. A local the callee fills (a block size) reuses the dead parameter's
+  stack slot as in the image; `int n = 0;` gives it a slot of its own. (Safe when
+  the callee always writes it before any read.)
+- **Small `short`/`char` array locals bring a `/GS` cookie the image may not
+  have; a struct avoids it.** Per-case colour blocks: a small pair struct
+  declared inside each `case` reproduces one 12-byte block per case.
+- **A float triple copied from ints:** a local struct assigned whole
+  (`V3 v = {(float)x, (float)y, (float)z};`, then the clears, then
+  `*(V3 *)&r->x = v;`). `[vc8]` **held** *(match)*.
