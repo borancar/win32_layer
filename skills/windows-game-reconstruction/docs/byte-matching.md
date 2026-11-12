@@ -1894,3 +1894,20 @@ mostly header-less, so the lever is what else is defined in the unit.
   variable assigned in both arms; a `char[32]` name passed by value adds a `/GS`
   cookie (use `int w[8]` with an accessor); a flag materialised at an if/else join is a
   `__forceinline` helper returning it.
+
+- **A `~` line at a function's incremental-link thunk makes bytematch skip the real
+  line even when that line is plain.** Scan for names that have both a thunk line
+  and a real line.
+- **A newly matched function that references a data symbol with no symbols line:**
+  bytematch's "learn" lines (address plus offset, e.g. `g_items+4`) can set that
+  symbol's address in another build that uses learned addresses (a table landed at
+  `+4` and crashed the start-up). Add an explicit line for every data symbol such a
+  function touches and rerun the other build's replays after each matching batch.
+- **Mechanical sweeps are cheap:** converting emulated placement-new into plain
+  `new` across all ports, and replacing `.rdata` float/double globals with literals,
+  each gave a match and moved near misses closer.
+- **Spilled values as separate scalars, not an array** (the frame slot order follows);
+  early returns rewritten as nested tests share one `return 0` epilogue; copy a
+  parameter into a local when the image holds it in a callee-saved register across the
+  first call; `(double)1.2f` for a double constant that is a widened float;
+  `0.0f == p.x` (constant on the left) for `fld x; fldz; fucom`. `[vc8]` **held**.
