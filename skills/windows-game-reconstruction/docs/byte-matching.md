@@ -1876,3 +1876,21 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **ofstream emulation:** an inline destructor on the stream type gives the EH
   state; `int c[0x22]` not `char c[0x88]` avoids the `/GS` cookie; the stream test is
   an inline `operator void *` returning `(state & 6) ? 0 : ios`.
+
+- **VC8 canonicalises commutative x87 operand order;** source order does not decide
+  it. Named `double` sub-results and compound assignment (`x *= f`, `d += v`) do:
+  naming one product as a `double` local forces it first. `[vc8]` **held** *(match)*.
+- **Check the symbols file for declared-only names pointing mid-function:** a line at
+  an address that is not a thunk, not a call target and not after `int3` padding makes
+  another build call into the middle of another function silently (four such lines
+  were found and fixed).
+- **Multichar constants:** a byte-match diff on a `push imm32` can be a reversed
+  `'ABCD'` spelling (`'OTLA'` vs `'ALTO'`), which is also a behaviour bug.
+- **A call with no `mov ecx` reload after another member call means `/GL`:** stop early.
+- **Verify from `git archive HEAD` (or a clean checkout):** the live tree picks up a
+  concurrent agent's uncommitted files and can show false differences.
+- **`cmp 3; jge` is `< 3`** (this form also keeps a later `>= 2` test that `<= 2`
+  folds away); a float result stored and reloaded before each `ret` is one result
+  variable assigned in both arms; a `char[32]` name passed by value adds a `/GS`
+  cookie (use `int w[8]` with an accessor); a flag materialised at an if/else join is a
+  `__forceinline` helper returning it.
