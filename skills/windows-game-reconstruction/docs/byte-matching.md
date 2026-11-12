@@ -1828,3 +1828,10 @@ mostly header-less, so the lever is what else is defined in the unit.
   if the argument comes from `push eax` after the constructor keep the temporary.
   Apply such mechanical substitutions call by call, not to a whole family.
   `[vc8]` **held** *(match)*.
+
+- **Games that read heap they never set** (a walk counter, a mode field): a CRT
+  that sees Windows 9x (`GetVersion`) uses its small-block heap, which hands back
+  old bytes; the same CRT on NT uses `HeapAlloc`. A reference build and a native
+  port must use the same deterministic zero-filled heap (the layer's fixed heap, with
+  the loader reporting NT/XP), or behaviour (a soldier patrolling vs walking)
+  diverges for reasons that are not in the code.
