@@ -1816,3 +1816,15 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **`__forceinline` on helpers that take function pointers** recovers the
   image's inlined shape when the original wrote the code inline; values read
   inside each arm must stay inside the arms.
+
+- **After each batch of new functional ports, rerun bytematch with the `~` marks
+  stripped and compare its `ok` names against the `~` lines (`comm`):** 13 of one
+  batch were already identical and only needed their marks removed.
+- **Writer called through its vtable** (`mov eax,[w]; mov edx,[eax+8]; call edx`):
+  call it through an interface pointer (`((ISavRW *)&w)->Escribir(...)`, not
+  `w.Escribir`, which compiles to a direct call); one substitution matched four
+  savers. `r.Poner(key, Bloque(x))` where the image passes `lea eax,[slot]`
+  rather than the constructor's returned eax needs `{ Bloque b(x); r.Poner("KEY", b); }`;
+  if the argument comes from `push eax` after the constructor keep the temporary.
+  Apply such mechanical substitutions call by call, not to a whole family.
+  `[vc8]` **held** *(match)*.
