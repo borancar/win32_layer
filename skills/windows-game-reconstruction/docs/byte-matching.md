@@ -1855,3 +1855,24 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Debug text/log functions, savers and loaders hide behaviour bugs** (swapped
   arguments, wrong initial index -1 vs 0, wrong allocation sizes): a failed match
   is a prompt to re-read the original.
+
+- **A slot whose result no caller reads falls off the end with no `return`** (the
+  original function was `void`). If the image never sets eax on any return path of
+  a port that returns a pointer, declare it `void`; functions that set eax to 0/1
+  at their exits return `int ok`. In a function with an EH frame VC8 makes a
+  missing return error C4716: check the try output for compiler errors, since
+  fast-loop tools keep showing the old asm when a compile fails.
+- **A by-value struct built with `sub esp,N; mov eax,esp; mov [eax],...`** means a
+  user-written copy constructor.
+- **VC8 hoists a constant used many times into a callee-saved register;** turning
+  `!= k` tests into a `switch` (the `sub eax,k` form) removes it.
+- **`mov ecx,this` before a call to a function that ignores ecx** means the original
+  called it as a member: declare a small struct with the method plus a symbols alias.
+- **An address-taken value computed in branches and stored once is a register
+  temporary copied into the addressed local.** A `.rdata` float the image `fcomp`s
+  directly is a literal in the source (an extern global gives `fld; fcompp`).
+- **Dead parameter slots are reused for block-scoped locals of disjoint paths:**
+  put each path's locals in its own block.
+- **ofstream emulation:** an inline destructor on the stream type gives the EH
+  state; `int c[0x22]` not `char c[0x88]` avoids the `/GS` cookie; the stream test is
+  an inline `operator void *` returning `(state & 6) ? 0 : ios`.
