@@ -1835,3 +1835,23 @@ mostly header-less, so the lever is what else is defined in the unit.
   port must use the same deterministic zero-filled heap (the layer's fixed heap, with
   the loader reporting NT/XP), or behaviour (a soldier patrolling vs walking)
   diverges for reasons that are not in the code.
+
+- **"0 bytes differ" but still DIFF:** an inline constructor or destructor emitted
+  in the object and referenced through a thunk is compared there. Give it a symbols
+  line at its real address; that fixes it and adds a match. `[vc8]` **held** *(match)*.
+- **Check the `push N` size before every `new` against the port's struct size:**
+  it caught a real heap overflow (0x310 vs 0x3d0 per mission).
+- **A caller that sets ecx right before calling a port declared `__stdcall`** means
+  the callee is a member function.
+- **VC8's float overloads in `<math.h>`** (`sqrt(float)` -> `sqrtf` -> `(float)sqrt`)
+  leave the image's double rounding and stop tail merging; an explicit double `sqrt`
+  gets tail-merged. `[vc8]` **held** *(match)*.
+- **An inline `fnstcw/fistp qword` conversion** where neighbours call `__ftol2_sse`
+  means the target is `(unsigned)`.
+- **Savers: `delete[]`/`new T[n]` not `operator delete`/`operator new(n*size)`;**
+  a count the image gets by calling a tiny function must be called each time; an
+  update through a pointer (`unsigned *b = &banderas; *b |= 4;`) keeps the image's
+  load order.
+- **Debug text/log functions, savers and loaders hide behaviour bugs** (swapped
+  arguments, wrong initial index -1 vs 0, wrong allocation sizes): a failed match
+  is a prompt to re-read the original.
