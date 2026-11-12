@@ -1930,3 +1930,19 @@ mostly header-less, so the lever is what else is defined in the unit.
   pointer makes a later `return` re-read memory instead of folding a constant.
 - **A consistent displacement difference in otherwise equal aligned instructions is a
   struct layout bug** (a port with a struct four bytes short read the wrong fields).
+
+- **A store through a named local pointer is a scheduling barrier in VC8 and keeps
+  member stores in source order.** When VC8 reorders member stores whatever the source
+  order, write them through a pointer local to the member (`float *f = &c8; f[3] = 0;
+  ...`, `int *k = &x; *k = v;`); an inline helper (`*Pt(x) = v`) does not work, the
+  pointer must be a local of the function. Sweep it mechanically on single
+  `lhs = literal;` statements: 15 matches. `[vc8]` **held** *(match)*.
+- **Sweep "cached local -> member re-read" mechanically too** where the image reads
+  memory again. `[vc8]` **held** *(match)*.
+- **Find symbols lines at the wrong address (or at a thunk) by searching the image for
+  each DIFF function's object bytes with relocations wildcarded** (`elsewhere.py`):
+  two lines pointed at the wrong function.
+- **A full `make match` can catch a wrong callee that a single-file check missed;**
+  it shows as "0 bytes differ" on a relocation. A port calling the projecting
+  variant where the image calls the plain store (0x55aaa0 vs 0x55aa20) is also a
+  behaviour bug.
