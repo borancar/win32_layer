@@ -1911,3 +1911,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   parameter into a local when the image holds it in a callee-saved register across the
   first call; `(double)1.2f` for a double constant that is a widened float;
   `0.0f == p.x` (constant on the left) for `fld x; fldz; fucom`. `[vc8]` **held**.
+
+- **A load moved above a store into an output pointer in a member function** means
+  the output is the hidden return slot of a struct returned by value.
+- **Two adjacent float/int parameters whose slots the image reuses for spills or
+  locals are one by-value struct argument;** VC8 packs locals into a dead by-value
+  struct argument but not into dead scalar argument slots. `[vc8]` **held** *(match)*.
+- **dx/dy squared-length order:** put the difference in a 12-byte struct passed by value to
+  an inline square (`static inline float Cuad(Dif d) { return d.y*d.y + d.x*d.x; }`);
+  it matched four functions after 21 operand-order variants failed. `[vc8]` **held** *(match)*.
+- **x87 product order:** name the first product as a widened double
+  (`double t = (double)b1 * y;`) or widen the whole sum. `[vc8]` **held** *(match)*.
+- **Check `~` ports against byte-identical twins at the same address in the symbols
+  file:** the twin gives the exact source shape and exposes signature or
+  calling-convention errors (9 matches this way).
+- **`!(x >= 0.0f)` gives `fldz; fcomp; test ah,0x41; jnp`;** a call that leaves
+  `ecx = this` untouched is a member call on `this`; storing a 64-bit member through a
+  pointer makes a later `return` re-read memory instead of folding a constant.
+- **A consistent displacement difference in otherwise equal aligned instructions is a
+  struct layout bug** (a port with a struct four bytes short read the wrong fields).
