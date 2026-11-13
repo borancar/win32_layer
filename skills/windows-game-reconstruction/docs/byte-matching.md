@@ -1961,3 +1961,9 @@ mostly header-less, so the lever is what else is defined in the unit.
   can be a wrong `.rdata` constant.
 - **Switch:** `sub eax,0; je; sub eax,1; jne` is a switch with `case 0` and `default` alike; `test ah,5; jp` with
   the left operand loaded first means writing the other operand on the left.
+
+- **VC8 places compiler temporaries (an inline function's by-value parameter or return value, `$T`) into dead
+  argument slots, but never a named local.** A decompiler that prints `aN = ...` for a float stored to an argument
+  slot therefore tells you either the original reassigns that parameter, or the value is the parameter/return
+  temporary of a `__forceinline` helper (`Mandar(actor, id, d.Angulo(), dato)`; a `Cuad(a, b)` squared length).
+  `[vc8]` **held** *(match)*.
