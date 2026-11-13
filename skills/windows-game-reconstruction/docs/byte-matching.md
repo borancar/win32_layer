@@ -2268,12 +2268,12 @@ mostly header-less, so the lever is what else is defined in the unit.
   original's first bytes (`6a ff 68`) against an `__ehhandler$` label in the rebuilt listing: a port without
   the frame lacks a destructor (a helper class used as a plain object), a `new` written as a call, or a real
   constructor. One helper class with a one-store destructor accounted for a whole family of paint routines.
-  `[vc8]` **held** *(8 matches from one scan)*.
+  `[vc8]` **held** *(6 matches from one scan)*.
 - **Field loads in front of an inlined callee's test (`mov ecx,[p+0x14]; mov edx,[p+0x38]; ...; test
   [obj+4],1; je`)** are locals declared in the order of the loads and passed to an inline member that holds
   the test. Written inside the call the test comes first and the address arithmetic sinks into the branch;
   wrapped in a helper function (even `__forceinline`) the surrounding stores move. Each repeated block needs
-  its own locals. `[vc8]` **held** *(7 matches)*.
+  its own locals. `[vc8]` **held** *(6 matches)*.
 - **A dead 4-byte stack slot beside a spilled int** (the frame 4 bytes larger, nothing else different) is a
   two-int struct returned by value with one member kept in a register. `[vc8]` **held** *(match)*.
 - **A load between the stores of two constant pairs** is two small objects with constructors and a local
@@ -2287,4 +2287,4 @@ mostly header-less, so the lever is what else is defined in the unit.
   is emitted and compared. `[vc8]` **held** *(2 matches)*.
 - **The null unwind entry is often the class's own flag setter.** `flag = 0;` at the end of a routine or
   `flag = 1;` in a constructor was `Set(0, 0)` / `Set(1, 0)` of a setter whose other branch holds a static;
-  dump the original's unwind map to see a state with no action and no store. `[vc8]` **held** *(10 matches)*.
+  dump the original's unwind map to see a state with no action and no store. `[vc8]` **held** *(8 matches)*.
