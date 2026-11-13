@@ -2264,3 +2264,27 @@ mostly header-less, so the lever is what else is defined in the unit.
   tail.** The image's `mov edi,1; call base; mov eax,edi` block had no counterpart: the port answered 0 to
   everything. When a scanner lists a function for a missing sequence, check first whether the port has the
   call at all. **held** *(1 behaviour bug)*.
+- **Scan for functions whose original has an EH frame and whose port has none (and the reverse).** The
+  original's first bytes (`6a ff 68`) against an `__ehhandler$` label in the rebuilt listing: a port without
+  the frame lacks a destructor (a helper class used as a plain object), a `new` written as a call, or a real
+  constructor. One helper class with a one-store destructor accounted for a whole family of paint routines.
+  `[vc8]` **held** *(8 matches from one scan)*.
+- **Field loads in front of an inlined callee's test (`mov ecx,[p+0x14]; mov edx,[p+0x38]; ...; test
+  [obj+4],1; je`)** are locals declared in the order of the loads and passed to an inline member that holds
+  the test. Written inside the call the test comes first and the address arithmetic sinks into the branch;
+  wrapped in a helper function (even `__forceinline`) the surrounding stores move. Each repeated block needs
+  its own locals. `[vc8]` **held** *(7 matches)*.
+- **A dead 4-byte stack slot beside a spilled int** (the frame 4 bytes larger, nothing else different) is a
+  two-int struct returned by value with one member kept in a register. `[vc8]` **held** *(match)*.
+- **A load between the stores of two constant pairs** is two small objects with constructors and a local
+  declared between them; one array or a temporary in the call puts the load after all the stores. `[vc8]`
+  **held** *(match)*.
+- **Constructor stores that come before the EH state store, in an odd order (`[+0x80]=0; [+0x7c]=0;
+  [+0x84]=1; [+0x88]=1`)** are member objects with inline constructors in a real class, not statements in
+  the body. If the shared header's base class is declared too long for those members, declare a local base
+  of the right length under a second symbol name for the base's constructor and destructor, with the same
+  virtual list. A class with a virtual destructor defined elsewhere needs it declared, or the implicit one
+  is emitted and compared. `[vc8]` **held** *(2 matches)*.
+- **The null unwind entry is often the class's own flag setter.** `flag = 0;` at the end of a routine or
+  `flag = 1;` in a constructor was `Set(0, 0)` / `Set(1, 0)` of a setter whose other branch holds a static;
+  dump the original's unwind map to see a state with no action and no store. `[vc8]` **held** *(10 matches)*.
