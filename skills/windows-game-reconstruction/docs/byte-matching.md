@@ -2122,3 +2122,27 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Check which tree the native generator reads its symbol table from** before verifying a workspace tree that
   adds symbol names: a generator that derives the path from its own location needs a copy inside the workspace.
   A missing name shows only at run time, as an abort on first call.
+- **The same call in both arms has its common argument pushes hoisted above the test** (`fld y; sub esp,8;
+  test; fstp [esp+4]; ...; je <call>` with the pushes repeated once more for the fall-back path): write the
+  early return with the full call (`if (!k) return F(x, y); ...; return F(x, y);`), not one shared call after
+  the `if`. `[vc8]` **held** *(match)*.
+- **A shared failure block laid out before the success return:** give every failing test its own
+  `{ error = E; return 0; }`; the identical blocks are merged and the merged one lands where the last was
+  written. One `goto` label or one `&&` chain puts it after the success return. `[vc8]` **held** *(match)*.
+- **A result kept in its register across an `if` that proved it zero** (no `xor eax,eax` on the way out, the
+  saves pushed only inside the `if`): one result variable assigned in the nested `if`
+  (`if (d == 0) { if (c) d = F(); } return d;`). A `return d;` inside the block is turned into the constant.
+  `[vc8]` **held** *(match)*.
+- **`mov eax,K; push eax` in front of a call, with tests the compiler should have folded repeated:** the
+  argument is an inlined function's return value (`G(Decidir())`). The inlined copy may need other statement
+  forms than the standalone function compiled from the same source would (an early `if (e == K) return e;`
+  against a wrapping `if (e != K) { ... }`): keep an inline twin. `[vc8]` **held** *(match)*.
+- **One level of a recursive function inlined, then `mov [esp+4],arg; mov ecx,next; jmp <self>`:** VC8 turns
+  plain tail recursion into a loop; the image's shape comes from the function calling an inline twin that
+  calls the function back. `[vc8]` **held** *(match)*.
+- **`fstp tmp; fld tmp` on every return path of an inlined float function and once more at the store:** two
+  nested inline functions returning float (the outer one `if (e) return e->Inner(); return 0.0f;`).
+  `[vc8]` **held** *(closer)*.
+- **A cleanup call skipped by the failure branch** (the `je` lands after its `add esp`): the call is inside the
+  `if` in the source. Read branch targets against the stack cleanups before blaming scheduling; the port had
+  a behaviour bug here (the working directory restored when it had never been changed).
