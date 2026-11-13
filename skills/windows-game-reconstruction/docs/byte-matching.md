@@ -1998,3 +1998,14 @@ mostly header-less, so the lever is what else is defined in the unit.
   double before the subtraction: `float a = A(); double b = B(); a = a - b;`. Every `a - B()` form spills a QWORD
   temporary, and `/fp:fast` gives the DWORD spill but drops rounding stores the image keeps. It holds only while
   the next callee's body is not visible in the file (first bullet). Seven matches. `[vc8]` **held** *(match)*.
+
+- **Dynamic initialisers and their exit stubs match as plain functions, in bulk.** `mov ecx,OBJ; call ctor; push STUB;
+  call atexit` is `g.T::T(args); atexit(Stub);` with the explicit constructor call (a placement `new` plus a second
+  call brings an EH frame and a cookie), and the stub `mov ecx,OBJ; jmp dtor` is `g.T::~T()` called qualified. Porting
+  the registration with the stubs (instead of leaving it out as "exit behaviour") gave 71 identical functions in one
+  round, half of them new. `[vc8]` **held** *(match)*.
+- **Group functions by image code with immediates and displacements wildcarded** (`twins.py`): twin groups multiply
+  the reward of one match, and families of generated code (initialisers, serialisers) show up at once. A template
+  instantiation compiles like the hand-written copy of its body, so folding twins into a template only pays where
+  the image's shape comes from an inline member of the shared class (a non-folded `new T*[n]` with the count as an
+  inline function's parameter, class temporaries built in the argument area).
