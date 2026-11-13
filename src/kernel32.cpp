@@ -59,7 +59,7 @@ void w32l_plat_debug(const char *fmt, ...)
 
     if (on < 0) {
         const char *d = getenv("W32L_PLATFORM_DEBUG");
-        on = d && *d && *d != '0';
+        on = d && *d && *d != '0' ? (*d == '2' ? 2 : 1) : 0;
     }
     if (!on)
         return;
@@ -88,10 +88,20 @@ void w32l_time_trace(const char *what, unsigned long long v, void *ra)
     static int on = -1;
     if (on < 0) {
         const char *d = getenv("W32L_TIMETRACE");
-        on = d && *d && *d != '0';
+        on = d && *d && *d != '0' ? (*d == '2' ? 2 : 1) : 0;
     }
-    if (on)
-        fprintf(stderr, "TT %s %llu %p\n", what, v, ra);
+    if (on) {
+        fprintf(stderr, "TT %s %llu %p", what, v, ra);
+        if (on == 2 && what[0] == 'p') {
+            uintptr_t *sp = (uintptr_t *)__builtin_frame_address(0);
+            for (int i = 0; i < 400; i++) {
+                uintptr_t w = sp[i];
+                if (w + 0x300000 > (uintptr_t)ra && w < (uintptr_t)ra + 0x300000)
+                    fprintf(stderr, " %lx", (unsigned long)w);
+            }
+        }
+        fprintf(stderr, "\n");
+    }
 }
 
 DWORD WINAPI GetTickCount(void)

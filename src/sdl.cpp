@@ -13,6 +13,7 @@
  *                   (the clock paces the frame either way; W32L_FPS sets it)
  *   W32L_AUDIO_DUMP=<file>  write the mixed audio as raw stereo float
  */
+extern void w32l_time_trace(const char *what, unsigned long long v, void *ra);
 #include "platform.h"
 #include <dinput.h>
 
@@ -329,6 +330,7 @@ static void w32l_frame_record(const uint8_t *pixels, int32_t pitch, int32_t w,
         if (at && *at && to && *to && (uint32_t)atoi(at) == w32l_present_count)
             snprintf(w32l_framedump_path, sizeof w32l_framedump_path, "%s", to);
     }
+    w32l_time_trace("present", w32l_present_count, 0);
     if (w32l_framelog) {
         uint64_t hash = w32l_frame_hash(pixels, pitch, w, h, palette);
         fprintf(w32l_framelog, "%u %u %016llx\n", (unsigned)w32l_present_count,
@@ -657,6 +659,7 @@ static void w32l_frame_record32(const uint32_t *rgb, int32_t w, int32_t h)
         if (path && *path && !w32l_framelog)
             w32l_framelog = !strcmp(path, "-") ? stderr : fopen(path, "w");
     }
+    w32l_time_trace("present", w32l_present_count, 0);
     if (w32l_framelog) {
         uint64_t hash = 1469598103934665603ULL;
         size_t   i, n = (size_t)w * (size_t)h;
