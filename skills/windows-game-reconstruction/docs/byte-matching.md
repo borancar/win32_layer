@@ -2288,3 +2288,26 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **The null unwind entry is often the class's own flag setter.** `flag = 0;` at the end of a routine or
   `flag = 1;` in a constructor was `Set(0, 0)` / `Set(1, 0)` of a setter whose other branch holds a static;
   dump the original's unwind map to see a state with no action and no store. `[vc8]` **held** *(8 matches)*.
+- **A table lookup whose result lands in the table pointer's own register (`mov ecx,[ecx+0x28];
+  mov ecx,[ecx+edx*4]`)** is a nested conditional expression (`v < 100 ? (idx[v] < n ? tab[idx[v]] : 0)
+  : 0`), not `if (...) return ...; return 0;`: a dozen other spellings put it in the index's register.
+  When the original has an out-of-line copy of the same lookup that already matches, copy its text into
+  the inline. `[vc8]` **held** *(2 matches, 3 bytes off before)*.
+- **Several inlined blocks in one function filling a small array in source order** (constant stores first,
+  each loaded word stored at once): one array at function scope, assigned element by element in every
+  block. An initialised array per block shares the slot but lets the stores sink below the later loads.
+  The frame size tells whether there is one array or two. `[vc8]` **held** *(match)*.
+- **Where a local's initialisation sits decides jump threading.** `if (x) A(); else B();` followed by
+  `if (x)` is split into the two branches only when nothing lies between; `int k = 0;` declared after it
+  leaves one merged indirect call plus `test; mov [k],0; je`, declared before it the store moves up and
+  the call is duplicated per branch. `[vc8]` **held** *(3 matches)*.
+- **A shared helper taking a maker function hides an EH frame.** If sibling functions each have the frame
+  of a `new` and differ only in the class made, write the body once as a macro over the `new` expression;
+  a helper with a function pointer has no frame at the call site. `[vc8]` **held** *(6 matches)*.
+- **A member's store that sits after the argument pushes of a call made on the stored object** (`call
+  ctor; ...pushes...; mov [member],eax; call`): the call is made through the member read back after the
+  store (`T *a = new T(...); member = a; member->Set(x, y, z);`). Calling on the local, or assigning
+  inside the receiver expression, puts the store in front of the pushes. `[vc8]` **held** *(2 matches)*.
+- **Trap: a variant loop that prints only the tail of the compare** drops the `DIFF` line of the early
+  functions of a long file, and they look matched. Grep the whole output for the symbol, and run the full
+  match before recording anything as identical. *(one false match caught)*.
