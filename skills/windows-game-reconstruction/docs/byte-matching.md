@@ -2231,3 +2231,12 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Loop indexing `[reg-0xc]` off one member pointer and `[idx+global]` for every table** is the member arrays
   named in full each time (`cuenta[i]`, `indice[i]` as members); `int *cuenta = ...` locals become separate
   induction pointers and pointer differences. `[vc8]` **held** *(match)*.
+- **A port whose code bytes are all equal but whose unwind table differs** (the comparer reports zero differing
+  bytes and a moved `__unwindtable` label) lacks a null unwind entry: some run of plain stores in it is a
+  callee with a dead static, inlined. Call an inline copy of that callee. `[vc8]` **held** *(match)*.
+- **Two locals zeroed at entry whose stack slots are swapped (displacement bytes only):** declare them in the
+  other order. Check this before anything else on a 2-byte difference. `[vc8]` **held** *(2 matches)*.
+- **Ports of one family repeat one mistake.** Two handlers called the debug-info member on the message's
+  argument instead of `this`; the byte diff showed it as `mov ecx,<arg>` against `mov ecx,<this>`. When a
+  register difference sits on a `mov ecx` before a call, read it as a possible wrong receiver first, then grep
+  the other ports for the same spelling. **held** *(2 behaviour bugs)*.
