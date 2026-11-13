@@ -502,8 +502,10 @@ static int32_t w32l_queue_take(MSG *out, int32_t remove)
     return got;
 }
 
+extern void w32l_time_trace(const char *what, unsigned long long v, void *ra);
 BOOL WINAPI PostMessageA(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
+    w32l_time_trace("post", msg, __builtin_return_address(0));
     w32l_queue_post(hwnd, msg, wp, lp);
     return TRUE;
 }
@@ -513,8 +515,10 @@ void WINAPI PostQuitMessage(int32_t code)
     w32l_queue_post(NULL, WM_QUIT, (WPARAM)code, 0);
 }
 
+extern void w32l_time_trace(const char *what, unsigned long long v, void *ra);
 BOOL WINAPI PeekMessageA(LPMSG msg, HWND hwnd, UINT lo, UINT hi, UINT remove)
 {
+    w32l_time_trace("peek", remove, __builtin_return_address(0));
     (void)hwnd; (void)lo; (void)hi;
     w32l_host_pump();
     return w32l_queue_take(msg, (remove & PM_REMOVE) != 0);
@@ -538,6 +542,7 @@ BOOL WINAPI TranslateMessage(const MSG *msg)
 
 LRESULT WINAPI DispatchMessageA(const MSG *msg)
 {
+    w32l_time_trace("disp", msg->message, __builtin_return_address(0));
     WNDPROC proc = w32l_window_proc(msg->hwnd);
 
     if (!proc)

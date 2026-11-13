@@ -82,18 +82,35 @@ void  WINAPI SetLastError(DWORD err) { w32l_last_error = err; }
 /* All four clocks are one clock, so that under W32L_LOCKSTEP the game's
  * frame clock, its animation ticks and its timestamps agree with the
  * pump count and with nothing else. See platform.h. */
+/* W32L_TIMETRACE=1: every clock query and its answer on stderr, with the caller. */
+void w32l_time_trace(const char *what, unsigned long long v, void *ra)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *d = getenv("W32L_TIMETRACE");
+        on = d && *d && *d != '0';
+    }
+    if (on)
+        fprintf(stderr, "TT %s %llu %p\n", what, v, ra);
+}
+
 DWORD WINAPI GetTickCount(void)
 {
-    return (DWORD)(w32l_host_clock_ns() / 1000000ULL);
+    DWORD v = (DWORD)(w32l_host_clock_ns() / 1000000ULL);
+    w32l_time_trace("tick", v, __builtin_return_address(0));
+    return v;
 }
 
 DWORD WINAPI timeGetTime(void)
 {
-    return (DWORD)(w32l_host_clock_ns() / 1000000ULL);
+    DWORD v = (DWORD)(w32l_host_clock_ns() / 1000000ULL);
+    w32l_time_trace("tgt", v, __builtin_return_address(0));
+    return v;
 }
 
 void WINAPI Sleep(DWORD ms)
 {
+    w32l_time_trace("sleep", ms, __builtin_return_address(0));
     if (w32l_host_lockstep() && w32l_host_on_game_thread()) {
         w32l_host_clock_advance_ms(ms);
         return;
@@ -107,6 +124,7 @@ void WINAPI Sleep(DWORD ms)
 BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER *out)
 {
     out->QuadPart = (LONGLONG)w32l_host_qpc_ns();
+    w32l_time_trace("qpc", (unsigned long long)out->QuadPart, __builtin_return_address(0));
     return TRUE;
 }
 
