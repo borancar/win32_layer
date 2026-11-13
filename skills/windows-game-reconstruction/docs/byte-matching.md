@@ -2103,3 +2103,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   `else f = 0`. `[vc8]` **held** *(match)*.
 - **Register-keep scans have false positives:** `or ecx,-1` and `lea ecx,[ecx+0]` after a call are a write and a
   pad, not reads.
+- **A block at the end of a reader that repeats a small list routine is that routine inlined**, not a call: scan
+  the unmatched ports for the routine's signature instructions and give them an inline copy with the stores in
+  the image's order (Commandos: the sorted subscriber insert at the end of three `Leer` functions). `[vc8]`
+  **held** *(438 to 15 bytes)*.
+- **`push dtor; push ctor; push n; push size; call` after an overflow-checked allocation is `new T[n]`** with a
+  declared constructor and destructor, never a hand-written cookie and loop; `call f; mov ecx,eax; call g` with no
+  `lea` of a named object is a temporary (`v.Token(i).Numero()`). clang refuses a temporary for a non-const
+  reference parameter: name it under a compiler guard. `[vc8]` **held**.
+- **Locals of class type are reused late in a function** (a point zeroed again, a box refilled, all values
+  computed in registers before any store): `c = Caja(...); p = Punto();` through inline constructors; a
+  constructor written `x = y = 0` stores y first. A pointer stored into the slot of a dead address-taken local was
+  assigned there in the source; the compiler never packs such slots itself. `[vc8]` **inferred** *(closer, not
+  matched)*.
+- **`x << 1` and `x * 2` are different expressions to VC8's common-subexpression pass:** a global written
+  `paso << 1` is not shared with `short *` steps by the same count; `paso * 2` is merged with them and homed in a
+  stack temporary. `[vc8]` **held** *(loop bodies matched)*.
+- **Check which tree the native generator reads its symbol table from** before verifying a workspace tree that
+  adds symbol names: a generator that derives the path from its own location needs a copy inside the workspace.
+  A missing name shows only at run time, as an abort on first call.
