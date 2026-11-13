@@ -2046,7 +2046,29 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **`fld st(i); fmul [m]` where ours gives `fld [m]; fmul st(i)`:** read the struct members through a float pointer
   (`float *k = &box->k11; x * k[1] - y * k[0]`), or, inside an inline helper, name every product as a double in the
   image's stack order with the first one compound (`double t = x; t *= m[0];`). `[vc8]` **held** *(match)*.
-- **A constant loaded once and kept across stores through pointers, and a caller-saved register live across a
-  call, are whole-program (`/GL`) knowledge:** `extern const`, `__restrict` and local copies do not reproduce them.
-  **Open:** the order in which dead x87 registers are popped at a merge point (`fstp st(1)` repeated against
+- **A caller-saved register live across a call is NOT `/GL`: the callee was compiled earlier in the same file**
+  (Commandos round 59: seven ports matched that six rounds had filed as whole-program code). At plain `/O2` VC8
+  records which registers each function it has already compiled leaves untouched, and its later callers in that
+  translation unit rely on it: no `mov ecx,esi` before the second member call, `this` never saved, a pointer kept in
+  `ecx`/`edx` across the call (`call dtor; push ecx; call delete`), `mov eax,[ecx]; jmp edx` after a call. A port
+  that sits in a file of its own, or reaches the callee through a stand-in declaration under another name, cannot
+  match whatever its source says. Fix the file, not the function: put the caller after the real callee, in the
+  callee's class. The callee itself need not be byte-identical. The same placement also explains "our port repeats
+  three stores the image seems to have inlined": it is the neighbour called once and inlined once. To find
+  candidates, scan the image of every unmatched function for `ecx`/`edx` read after a `call` without a write in
+  between (treat `push ecx` as a slot reservation and stop at branch targets). Arguments passed in registers to a
+  non-exported function remain `/GL`. `[vc8]` **held** *(match)*.
+- **A float literal used by several comparisons is loaded once and stays on the x87 stack across pointer stores;**
+  an `extern float`/`extern const float` stand-in or a local copy is reloaded or spilled. Write the literal at
+  every use. While a wrong stand-in is in place a comparison sweep converges on the wrong operand order, so redo
+  the neighbouring comparisons after replacing it. `[vc8]` **held** *(match)*.
+- **"The image re-reads a parameter from its stack slot" where every source form keeps it in a register or folds
+  it: the variable read is an unset local, homed by VC8 in that dead argument slot.** `int r; if (p) r = p->F(...);
+  if (!r ...)` reads the last argument's slot on the path that skips the call; `int r; if (z != 0x47) r = 1;
+  if (r == 1) ...` reloads `z` and compares it with 1 after `cmp eax,0x47`. Keep the image's value for other
+  compilers behind a compiler guard. `[vc8]` **held** *(match)*.
+- **A parameter the port passes on may be the wrong one.** `mov ecx,[esp+N]` between pushes: recount the offset
+  with the pushes already made; one port passed its first parameter where the image passes the unnamed second one
+  (a behaviour bug hidden behind "register allocation"). `[vc8]` **held** *(match)*.
+- **Open:** the order in which dead x87 registers are popped at a merge point (`fstp st(1)` repeated against
   `fstp st(2); fstp st(0)`), the last 27 bytes of one port.
