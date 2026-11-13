@@ -1255,6 +1255,47 @@ an item says otherwise.
   callee-saved pushes below the early exits (0x610870). A vptr store that falls
   between two runs of field stores: the later run as a member array cleared by a
   loop, or the earlier run as member sub-objects (0x5006b0). **Held.**
+- **Constructors written as functions fall in one compile once they are real
+  classes; read the class off the constructor.** The order of the stores is the
+  class: base constructor call, vtable store, then members in declaration order
+  (a member initialised from an argument in the initialiser list sits before the
+  constructor call of the member declared after it), then the body. An EH state
+  store marks each base or member that has a destructor; the unwind funclets in
+  front of the handler (`mov ecx,[ebp-N]; add ecx,off; jmp dtor`) give the
+  member offsets and destructor addresses. A state that is never stored means
+  nothing can throw after that member (a C function such as `sscanf` does not
+  count), not that the member has no destructor. A run of member stores placed
+  after the last state store and before body stores of lower offsets is body
+  text, not a member with a constructor. Give the base and member functions the
+  addresses they already have under new names (second symbol lines) and keep
+  the old function name as a plain line when other files still call it
+  (0x623210, 0x5676d0, 0x58e3b0, 0x5cfbe0, 0x586910). **Held, five in a row.**
+- `call DWORD PTR [vtable]` (the vtable's absolute address) in a constructor or
+  destructor: a virtual call on `this` written inside an inline member that the
+  constructor or destructor calls. Written directly in the destructor the
+  compiler binds it statically (`call func`); through the inline member the
+  call stays virtual and the optimiser folds the vptr it has just stored
+  (0x5862b0). An inline `~Base() {}` shows as a bare vtable store on the normal
+  path while the unwind funclet jumps to its out-of-line copy.
+- `lea eax,[arg]; lea ecx,[member]; push eax; call` (the argument computed
+  before the receiver, pushed after it): the call sits in an inline
+  constructor or wrapper of the member (`Nombre(const char *s) { Poner(s); }`),
+  whose parameter is a temporary first. A direct call pushes the argument
+  before loading `ecx` (0x5cfbe0).
+- `new T[n]` with `mul`/`seto`/`neg`/`or` and a call of the vector constructor
+  iterator taking a constructor address: `T` has a constructor and no
+  destructor; the out-of-line constructor copies it points at are the inline
+  constructors of the element types (0x586910). When giving an existing struct
+  a constructor would change other functions of the file, derive an element
+  type with the constructor and allocate that.
+- A local class that declares a virtual destructor makes the compiler emit the
+  deleting destructor beside the vtable. Compare it with the image's: when the
+  image's version has the base destructor inline, define the base's destructor
+  inline in the class too (0x58b1d0, 0x49a940), or the emitted one differs.
+- Trap: a source copied into the tree with its old modification time (rsync
+  `-a`) is older than an object built from another version of it; make keeps
+  the stale object and the function looks absent or identical. Touch what you
+  copy or delete the object.
 
 ## 7. Register allocation: the measured model
 
