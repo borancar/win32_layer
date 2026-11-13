@@ -2027,3 +2027,26 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A single-use `(int)` conversion is forward-substituted into its use and reorders the conversion calls;** results
   stored in small structs (`a.x = (int)...`) keep the calls in source order. The emission order of several
   single-use integer temporaries is not their source order: sweep the statement permutations (120 for five).
+- **Flip float comparisons mechanically before anything else** (Commandos round 58: five matches, 73 ports closer).
+  The operand written on the left is loaded first, which fixes the test mask (`test ah,5; jp` against `test ah,0x41;
+  jne`) and which value stays on the x87 stack: `fld A; fld B; fcom st(1); fstp st(1)` with B used afterwards is
+  `A > B`, not `B < A`. `x < y` to `y > x` is behaviour-neutral, so a script can flip every comparison of every
+  differing port one at a time and keep what lowers the byte difference; restrict the pattern to whole operands
+  between `(`/`&&`/`||` and `)`/`&&`/`||` so that `a < b + 1` is never touched. `[vc8]` **held** *(match)*.
+- **A stand-in `extern float` for a `.rdata` constant is a guess that shows in the compare.** `fcomp DWORD PTR [K]`
+  against a float on the stack is the float literal; `fld DWORD PTR [K]; fcomp st(i)` is an `extern float`;
+  `fcomp QWORD PTR [K]` with a float-valued double is the float literal against a double expression. Swap the
+  stand-ins of one file for literals, compare the file's differing list, and keep per function what helped.
+  `[vc8]` **held** *(match)*.
+- **`mov reg,ecx` at entry and `mov ecx,reg` before calls to helpers that never read `ecx`:** the function and those
+  helpers are members of one class, not free `__stdcall` functions. **One result variable** (`int r = 0; ... r = 1;
+  ... return r;`) gives the zero register reused for `return 0` and for zero arguments. **A tail shared by two
+  branches in the image was written in both branches;** written once after the if/else it is duplicated.
+  `[vc8]` **held** *(match)*.
+- **`fld st(i); fmul [m]` where ours gives `fld [m]; fmul st(i)`:** read the struct members through a float pointer
+  (`float *k = &box->k11; x * k[1] - y * k[0]`), or, inside an inline helper, name every product as a double in the
+  image's stack order with the first one compound (`double t = x; t *= m[0];`). `[vc8]` **held** *(match)*.
+- **A constant loaded once and kept across stores through pointers, and a caller-saved register live across a
+  call, are whole-program (`/GL`) knowledge:** `extern const`, `__restrict` and local copies do not reproduce them.
+  **Open:** the order in which dead x87 registers are popped at a merge point (`fstp st(1)` repeated against
+  `fstp st(2); fstp st(0)`), the last 27 bytes of one port.
