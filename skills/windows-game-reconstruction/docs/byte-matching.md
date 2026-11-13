@@ -1946,3 +1946,18 @@ mostly header-less, so the lever is what else is defined in the unit.
   it shows as "0 bytes differ" on a relocation. A port calling the projecting
   variant where the image calls the plain store (0x55aaa0 vs 0x55aa20) is also a
   behaviour bug.
+
+- **A faithful decompiler (kuna with the stripped-exe fixes) is the best source of the original's structure:**
+  expression nesting and operand order, local types, do-while index loops, statement order and widened-float
+  constants (`0.800000011920929` is `(double)0.8f`). Rewriting a near-miss port to follow its output produced 21
+  matches in one round, and diffing its tested masks, returned variables and dropped call results against the port
+  found 4 real behaviour bugs in about 30 functions (wrong flag mask 0x100 vs 0x1000, a returned `visto` instead of
+  `ok`, a discarded smoothing result). `[vc8]` **held** *(match)*.
+- **`<math.h>` float overloads (`sqrt(float)`, `fabs(float)`, `cos(float)`) leave a fingerprint:** a double
+  `fstp t; fld t; fstp t; fld t` round trip after the x87 call that no hand-written inline reproduces.
+- **A temporary that seems to sit in a dead argument slot usually comes from an inline function's by-value
+  parameter,** not from a scalar local reused by the compiler.
+- **A bytematch "N bytes differ" count can mislead:** relocated constants are excluded, so a "0 bytes differ" DIFF
+  can be a wrong `.rdata` constant.
+- **Switch:** `sub eax,0; je; sub eax,1; jne` is a switch with `case 0` and `default` alike; `test ah,5; jp` with
+  the left operand loaded first means writing the other operand on the left.
