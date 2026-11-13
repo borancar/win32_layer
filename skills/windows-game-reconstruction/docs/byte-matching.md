@@ -2146,3 +2146,14 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A cleanup call skipped by the failure branch** (the `je` lands after its `add esp`): the call is inside the
   `if` in the source. Read branch targets against the stack cleanups before blaming scheduling; the port had
   a behaviour bug here (the working directory restored when it had never been changed).
+- **A loop that re-tests the count at its top on every pass and jumps back on a constant bound**
+  (`cmp i,[n]; jge out; ...; add i,1; cmp i,K; jl top`): the condition is `i < K && i < n`, the constant first.
+  The first test folds away on entry and the loop is rotated on the constant. `i < n` with a `break` on the
+  constant inside gives the mirror image. One port had read this shape as "count above zero, then all K"; the
+  image stops at the count. `[vc8]` **held** *(three matches)*.
+- **A zero result held in a callee-saved register across a tail-jumped call:** `int r = 0; ... if (d) r = F(d);
+  ... return r;`; `return F(d);` in the block folds the zero into `xor eax,eax` at the other exit.
+  `[vc8]` **held** *(closer)*.
+- **A frame-compare replay can be load-sensitive:** a run made while another build was using the machine
+  differed from the reference in hundreds of frames for an unchanged tree, and matched when repeated alone.
+  Repeat a differing run before bisecting.
