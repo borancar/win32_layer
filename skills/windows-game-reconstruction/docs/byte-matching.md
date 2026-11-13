@@ -2184,3 +2184,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   if (handled) { ... } else { r = Base(...); } return r;` with `r` declared before the statics. A script that
   rewrites every port ending `return 0; } return X;` this way matched 3 of 20 at once. `[vc8]` **held**
   *(three matches)*.
+- **Read a small vector class off the way its three floats are copied.** `fld [a]; fstp [b]` three times is a
+  user-written copy constructor (by-value arguments built in place with `mov eax,esp; fstp [eax]`, returned
+  objects); three `mov` through integer registers is the default `operator=`. Differences stored into
+  temporaries and then copied float by float are a subtraction that returns through the three-float
+  constructor (`return V(x - o.x, ...)`: the temporaries are the constructor's parameters); differences stored
+  straight into the result are the named-result form (`V r; r.x = ...; return r;`). One file can use both.
+  Give the port ONE class with exactly those members instead of member-wise float code: three ports matched
+  and four came close in one file once the class existed. `[vc8]` **held** *(four matches)*.
+- **Three scalar float parameters that are later read or written as a block** (`lea eax,[esp+arg];
+  mov ecx,[eax]`) are one object passed by value; change the signature (and the symbol name) and pass the
+  object from every caller. A caller became identical from that alone. A class with a user copy constructor
+  is passed by invisible reference under the Itanium ABI: declare the same members in every file that calls
+  it, or the native build disagrees with itself. `[vc8]` **held**.
+- **A hand-made "variant without X" helper in a port is often the real callee inlined with a constant.** When
+  the image shows the callee's whole body after a by-value copy of the argument, call the real function
+  (`F(0, pos)`), define it earlier in the file and delete the helper. `[vc8]` **held**.
+- **Count the null unwind entries:** each one is a separate inlined call of a callee with a dead static. Two
+  entries mean the source called it twice (`if (!A) P(1); else if (!B) P(1); else {...}`), not once behind
+  `||`; the count also fixes the block layout. `[vc8]` **held** *(match)*.
+- **A caller inlines a callee the image calls, though both are in one file:** the callee's port is not yet the
+  image's function (size or EH shape differs). Match the callee first; do not fight the caller. `[vc8]`
+  **held** *(diagnosis)*.
