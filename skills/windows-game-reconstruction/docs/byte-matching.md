@@ -1973,3 +1973,28 @@ mostly header-less, so the lever is what else is defined in the unit.
   image byte for byte still lost the first letter of the NEXT slot's name because the stand-in `read()` kept the CR
   and the (identical) line reader moved on by 2. Typing replays only ever covered slot 0: prepare the user directory
   (index plus slot files) and dump what the game reads back.
+
+- **Translation-unit visibility is a matching lever.** A callee whose body the compiler has seen in the same file
+  changes its callers even without `/GL`, with `__declspec(noinline)`, and when the definition comes after the
+  caller: x87 evaluation order, register choice and argument schedule move, and small callees get inlined where the
+  image calls them. Sweep it mechanically: for each differing function compile its file with every other external
+  definition removed (members) or reduced to a prototype (free functions) and report what becomes identical or
+  closer (`alone.py`); then move the callee into a file of its own. Two direct matches and nine large drops in one
+  pass. `[vc8]` **held** *(match)*.
+- **Locals of a `__forceinline` helper die at its end and their slots are reused; an address-taken local of the
+  function itself never shares its slot.** A frame that holds only one vector, with a later QWORD spill over its
+  first two members (a decompiler prints `CONCAT44`), is the vector living in a helper that returns the scalar
+  (`static __forceinline double Rumbo(V *t, O *o) { V d; ...; return d.Largo(); }`). The helper's parameters also
+  schedule both pointer loads before the first `fld`. `[vc8]` **held** *(match)*.
+- **A floating-point constant as a literal and as an `extern double` are scheduled differently:** `g + (a + 180.0)`
+  with the literal loads the member first; the same expression with an extern constant keeps the other order. Try
+  both spellings before permuting the expression.
+- **A one-word struct passed by value is not packed like a scalar argument.** With a trailing argument as a
+  one-word by-value struct (or union) the compiler reuses the dead argument slots for temporaries differently than
+  with an `int`/`float` there: the instructions can match while the slot assignment does not. Which arguments are
+  structs is part of the signature to search.
+- **`/fp:precise`: a float call result subtracted from a second call's result.** `call A; fstp DWORD [a]; call B;
+  fsubr DWORD [a]` (the first value kept as a float in its slot) only comes from naming the second result as a
+  double before the subtraction: `float a = A(); double b = B(); a = a - b;`. Every `a - B()` form spills a QWORD
+  temporary, and `/fp:fast` gives the DWORD spill but drops rounding stores the image keeps. It holds only while
+  the next callee's body is not visible in the file (first bullet). Seven matches. `[vc8]` **held** *(match)*.
