@@ -2072,3 +2072,34 @@ mostly header-less, so the lever is what else is defined in the unit.
   (a behaviour bug hidden behind "register allocation"). `[vc8]` **held** *(match)*.
 - **Open:** the order in which dead x87 registers are popped at a merge point (`fstp st(1)` repeated against
   `fstp st(2); fstp st(0)`), the last 27 bytes of one port.
+- **A port hundreds of bytes off with the right logic: the source named the whole member path in every condition
+  and never cached it** (Commandos round 60: 352, 682 and 260 bytes to zero). Signs in the image: the table entry is
+  tested with `cmp [base+idx],0` before the `lea` of its address, the element's first word is reloaded after each
+  store through `this`, and a later call argument recomputes the whole chain. Write one `&&` chain
+  (`tabla && n && n > i && tabla[i].p && tabla[i].n > paso`) and spell `tabla[i].p[paso].campo` at every use; the
+  compiler's own CSE then produces the image's registers. A port with `T *tr = &tabla[i]; int paso = ...;` locals
+  cannot be nudged there. `[vc8]` **held** *(match)*.
+- **`add reg,8` on an object pointer, two `fsub`/`fstp` pairs, then `fld a; fld b; fld st(1); fmulp st(2),st;
+  fmul st(0),st; faddp`:** an inline vector `operator-` (temporary built by a three-float constructor) and an inline
+  squared-length member called on the result. Scalar `dx`/`dy` locals and float-taking helpers give other product
+  orders. Which temporary lands in a dead argument slot follows creation order: naming one component first inside
+  the operator (`float a = x - o.x; return V(a, y - o.y, z - o.z);`) moves it. `[vc8]` **held** *(match)*.
+- **Two store/reload pairs after `__CIsqrt` or `fabs`:** the C++ `<math.h>` float overload (`l = sqrt(l)` with a
+  float), not `(float)sqrt((double)l)`. `[vc8]` **held** *(match)*.
+- **Array or struct for three float locals shows in the code:** `v[0] *= k; v[1] *= k;` on an array gives
+  `fld k; fld st(0); fmul [v0]`, the same on struct members loads the member first in every written form. The
+  order the zeros were assigned (`x = y = z = 0.0f` stores z first) also fixes the order of later sums of products
+  over those elements, regardless of how the sum is written. `[vc8]` **held** *(match)*.
+- **An `__asm` body is a visible callee too.** A non-naked function whose body is an `__asm` block tells the
+  compiler which registers survive; a caller compiled after it in the same file keeps a pointer in `edx` across the
+  call, while calls to `naked` routines reload. Port the caller into the assembly file, after the routine, as a
+  member of the same class when the image loads `ecx` before each call. clang rejects naked member functions: give
+  the member's mangled name to a free naked function with an asm label under a compiler guard. `[vc8]` **held**
+  *(match)*.
+- **A recursive call goes through the function's incremental-link thunk in the image;** compared as an in-function
+  label it differs by itself. Declare a second name at the thunk's address and call that. `[vc8]` **held** *(match)*.
+- **Jump-table blocks in address order are the `case` labels in source order;** a flag that is zero on the false
+  path, with the false block after the `ret`, is the condition itself (`int f = a && b; if (f) {...}`), not an
+  `else f = 0`. `[vc8]` **held** *(match)*.
+- **Register-keep scans have false positives:** `or ecx,-1` and `lea ecx,[ecx+0]` after a call are a write and a
+  pad, not reads.
