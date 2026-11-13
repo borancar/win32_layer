@@ -2259,7 +2259,7 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Variant runners must show compile errors.** A failed compile leaves the previous object, so every
   variant scores the same and looks like "the compiler folds every spelling". Print the compiler's error
   lines in the scoring loop, and score by the byte count, not by a count of differing listing lines.
-  **held** *(cost an hour of false "unchanged" results)*.
+  **held** *(two rounds of variants read as "unchanged" before it was seen)*.
 - **A handler port that never reaches the base call is a behaviour bug the byte diff shows as a missing
   tail.** The image's `mov edi,1; call base; mov eax,edi` block had no counterpart: the port answered 0 to
   everything. When a scanner lists a function for a missing sequence, check first whether the port has the
