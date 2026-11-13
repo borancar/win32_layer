@@ -1967,3 +1967,9 @@ mostly header-less, so the lever is what else is defined in the unit.
   slot therefore tells you either the original reassigns that parameter, or the value is the parameter/return
   temporary of a `__forceinline` helper (`Mandar(actor, id, d.Angulo(), dato)`; a `Cuad(a, b)` squared length).
   `[vc8]` **held** *(match)*.
+
+- **A native-only behaviour bug on a path of byte-identical functions: suspect the native CRT/runtime stand-ins
+  first** (text-mode `_read` turning CR LF into LF, ignored open flags). A save-name editor whose logic matched the
+  image byte for byte still lost the first letter of the NEXT slot's name because the stand-in `read()` kept the CR
+  and the (identical) line reader moved on by 2. Typing replays only ever covered slot 0: prepare the user directory
+  (index plus slot files) and dump what the game reads back.
