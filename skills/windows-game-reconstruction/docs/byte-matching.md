@@ -2009,3 +2009,21 @@ mostly header-less, so the lever is what else is defined in the unit.
   instantiation compiles like the hand-written copy of its body, so folding twins into a template only pays where
   the image's shape comes from an inline member of the shared class (a non-folded `new T*[n]` with the count as an
   inline function's parameter, class temporaries built in the argument area).
+
+- **Take a large differing port apart by reading three things before permuting anything** (Commandos round 57, one
+  1859-byte port down to 19 bytes): (1) the *slot layout*: VC8 packs locals with disjoint lifetimes into shared
+  slots, largest first, so adjacent float pairs that later hold int pairs are two-member structs, not scalars (compare
+  the listing's `_x$ = -N` lines with the image's offsets; scalars leave a bigger frame); (2) the *x87 stack order*
+  with a diff that keeps `st(N)` (a diff that wildcards numbers reports such lines equal): the order loop-carried
+  floats are preloaded is the order of their first assignment in the IR, so an image that stores x, y but preloads
+  y first built the pair through an inline constructor with float parameters (arguments evaluated right to left,
+  stores in member order); (3) *values reloaded from argument slots* in mid-function: they are fresh parameters of a
+  `__forceinline` helper (a loop with its count and pointer, a setter whose by-value floats sit in dead argument
+  slots while a `const float &` first parameter is stored directly). `[vc8]` **held** *(19 of 1859 bytes left)*.
+- **The first product of an x87 sum is the one named as a `double` local** (`double t = m[1] * y; r = (int)(t +
+  m[0] * x + m[2] * z);`), one local per expression; casts inside the expression and the written operand order do
+  not move it. A member read through a `float *` to the struct (`pl[0]`) and through its name (`s->pa`) commute
+  differently inside a product. `[vc8]` **held**.
+- **A single-use `(int)` conversion is forward-substituted into its use and reorders the conversion calls;** results
+  stored in small structs (`a.x = (int)...`) keep the calls in source order. The emission order of several
+  single-use integer temporaries is not their source order: sweep the statement permutations (120 for five).
