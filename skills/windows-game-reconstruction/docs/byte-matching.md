@@ -2206,3 +2206,28 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A caller inlines a callee the image calls, though both are in one file:** the callee's port is not yet the
   image's function (size or EH shape differs). Match the callee first; do not fight the caller. `[vc8]`
   **held** *(diagnosis)*.
+- **A message handler that returns 1 after its base call keeps that 1 in a callee-saved register across the
+  call (`mov edi,1; call Base; mov eax,edi`): one result variable for the base call.** Declare it with the
+  handled flag (`int hecho = 0, base = 0;`), make the last named message an ordinary block
+  (`if (!hecho && id != -1 && id == idX) { hecho = 1; ... }`), then `if (!hecho) { base = 1; Base(id, a, b); }
+  return base;`. `Base(...); return 1;` gives `call; mov eax,1`, and usually swaps the registers of the flag
+  and the id through the whole function. A sweep that rewrites that tail mechanically over every handler
+  matched twelve functions in one pass and brought ten more closer. `[vc8]` **held** *(12 matches)*.
+- **A literal argument lets VC8 inline a large callee whose switch folds away; the same constant through a
+  local keeps the call.** The image calls a 700-byte state function with `push 10`; written `F(10, 0, 0)` VC8
+  inlines it (the dead statics show as extra unwind states), written `int e = 10; F(e, 0, 0);` it calls. The
+  inliner decides on the tree before constant propagation. `[vc8]` **held** *(match)*.
+- **A switch whose cases each end `push 0; push 0; push N; jmp <one call>` calls the function in every case**
+  (`case 4: ...; if (t <= 0) Cambiar(5, 0, 0); break;`); a shared `siguiente` variable and one call after
+  the switch gives `mov reg,N`. Cases that push the same arguments and jump to one `mov ecx,esi; call` are
+  the same call written per case (`case 9: ...; F(p); break; case 7: ...; F(p); break;`), and a case with its
+  own epilogue ends in `return`. The blocks in address order are the cases in source order. `[vc8]` **held**.
+- **A constant `push` for the next call that sits after only some of the stores in front of it:** the stores
+  above the push came from a counted loop that VC8 unrolled (`for (i = 0; i < 3; i++) v[i] = 0;`), or from an
+  inlined member; plain statements let the push rise above all of them. `[vc8]` **held** *(match)*.
+- **Two conversions stored side by side and read back with `fild` (`mov [a],eax` ... `fild [a]; mov [a+4],eax`):**
+  an int pair (`int p[2]; p[0] = (int)(...); p[1] = (int)(...); v[0] = (float)p[0];`); two scalar ints are
+  reordered by VC8. `[vc8]` **held** *(match)*.
+- **Loop indexing `[reg-0xc]` off one member pointer and `[idx+global]` for every table** is the member arrays
+  named in full each time (`cuenta[i]`, `indice[i]` as members); `int *cuenta = ...` locals become separate
+  induction pointers and pointer differences. `[vc8]` **held** *(match)*.
