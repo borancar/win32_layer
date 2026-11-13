@@ -517,6 +517,38 @@ BOOL WINAPI SystemTimeToFileTime(const SYSTEMTIME *st, LPFILETIME out)
     return TRUE;
 }
 
+/* FAT date/time: date = (year-1980)<<9 | month<<5 | day; time = hour<<11 | minute<<5 | second/2. */
+BOOL WINAPI DosDateTimeToFileTime(WORD date, WORD time, LPFILETIME out)
+{
+    SYSTEMTIME st;
+
+    memset(&st, 0, sizeof st);
+    st.wYear = (WORD)(1980 + (date >> 9));
+    st.wMonth = (WORD)((date >> 5) & 15);
+    st.wDay = (WORD)(date & 31);
+    st.wHour = (WORD)(time >> 11);
+    st.wMinute = (WORD)((time >> 5) & 63);
+    st.wSecond = (WORD)((time & 31) * 2);
+    if (st.wMonth < 1 || st.wMonth > 12 || st.wDay < 1 || st.wHour > 23 || st.wMinute > 59 || st.wSecond > 59) {
+        SetLastError(87);
+        return FALSE;
+    }
+    return SystemTimeToFileTime(&st, out);
+}
+
+BOOL WINAPI FileTimeToDosDateTime(const FILETIME *in, LPWORD date, LPWORD time)
+{
+    SYSTEMTIME st;
+
+    if (!FileTimeToSystemTime(in, &st) || st.wYear < 1980 || st.wYear > 2107) {
+        SetLastError(87);
+        return FALSE;
+    }
+    *date = (WORD)(((st.wYear - 1980) << 9) | (st.wMonth << 5) | st.wDay);
+    *time = (WORD)((st.wHour << 11) | (st.wMinute << 5) | (st.wSecond / 2));
+    return TRUE;
+}
+
 BOOL WINAPI SetLocalTime(const SYSTEMTIME *st) { (void)st; SetLastError(5); return FALSE; }
 
 BOOL WINAPI LockFile(HANDLE h, DWORD a, DWORD b, DWORD c, DWORD d) { (void)h; (void)a; (void)b; (void)c; (void)d; return TRUE; }
@@ -1135,6 +1167,7 @@ const W32L_Export w32l_exports_w[] = {
     XK(GetSystemDirectoryW), XK(GetTempPathW), XK(GetTempFileNameW), XK(MoveFileA), XK(MoveFileW),
     XK(CopyFileW), XK(GetFileAttributesExW), XK(GetFileInformationByHandle), XK(GetFileSize),
     XK(GetFileTime), XK(SetFileTime), XK(LocalFileTimeToFileTime), XK(SystemTimeToFileTime),
+    XK(DosDateTimeToFileTime), XK(FileTimeToDosDateTime),
     XK(SetLocalTime), XK(LockFile), XK(UnlockFile), XK(LockFileEx), XK(UnlockFileEx),
     XK(FindFirstFileW), XK(FindNextFileW), XK(GetDriveTypeW), XK(GetLogicalDrives),
     XK(GetDiskFreeSpaceA), XK(GetDiskFreeSpaceExW), XK(CreateFileMappingA), XK(CreateFileMappingW),

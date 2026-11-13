@@ -496,6 +496,8 @@ BOOL    WINAPI DeleteFileA(LPCSTR path);
 void    WINAPI ExitProcess(UINT code) __attribute__((noreturn));
 BOOL    WINAPI FileTimeToLocalFileTime(const FILETIME *in, LPFILETIME out);
 BOOL    WINAPI FileTimeToSystemTime(const FILETIME *in, LPSYSTEMTIME out);
+BOOL    WINAPI DosDateTimeToFileTime(WORD date, WORD time, LPFILETIME out);
+BOOL    WINAPI FileTimeToDosDateTime(const FILETIME *in, LPWORD date, LPWORD time);
 BOOL    WINAPI FindClose(HANDLE h);
 HANDLE  WINAPI FindFirstFileA(LPCSTR spec, LPWIN32_FIND_DATAA out);
 BOOL    WINAPI FindNextFileA(HANDLE h, LPWIN32_FIND_DATAA out);
