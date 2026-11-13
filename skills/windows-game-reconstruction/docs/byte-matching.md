@@ -2162,3 +2162,20 @@ mostly header-less, so the lever is what else is defined in the unit.
   `if (p < Myptr() || Myptr() + size <= p) return false; else return true;` (the VC8 `_Inside` over `_Myptr`);
   `cap < 0x10 ? inline : heap` compiles 2 bytes shorter. When a hand-written port mirrors a CRT or STL inline,
   copy the header's operand order from the toolchain's own include directory. `[vc8]` **held** *(match)*.
+- **Apply a family's recipe whole, not one idiom at a time:** a script reader 396 bytes off matched in a
+  single edit once every known idiom of its siblings went in together (values as temporaries, `strlen` for
+  the hand loop, the unsigned conversion written inside the call it feeds, the list insert as an inline
+  member). Scores of the idioms applied singly would each have looked like "no change". `[vc8]` **held**
+  *(match)*.
+- **The x87 test mask is the source spelling, and the NaN behaviour:** with `d` on the stack and `X` on top,
+  `fcomp; test ah,1; je fail` is `!(d <= X)`, `test ah,0x41; jnp fail` is `!(d >= X)`, `test ah,5; jp` is
+  `d > X`. A port written from the "obvious" comparison can be right for numbers and wrong for NaN; take the
+  spelling from the mask. `[vc8]` **held** *(closer)*.
+- **`volatile` is a probe, never a fix:** when the image reloads one float from its slot at every join and
+  yours carries it on the x87 stack, compile once with that local `volatile`. If most of the diff collapses,
+  one variable's home is the whole problem (look for a twin that writes it through an out pointer); if not,
+  stop chasing it. Do not commit the `volatile`. `[vc8]` **held** *(diagnosis; cause not reproduced)*.
+- **A decompiler that prints ONE variable assigned on every path is reporting a fact about the slot:** a port
+  that split it into `lim`, `d2`, `z` lost the value one path leaves behind (the height was computed from the
+  wrong quantity for polygons). Diff the port's data flow against the decompiler's variable, not only its
+  control flow. `[vc8]` **held** *(behaviour bug found)*.
