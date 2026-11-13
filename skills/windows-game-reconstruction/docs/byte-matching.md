@@ -2157,3 +2157,8 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A frame-compare replay can be load-sensitive:** a run made while another build was using the machine
   differed from the reference in hundreds of frames for an unchanged tree, and matched when repeated alone.
   Repeat a differing run before bisecting.
+- **Library inlines keep the library's spelling:** a string's small-buffer choice evaluated twice
+  (`cmp cap,0x10; jb` before each use) matched only as `0x10 <= cap ? heap : inline` in both places of
+  `if (p < Myptr() || Myptr() + size <= p) return false; else return true;` (the VC8 `_Inside` over `_Myptr`);
+  `cap < 0x10 ? inline : heap` compiles 2 bytes shorter. When a hand-written port mirrors a CRT or STL inline,
+  copy the header's operand order from the toolchain's own include directory. `[vc8]` **held** *(match)*.
