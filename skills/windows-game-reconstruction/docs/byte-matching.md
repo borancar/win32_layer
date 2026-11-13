@@ -2240,3 +2240,27 @@ mostly header-less, so the lever is what else is defined in the unit.
   argument instead of `this`; the byte diff showed it as `mov ecx,<arg>` against `mov ecx,<this>`. When a
   register difference sits on a `mov ecx` before a call, read it as a possible wrong receiver first, then grep
   the other ports for the same spelling. **held** *(2 behaviour bugs)*.
+- **Two loads, then two stores, higher source offset first: a two-int struct returned by value.**
+  `mov edx,[m+0x4c]; mov ecx,[m+0x48]; mov [o+0x20],edx; mov [o+0x24],ecx` is
+  `Par t = m->Tam(); o.a = t.a; o.b = t.b;` with an inline `Par Tam() const { Par p; p.a = c4c; p.b = c48;
+  return p; }`. Two plain assignments reload between the stores; two int locals, a two-argument setter and
+  inline accessors all load the lower offset first. `[vc8]` **held** *(3 matches, one left since three rounds)*.
+- **A by-value argument's callee object: a local when it is loaded before the copy.** `mov ecx,[g]` ...
+  `mov eax,[ecx+8]; sub esp,N; rep movs; mov ecx,eax; call` is `T *d = g->tabla; d->Buscar(n);`; the chained
+  `g->tabla->Buscar(n)` loads the object after the copy. `[vc8]` **held** *(3 matches)*.
+- **A receiver that is a member's address: name it in full for every step.** `mov edx,[this+0x8c];
+  lea esi,[this+0x8c]` (vtable read through the member's place, address formed afterwards) comes from
+  `((R *)(p + 0x8c))->A(i); ((R *)(p + 0x8c))->B();`; a local for the receiver, or one inline member that
+  does both steps, forms the address first. `[vc8]` **held** *(2 matches)*.
+- **An EH state that skips a number between two statics is an inlined callee with a dead static, and the
+  callee may be the class's own state setter with a literal.** `Estado(7)` inlined left one store and the
+  dead static of another case; the port had written the store by hand. The sign is a handful of differing
+  bytes that are all EH state immediates. `[vc8]` **held** *(1 match, 2 more calls found)*.
+- **Variant runners must show compile errors.** A failed compile leaves the previous object, so every
+  variant scores the same and looks like "the compiler folds every spelling". Print the compiler's error
+  lines in the scoring loop, and score by the byte count, not by a count of differing listing lines.
+  **held** *(cost an hour of false "unchanged" results)*.
+- **A handler port that never reaches the base call is a behaviour bug the byte diff shows as a missing
+  tail.** The image's `mov edi,1; call base; mov eax,edi` block had no counterpart: the port answered 0 to
+  everything. When a scanner lists a function for a missing sequence, check first whether the port has the
+  call at all. **held** *(1 behaviour bug)*.
