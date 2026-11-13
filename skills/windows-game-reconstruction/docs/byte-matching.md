@@ -2179,3 +2179,8 @@ mostly header-less, so the lever is what else is defined in the unit.
   that split it into `lim`, `d2`, `z` lost the value one path leaves behind (the height was computed from the
   wrong quantity for polygons). Diff the port's data flow against the decompiler's variable, not only its
   control flow. `[vc8]` **held** *(behaviour bug found)*.
+- **Sweep the one-result-variable form over handlers:** a handler whose image zeroes a callee-saved register
+  first and returns it on the handled exit (`xor ebx,ebx` ... `mov eax,ebx`) is `int r = 0; ...
+  if (handled) { ... } else { r = Base(...); } return r;` with `r` declared before the statics. A script that
+  rewrites every port ending `return 0; } return X;` this way matched 3 of 20 at once. `[vc8]` **held**
+  *(three matches)*.
