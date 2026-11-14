@@ -3132,3 +3132,27 @@ mostly header-less, so the lever is what else is defined in the unit.
   sits in its own block; a temporary passed by address (`f(&obj->Get("K"), out)`) has its
   own slot and EH state where a named local in a block reuses one slot. `[vc8]`
   *(2 matches)*
+- `mov edi,OFFSET lit; lea esi,[buf]; mov ecx,len+1; xor eax,eax; repe cmpsb` is the
+  intrinsic `strcmp(buf, "LIT") == 0` against a literal. A decompiler renders it as
+  `memcmp(buf, "LIT", len + 1)` (or `strncmp`), which compiles to the unrolled dword
+  loop: rewrite every such compare whose count is the literal's length plus one, and
+  count `repe cmps` per function on both sides to find the ones spelled another way.
+  `[vc8]` *(3 matches, ten ports hundreds of bytes closer in one sweep)*
+- Adjacent small members stored in order while an unrelated constant (`or eax,-1`) or a
+  pointer store sits after them instead of hoisted in front: the members are set through
+  an inline setter taking the values by value (`color.Poner(0, 0, 0xff)`), not by three
+  assignments. `[vc8]` *(3 constructors)*
+- A by-value object parameter in front of a scalar one shows at the call as the scalar
+  pushed first and the object built in place after it; at entry the object sits below
+  the scalar. A port with the two exchanged is self-consistent and still wrong for any
+  caller left in the image. `[vc8]`
+- Before opening a fresh port, compare the whole pool with the "not matched" markers
+  stripped: ports that already compare identical only need their marker removed (14 in
+  one round). A self-call that goes through the incremental-link thunk must be followed
+  by the comparer like any other call.
+- Per derived class, compare the image's vtable slot targets with the functions the
+  rebuilt vtable holds (by symbol address). A class whose overrides are declared under
+  other, non-virtual names inherits the base's slots in the native vtable: silent wrong
+  behaviour (33 dialog classes, three slots each). Also scan the symbol table for one
+  name at two addresses: tools that take the first and tools that take the last line
+  disagree silently (a base's empty virtual aliased to another class's method).
