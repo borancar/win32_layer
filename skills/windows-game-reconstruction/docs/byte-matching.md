@@ -1332,6 +1332,42 @@ an item says otherwise.
   constructor without an EH frame is a member array of a class with a
   constructor and a destructor (`eh vector constructor iterator`); with only
   a constructor declared the compiler writes the loop inline.
+- `[vc8]` *(match, 12 constructors)* **Where the EH state store and the vptr
+  read-back fall tells initialiser list, member constructor and body apart.**
+  The state store in front of the derived vtable store with scalar zero stores
+  behind it: the scalars are in the initialiser list (`c28(0), c38(-1)`), not
+  in the body (the state store sinks behind body stores) and not in a member
+  struct. A vptr read-back (`mov ecx,[esi]`) between two groups of zero stores:
+  the group in front is a member with a constructor, the group behind is the
+  body's first statements, even though the global is written later.
+- `[vc8]` *(match)* A group of sub-object stores split by the EH state store,
+  or a field stored behind fields that follow it in memory: the sub-object has
+  a nested member with its own constructor (`struct { int a; Par p; int c, d;
+  S() { a = 0; d = 0; } }` gives `p.b, p.a, [state], a, d`); the same stores in
+  one constructor body come out in another order.
+- `[vc8]` *(match)* Field stores in front of the derived vtable store, plus an
+  unwind funclet that passes `this` unchanged to a destructor: an inline base
+  constructor (its vtable store is dead) with a base destructor; the funclet's
+  target names the base. With no stores in front of the vtable the base has
+  only the destructor.
+- `[vc8]` *(match)* `push size; add reg,OFF; call operator new`: the
+  constructor argument was computed into a local in front of the `new`
+  expression; written inside it the add comes behind the null test.
+- `[vc8]` An inline constructor of a class with virtuals makes the compiler
+  emit the class's deleting destructor in that file; if the image's has the
+  destructor body inline, define it inline in the class there too, or the
+  emitted copy differs from the matched one.
+- `[vc8]` Not usable: a wrapper struct around a member to move its address
+  load. The constructor matches, and the unwind funclet and the class
+  destructor then call the wrapper's implicit destructor (`__forceinline` does
+  not remove it).
+- When a port is `void` and the image's tail is `cmp [g1],0; je; cmp [g2],0;
+  je; mov eax,1; ...; xor eax,eax`, the function returns `g1 && g2`: fix the
+  return type (and the mangled name) before matching.
+- Read the port against the image's *slots*, not kuna's variable names, when a
+  frame slot is reused: `fstp [esp+0x20]` in front of `add esp,4` is not the
+  slot `[esp+0x20]` read behind it (a wedge angle taken from the wrong
+  variable was a logic bug in a functional port).
 - Trap: an edit that leaves the file uncompilable keeps the previous object,
   and the comparison shows the old code. Make the loop print compiler errors.
 
