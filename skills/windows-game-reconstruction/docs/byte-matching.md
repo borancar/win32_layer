@@ -537,7 +537,8 @@ an item says otherwise.
 - `[vc8]` **`switch` details.** Grouped labels and separate identical arms lay
   out differently. A `jle`/`jg` pair is `switch` cases where a range test
   folds to one unsigned compare; a range test on a member (not a local) keeps
-  both compares. Bytes equal but `$LN` labels differing means the
+  both compares, and so does a byte read again through the pointer in each
+  test (`*p >= '0' && *p <= '9'`; a `char` local folds to `sub; cmp; ja`). Bytes equal but `$LN` labels differing means the
   case-to-block mapping is wrong: decode the table.
 - `[vc8]` **Tails.** A tail duplicated only in part is one inline helper called
   from each branch. A duplicated call pushing a register known to be 0 is one
@@ -690,7 +691,21 @@ an item says otherwise.
 - `[vc8]` **Conversions.** `fadd [2^32]` after `fild` is unsigned to float
   (dword constant in a `float` expression, qword in a `double`). Inline
   `fnstcw; or 0xc00; fldcw; fistp` is float to `unsigned`. A double constant
-  that is a widened float is `(double)0.0015f`.
+  that is a widened float is `(double)0.0015f`. The destination's type picks
+  the form: `unsigned short`/`unsigned char` is the inline sequence with
+  `fistp DWORD` (word or byte read from the slot), `unsigned` the inline
+  `fistp QWORD`, `short`/`signed char`/`int` call `__ftol2_sse`. The effective
+  destination counts (an `unsigned char` cast stored into a `signed char`
+  array calls), and `(unsigned)(int)f` or `(unsigned)((int)f - 1) > K` folds to
+  the unsigned form: keep a signed local and write the range out. For a
+  second compiler guard the unsigned forms (`(unsigned)(long long)f`): a
+  negative or huge value is undefined there and the low word here.
+- `[vc8]` **Sweep by library callee.** Per unmatched function, count the
+  image's calls to each CRT/library address and the inline idioms (`rep movs`,
+  `rep stos`, `repne scas`, `fistp`, `fldcw`) against the candidate's. A
+  differing count names a class of fixes at once (conversion signedness, an
+  intrinsic the image calls, a helper the image has in place) and finds
+  off-by-one table bases when the neighbouring `lea` is read.
 - `[vc8]` **Integer shapes.** Halving is `>> 1` (`/ 2` adds `cdq; sub`).
   `member % N` is `idiv`; through a local copy it is the magic multiply.
   `shr 2; add r,r; add r,r` is unsigned `x / 4 * 4`. `shr r,16; cmp r,K` is
