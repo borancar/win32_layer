@@ -2958,3 +2958,26 @@ mostly header-less, so the lever is what else is defined in the unit.
   the count and the size for the vector destructor iterator) and needs no hand-written
   guard; a second static array with an inline constructor in front of it takes the guard's
   first bit and no state. *(match)*
+- `[vc8]` Sweep by library callee: count the calls to the vector constructor iterator
+  (`??_L`) and the vector destructor iterator (`??_M`) per function in the image and in
+  the port. A port that passes the iterator's arguments by hand, with a hand-made size and
+  count word, is an array `new` expression: `p = new T[n];` gives the `mul`/`seto`/`neg`/`or`
+  size, the `add 4`/`setb` cookie, the count store, the null test and the EH state. A class
+  with a constructor and no destructor gives the four-argument `??_H` call and no count
+  word. `delete[] p` on a class with a virtual destructor gives `if (p) { if (p[-1])
+  p->vtbl[0](3); else operator delete[](p - 1); }`. *(match, two functions)*
+- `[vc8]` `push dtor; push count; push size; push p; call ??_M; push p-4; call delete`
+  inside the class's own destructor is `delete[] p;` with the vector deleting destructor
+  (`??_E`) inlined. VC8 inlines it there only when a `delete[]` of the class was parsed
+  before the destructor's definition; when the destructor's own `delete[]` is the first
+  use, the unit calls `??_E` out of line. An uncalled inline member in the class body
+  (`void Borrar() { delete[] p; }`) is enough and emits only the `??_E` COMDAT. *(match)*
+- `[vc8]` `mov eax,[o+k]; test eax,eax; mov [this+k],eax; je` is an assignment inside the
+  condition (`if ((tabla = o.tabla) != 0 && o.flag)`); as a separate statement the source
+  is read again after the store. `movzx eax, WORD PTR [p+k]; cmp ax, 8` where the port
+  has `cmp WORD PTR [p+k], 8` is an inline getter returning `unsigned short`. *(match)*
+- `[vc8]` Two inlined `memcmp`s, each ending in its own sign tail (`test esi,esi; mov
+  eax,1; jg; or eax,-1`) and then the epilogue, are stored to one result variable that
+  starts with the fall-back value and is returned as it is. A further sign conversion in
+  the source makes the compiler merge the two compares into one loop with a variable
+  size. *(6 bytes from a match)*
