@@ -3070,3 +3070,37 @@ mostly header-less, so the lever is what else is defined in the unit.
   Noise: `lea r,[x+N]` against `add r,N`, an advanced base register, inlining on one
   side. Also scan names that embed an address for lines listed at another one.
   *(four behaviour fixes)*
+- **Compare immediates per instruction class, and read the pointer bumps first.** A flat
+  "immediates only one side has" list is frame sizes and argument cleanup. Split by
+  class (compare, push, store to memory, logic, multiply, `add`/`sub` on a register that is
+  not the stack pointer) and the `add reg,K` lines are element sizes: `add edx,0x54` in
+  the image against `add edx,0x5c` in ours was a guessed struct whose every used field was
+  at the right offset in the first element and whose size was wrong, so a three-level
+  search read each later element 8 bytes further on. With the size fixed the function was
+  13 bytes from identical and matched. *(1 behaviour fix, 1 match)*
+- Audit sweeps that listed only noise on a mature port set, so do not start with them: the
+  constants pushed in front of each call per callee and argument position (decoded
+  `??_C@` names are not the strings: read the image's bytes; a register push is a
+  wildcard), virtual slots called (the slot address cached in a register), writable
+  globals referenced, `rep movs`/`stos` counts and `imul` constants. Standing noise in
+  every list: `cmp x,N-1; ja` against `cmp x,N; jae`, `(x & M) >> 1` against
+  `(x >> 1) & (M >> 1)`, a list at +N entered through its member, `char b[N] = {0}` as a
+  byte store plus `memset` of N-1. *(record)*
+- `cmp i,N; sbb r,r; and r,i` in front of an indexed read is `a[(unsigned)i < N ? i : 0]`
+  with a signed `i`; the signed test gives `xor; cmp; setge; sub 1; and`. `[vc8]`
+  *(1 match)*
+- **Swap adjacent initialised declarations as a standing sweep.** `T a = x; U b = y;` with
+  independent right-hand sides is not order-neutral: the first declared takes the scratch
+  register of the value loaded in front of it. One mechanical pass over every port within
+  450 bytes (each such pair swapped alone, about 600 one-file compiles) matched one
+  function that carried a "register choice" note and was the last step of another; 46
+  ports came a few bytes closer. A sweep that writes and deletes its trial copy must not
+  share the directory where confirmed edits are staged. `[vc8]` *(2 matches)*
+- **Run the audit sweeps over every batch of fresh ports, and open the ones a few bytes away
+  first.** A new port 3 bytes from identical differed only in member displacement bytes: the
+  derived class's padding member started where the base class ends in the headers, four bytes
+  before its comment said, so the constructor stored a window handle one word before the place
+  every other member function reads it. Bytes that differ only in displacements are a layout
+  error; fixing it is the match. In-place decrement against a new value: `sub r,1; js` is
+  `while (--n >= 0)` on the variable itself, `add r,-1` is `m = n - 1`. `[vc8]`
+  *(1 behaviour fix, 3 matches)*
