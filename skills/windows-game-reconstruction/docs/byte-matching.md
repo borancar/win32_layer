@@ -2712,3 +2712,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   linker knew the callee keeps `ecx`; not reachable from per-file source, skip it. *(triage)*
 - Ranking tools that drop "addresses already in the docs" by substring also drop an address
   quoted as a range marker ("the pool from 0x41e7d0 on"); match on entry headings only. *(tool)*
+- `[vc8]` A resource-setup sequence the image repeats with `[this+k]` re-read after every call
+  was written out with the members named each time (or a macro); a helper taking the member
+  by reference keeps it in a register. Match one instance, then grep the idiom's tail
+  (`x->w = f->w; x->h = f->h`) across the other ports: one recipe gave six matches. *(match)*
+- `[vc8]` Two fields copied from another object, both loaded before either store: either a
+  pair temporary assigned whole (`*(Par *)&t->w = Par(f->w, f->h)`, first argument loaded
+  first) or two locals declared in reverse (`int h = f->h, w = f->w; t->w = w; t->h = h;`):
+  the load order says which. *(match)*
+- `[vc8]` Member destructor call, state store, base destructor call and `operator delete` in a
+  function whose port calls one destructor: the class's implicit destructor is inline; declare
+  the base and the member with their own destructors and `__forceinline ~T() {}`. *(match)*
+- `[vc8]` Default constructor and an init call inside one `new` null test, the init's arguments
+  loaded before the constructor call: a derived helper class whose inline constructor calls the
+  init, `new Derived(a, b, c)`. *(match)*
+- `[vc8]` `mov ecx,this` in front of a call you declared `__stdcall`: the callee is a member
+  that ignores `this`. Callee-clean both ways, so the callee already matches; only a caller
+  shows it. Rename the symbol, change both declarations. *(triage)*
+- `[vc8]` A store the image reads back from memory (`fstp [esi]; fadd [esi]`) while yours
+  forwards the value through a temporary: write the store and the read through two different
+  struct types over the same address; same-type or pointer-local accesses forward. *(match)*
+- `[vc8]` The `new` temporary shares a slot with a local array only when the array lives in a
+  nested block; a frame 4 bytes larger than the image's is the hint. Sum the frame
+  (locals + cookie + temporaries) to get array sizes instead of trusting the port. *(match)*
+- `[vc8]` `fldz` hoisted in front of a branch and reused by a later compare: both compares have
+  the literal on the right (`d > 0.0f`); literal-left forms compare against a QWORD constant.
+  `fabs` needs the intrinsic (`#pragma intrinsic(fabs)`), `fabsf` is a call. *(match)*
+- The match harness must print compiler errors: a wrapper that greps for the symbol's line
+  hides them and you compare the previous object. *(tool)*
