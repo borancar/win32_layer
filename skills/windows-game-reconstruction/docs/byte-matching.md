@@ -2769,3 +2769,12 @@ mostly header-less, so the lever is what else is defined in the unit.
   DIFF means a note on a referenced COMDAT, print the notes. *(tool)*
 - Before any float idiom hunt, grep the tree for the same statement shape in other unmatched
   ports: one zeroing idiom matched four functions in three files. *(method)*
+- `[vc8]` A tail jump to the last call (`add esp,N; jmp f`) although the address of a local
+  was passed to an earlier call: the local lives in a nested block that closes in front of the
+  last call (`{ V4 s; Punto(&s); *d += s.v; } Asentar();`). At function scope VC8 emits
+  call and return. *(match)*
+- `[vc8]` Inside an inlined `operator+=` one component whose load order no member spelling
+  flips (`fld [s+8]; fadd [m+8]` where the others load the member first): write that component
+  through a pointer to the first member (`float *a = &x; a[2] = o.z + a[2];`). *(match)*
+- `[vc8]` `fld t; fcomp ds:K` in the image against `fld K; fcompp` in yours: the constant is a
+  literal in the original (`< 0.001f`), not an `extern const float`. *(match)*
