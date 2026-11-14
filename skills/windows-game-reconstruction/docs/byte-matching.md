@@ -3104,3 +3104,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   error; fixing it is the match. In-place decrement against a new value: `sub r,1; js` is
   `while (--n >= 0)` on the variable itself, `add r,-1` is `m = n - 1`. `[vc8]`
   *(1 behaviour fix, 3 matches)*
+- **A fresh port whose only differences are frame offsets has a local buffer of the wrong
+  size.** Read the buffers off the image's `lea r,[esp+N]` (less the pushes in flight) and the
+  cookie slot; one stack slot used for two purposes is one buffer reused (a file name copied
+  back into the pattern buffer), and a frame four bytes larger with two float stores is a
+  three-float local of which two are set. A port buffer smaller than the image's is a
+  behaviour bug (a trace line formatted into 0x100 bytes where the image has 0x400). Nine
+  of a day's new ports matched on buffer sizes alone. `[vc8]` *(9 matches, 1 behaviour fix)*
+- `add r,-K` where `x - K` gives `sub r,K`: the value is first held in a named local and
+  the subtraction goes to a second local (`int n = f(); int m = n - 1; if (m < s)`;
+  `int w = p->ancho; int dx = w - 0x280; x = dx / 2;`). Folding either local away gives
+  `sub`. A scan for ports whose image has `add r,-K` and whose build has `sub r,K` lists
+  them. `[vc8]` *(2 matches)*
+- An argument register exchanged with its neighbour's in one call (`mov eax,[p]; mov
+  edx,[this+0x14]` for ours `mov edx,[p]; mov eax,[..]`) is the argument held in a named
+  local before the call. A pointer walked from an array and tested through the array
+  (`cmp byte [m],0; mov p,m; je`) is `char *p = m; if (m[0]) do { .. } while (*p);`.
+  `[vc8]` *(2 matches)*
+- **Parameters passed straight through in the wrong registers are pointers in the original.**
+  A constructor or function that forwards its `int` parameters to a callee, and loads them
+  into each other's registers (or into `ebx`/`ebp` in the other order), matched when the
+  parameters that are handles or objects were declared as pointers and cast at the call
+  (`void *a, void *b, int c` forwarded as `(int)a, (int)b, c`; a window parameter copied
+  into `int h = (int)ventana`). The mangled name changes: keep the old name as an alias
+  line at the same address when generated callers declare it. `[vc8]` *(2 matches)*
+- Scopes show in destructor order: an object destroyed before the calls that follow it
+  sits in its own block; a temporary passed by address (`f(&obj->Get("K"), out)`) has its
+  own slot and EH state where a named local in a block reuses one slot. `[vc8]`
+  *(2 matches)*
