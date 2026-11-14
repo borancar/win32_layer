@@ -3052,3 +3052,21 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` An argument read before the null test of the receiver (`cmp [obj+k],0; mov
   edx,[this+0x20]; je`) is an inline forwarder `void F(a, b, c, d) { if (m) m->f(a, b, c,
   d); }`: arguments are evaluated in front of the inlined body. *(match)*
+- `[vc8]` A small function the image calls at every site, from callers that come after it
+  in the same file, and whose `this` is not reloaded between two such calls: the callee
+  was compiled in front of the caller and never inlined. `__declspec(noinline)` on the
+  definition (after checking that no matched function of the file inlines it) plus the
+  branches as a `switch` in the image's block order matched a port that inlined the first
+  site of each callee. A sweep of "callee of the port's own file that the image calls more
+  often than ours" lists the candidates. *(match)*
+- **Audit functional ports with set-difference sweeps, not by reading them.** For each
+  port compare a set from the image's function with the same set from ours and list the
+  port only when both sides have something the other lacks: direct callees (resolve
+  linker thunks on BOTH sides, or every lookup under a thunk name is a false line),
+  member offsets `[reg+N]`, compare immediates, string literals, float constants. One
+  round found four logic bugs this way (a heading read through the vector-angle function
+  instead of the stored-angle getter at seven sites, a member one word off twice, a table
+  walked for 130 of its 134 records) and a symbol line at another function's address.
+  Noise: `lea r,[x+N]` against `add r,N`, an advanced base register, inlining on one
+  side. Also scan names that embed an address for lines listed at another one.
+  *(four behaviour fixes)*
