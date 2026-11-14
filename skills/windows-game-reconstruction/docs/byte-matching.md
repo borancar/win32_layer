@@ -2778,3 +2778,34 @@ mostly header-less, so the lever is what else is defined in the unit.
   through a pointer to the first member (`float *a = &x; a[2] = o.z + a[2];`). *(match)*
 - `[vc8]` `fld t; fcomp ds:K` in the image against `fld K; fcompp` in yours: the constant is a
   literal in the original (`< 0.001f`), not an `extern const float`. *(match)*
+- `[vc8]` `a < b ? a : b` / `a > b ? a : b` on ints compile to one canonical sequence
+  whatever the spelling in the function (ternary, `if/else`, a swap, any statement order).
+  When two callee-saved registers are swapped against the image around such a pair, write it
+  through forced-inline functions (`static __forceinline int Min(int a, int b)`, `Max`): the
+  inliner's copies change the allocation order. *(match)*
+- `[vc8]` A class temporary passed by reference whose address is reloaded behind its
+  constructor (`call ctor; lea eax,[t]; push eax`) and whose slot the next temporary reuses is
+  a named local in its own block (`{ Block b(text); r.Join(b); }`); the unnamed temporary
+  pushes the constructor's `eax` and keeps a slot to itself. In an `if/else` whose arms meet at
+  one call, the arm with `push eax` passes a callee's result and the arm with `lea` a named
+  local. *(match)*
+- `[vc8]` A function result rounded twice (`call fmod; fstp [t]; fld [t]; fstp [t]`) with a
+  QWORD constant operand: the `float` overload of the `<math.h>` function (`fmod(a, 360.0f)`,
+  `sqrt(f)`), an inline `(float)f((double)x)` whose result the assignment rounds again. Write
+  `fmodf`/`sqrtf` if another compiler builds the same source: clang calls the overload
+  ambiguous under the VC8 headers, and the bytes are the same. *(match)*
+- `[vc8]` Three floats copied into slots and reloaded for a constructor, x and y adjacent and
+  z elsewhere: a two-float local and a float, addresses taken (`float xy[2], z; ...;
+  float *px = xy, *pz = &z; V3 p(px[0], px[1], *pz);`). Three address-taken floats give the
+  same instructions with the slots in another order; no declaration order moves them. *(match)*
+- `[vc8]` `mov [m],0` inside the null test of an inlined `delete`: `if (m) { delete m; m = 0; }`.
+  Unconditional `delete m; m = 0;` stores on both paths. Do not sweep it: both forms occur.
+  *(match)*
+- `[vc8]` A commutative float sum whose operand order follows another block (two `switch`
+  cases sharing sub-expressions): removing the shared sub-expression from the other case flips
+  the order, so the order comes from value numbers, not from the spelling. No fix known; stop
+  permuting spellings. *(negative)*
+- A native-build generator that reads a callee's address from the comment on a declaration
+  line may bind it to an overload on the next line (a default constructor's address taken for
+  the inline three-argument constructor): leave the comment off when the name resolves through
+  the symbol table, and read the generator's duplicate report after every batch. *(tool)*
