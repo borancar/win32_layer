@@ -2844,3 +2844,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   matched nothing): one missed user aborts the native build's first replay. Inline members
   added to a one-line struct take over the address comment at the end of that line: put them
   on their own lines. *(tool)*
+- `[vc8]` Under `/GS` a pointer parameter is copied into a register (or a slot below the
+  buffers) at the top of any function that has a cookie; an `int` is read in place. An
+  argument that the image loads at entry and the port loads at its use is a pointer the port
+  declared `int`. *(match)*
+- `[vc8]` A dynamic initialiser that ends in `push fn; call atexit; pop ecx` matches as a
+  plain function that registers a one-line stub (`void F() { g.~T(); }`); call the
+  constructor by name, placement `new` on a class with a destructor adds an EH frame. The
+  stub and the destructor each need their own symbol line. *(match)*
+- `[vc8]` An unwind funclet that destroys "a member" starting in front of an array, while
+  the body inlines the array's destructor loop, means the array and the word before it are
+  one wrapper member with an implicit destructor. *(match)*
+- `[vc8]` A walk that tests `(p - first) < count` with `first` and the list in frame slots
+  is an iterator object with an inline test; written in the loop the test is
+  strength-reduced to a counter. *(match)*
+- `[vc8]` A hand-written "dtor" function with an EH frame, descending states and member
+  destructor calls at its end is the real destructor: `delete`/`delete[]` statements in the
+  body, the members as classes with declared destructors. *(match)*
+- `[vc8]` A constructor called between a call's argument pushes whose result is pushed is
+  `&T(...)` (the address of a temporary), not a named local. *(match)*
+- `[vc8]` `while (n--)` and `for (i = n; i; i--)` over a pointer walk allocate the counter
+  and the pointer to opposite registers and decrement on opposite sides of the call.
+  *(match)*
+- A source file the native build leaves out (skeleton or parked files) must not hold a
+  function another native object calls: the program builds and aborts when the call is
+  reached, here only at exit. Check which files the native Makefile filters before placing
+  a new function. *(tool)*
+- Never start a second build-and-replay run while the first is still replaying: they share
+  the binary and the output directories, and both results are void. *(tool)*
