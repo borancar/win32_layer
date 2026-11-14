@@ -2547,3 +2547,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   matched twins of other classes skip it when the motor is under way (`cmp [this+N],0; je end`).
   The port had copied the condition of a neighbouring slot whose test has the other sense. Read
   the branch sense of every flag test against the disassembly, not against the neighbour.
+- A functional port written for a native build carries shapes that come from its origin, not from
+  the image; check for them before any idiom search: private inline copies of small game
+  functions the image calls, a decompiler's operand order in float compares (`!(K <= t)` for
+  `t < K`, `m < t` for `t > m`: the decompiler puts the operand the image loaded first on the
+  left), and safer buffer sizes. One port lost 300 of 356 differing instructions that way.
+  `[vc8]` *(1 function)*.
+- Compare the stride of every array the port allocates (`mul K`, `add reg,K`, the element size
+  passed to the vector constructor) with `sizeof` of the port's element type: a port whose struct
+  had every used field at the right offset was 4 bytes short, so the unported readers of the
+  array stepped past its elements. The struct's own comment gave the right size.
+- Align the two listings (difflib over normalised instructions) before comparing them; a
+  line-by-line comparison reports everything behind the first inserted instruction, which hides
+  that three of four `case` bodies already agree.
+- `[vc8]` Under an EH frame, block locals of sibling scopes and the `$T` slots of by-value class
+  arguments share frame slots, but not every non-interfering pair does: of two 8-byte structs in
+  sibling `case` blocks one shared a 12-byte struct's slot and the other took its own, whatever
+  the nesting, the order or the place of the function statics; without the EH frame all three
+  shared. Function-level declarations share nothing. Measure the slot map of a scratch build
+  (the `name$N = -off` lines of the listing) before rewriting for a frame size. *(open: the
+  image shares all three)*.
+- `[vc8]` `test ecx,ecx; je` in front of an inline `rep stos` fill is an unsigned counter
+  (`for (unsigned n = w * h; n; n--)`); the signed `n > 0` gives `jle`. *(match)*
