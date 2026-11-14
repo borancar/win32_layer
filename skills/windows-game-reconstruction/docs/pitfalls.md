@@ -91,3 +91,26 @@ that found them.
   REG_DWORD an integer, everything else `["REG_x", data]`. Ask the owner how
   each type should be represented if the game needs one the layer does not
   handle yet.
+
+## Dialogs and resources (Commandos)
+
+A game's editor and debug dialogs are `CreateDialogParam` / `DialogBoxParam` over its own `RT_DIALOG`
+templates. The layer (`README.md`, "Dialogs") runs them; what to do in a port:
+
+- **Tell the layer where the image is.** `w32l_pe_image = <mapped image, headers included>` in the loader (and in
+  a native build that copies the exe's data sections: the `.rsrc` section must be among them). `FindResource`,
+  `LoadString`, `LoadMenu` and every dialog read the resource directory from that memory; with it unset
+  `CreateDialogParam` logs `no such RT_DIALOG resource` and answers NULL.
+- **Survey the templates before writing the controls.** Walk the resource directory (type 5) in a script: the
+  classes in use (ordinals 0x80..0x85, a few custom ones), the style bits, and the font. Commandos' 60 dialogs use
+  only the six standard classes (plus one tree view and one track bar), so no common-controls library was needed.
+  Grep the reconstruction's `SendMessage`/`SendDlgItemMessage` constants (`LB_ADDSTRING` 0x180, `CB_SETCURSEL`
+  0x14E, `BM_SETCHECK`, ...) to see which messages matter.
+- **A dialog is a window you can look at.** Dumping each dialog to a PPM (`W32L_DIALOGDUMP`) shows at once whether
+  the constructor and its `WM_INITDIALOG` handler ran and filled the controls (a half-run constructor shows empty
+  lists and default texts). Drive it with the replay verbs `dlgclick`, `dlgtype`, `dlgkey`, `dlgdump`.
+- **Order matters for input.** Give a clicked control the focus when the click is generated, not when the
+  posted `WM_LBUTTONDOWN` is dispatched: keys typed right after go to the focus at post time.
+- **Command handlers are vtable slots.** In the native build the first click can end in `no native code for
+  0x408bbb thunk to 0x...`: the dialog's own `WM_COMMAND` handler (a slot of the editor class) has no native code
+  yet. The dialog itself, its controls and the constructor do not need it.

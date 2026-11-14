@@ -1156,6 +1156,7 @@ HRESULT WINAPI SHGetFolderPathW(HWND hwnd, int32_t csidl, HANDLE token, DWORD fl
 
 #define XK(fn) { "KERNEL32.dll", #fn, (const void *)&fn }
 #define XA(fn) { "ADVAPI32.dll", #fn, (const void *)&fn }
+#define XU(fn) { "USER32.dll", #fn, (const void *)&fn }
 extern const W32L_Export w32l_exports_w[];
 extern const size_t      w32l_exports_w_count;
 const W32L_Export w32l_exports_w[] = {
@@ -1187,6 +1188,13 @@ const W32L_Export w32l_exports_w[] = {
     XA(RegOpenKeyExW), XA(RegQueryValueExW), XA(OpenProcessToken), XA(GetTokenInformation),
     XA(CryptAcquireContextA), XA(CryptAcquireContextW), XA(CryptReleaseContext), XA(CryptGenRandom),
     XA(CryptCreateHash), XA(CryptHashData), XA(CryptGetHashParam), XA(CryptDestroyHash),
+    /* resources and dialogs (resource.cpp, dialog.cpp) */
+    XK(FindResourceA), XK(FindResourceExA), XK(FindResourceW), XK(LoadResource), XK(LockResource),
+    XK(SizeofResource), XU(LoadStringA), XU(LoadStringW), XU(CreateDialogParamW), XU(DialogBoxParamW),
+    XU(DialogBoxIndirectParamA), XU(CreateDialogIndirectParamA), XU(CheckRadioButton), XU(DefDlgProcA),
+    XU(IsDialogMessageA), XU(MapDialogRect), XU(GetNextDlgTabItem), XU(EnableWindow), XU(IsWindow),
+    XU(IsWindowVisible), XU(IsWindowEnabled), XU(GetParent), XU(GetWindowTextA), XU(GetWindowTextLengthA),
+    XU(GetCapture), XU(SetForegroundWindow), XU(CallWindowProcA),
     { "SHELL32.dll", "SHGetFolderPathW", (const void *)&SHGetFolderPathW },
     { "msvcrt.dll", "_getdrives", (const void *)&w32l_getdrives },
 };

@@ -49,3 +49,4 @@ One line per change to the skill, oldest first. Matching idioms go in
 - 2026-11-11: home-relative paths replaced by https GitHub origin links throughout the skill.
 - 2026-11-11: `docs/byte-matching.md` compacted: a read-this-first header (rules, symptom index); the raw VC8 record folded into the themed sections with duplicates merged and names dropped; tags may combine (`[vc6, vc8]`); no dates.
 - 2026-11-11: `CONTRIBUTING.md` added (pull requests against borancar/win32_layer); `SKILL.md` and the `CLAUDE.md` template call it out.
+- 2026-11-14: `docs/pitfalls.md`: dialogs and resources (the layer runs a game's RT_DIALOG templates; `w32l_pe_image`, surveying templates, dumps and replay verbs for editors).

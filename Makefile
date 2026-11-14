@@ -19,7 +19,7 @@ FLAGS    := -m32 -Wall -Wextra -std=gnu++14 -fno-strict-aliasing \
 SRC      := $(wildcard src/*.cpp)
 OBJ      := $(patsubst src/%.cpp,build/%.o,$(SRC)) build/tomlc99.o
 
-.PHONY: all clean
+.PHONY: all clean test
 all: build/libwin32_layer.a
 
 build/%.o: src/%.cpp
@@ -33,6 +33,14 @@ build/tomlc99.o: third_party/tomlc99/toml.c
 
 build/libwin32_layer.a: $(OBJ)
 	ar rcs $@ $^
+
+# The dialogs, headless: tests/dialogs.cpp builds a dialog from a template in
+# memory and drives it (add the path of a PE image to open its dialog resources too).
+build/dialogs_test: tests/dialogs.cpp build/libwin32_layer.a
+	$(CXX) $(FLAGS) $(CXXFLAGS) $< build/libwin32_layer.a -l:libSDL3.so.0 -lpthread -lm -o $@
+
+test: build/dialogs_test
+	SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy W32L_PLATFORM_QUIET=1 build/dialogs_test $(IMAGE) $(DIALOGS)
 
 clean:
 	rm -rf build

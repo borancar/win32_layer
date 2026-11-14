@@ -1,18 +1,13 @@
 /* user32ext.cpp -- the USER32 entries a window-and-dialog game imports beyond
- * what user32.cpp first needed: extra window calls over the one window,
- * the pointer and key state, wvsprintfA, and dialogs and menus.
- *
- * Dialogs and menus have no implementation behind them. There is no
- * resource interpreter, so a dialog cannot be created (DialogBoxParamA fails,
- * CreateDialogParamA answers NULL) and every control query answers "no such
- * control". A game that only opens a dialog for its setup or options screen
- * then skips it; one that needs the answers cannot run until this grows.
+ * what user32.cpp first needed: extra window calls over the one window, and
+ * the pointer and key state. Dialogs live in dialog.cpp, menus in resource.cpp.
  *
  * Input here reads the host's state (sdl.cpp). The layer delivers pointer and
  * key events to DirectInput only; Windows-message delivery (WM_MOUSEMOVE,
  * WM_KEYDOWN, ...) is a separate piece of work.
  */
 #include "platform.h"
+#include "dialog.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -53,6 +48,10 @@ BOOL WINAPI UnregisterClassA(LPCSTR cls, HINSTANCE inst)
 
 BOOL WINAPI BringWindowToTop(HWND hwnd)
 {
+    if (w32l_dw_valid(hwnd)) {
+        w32l_dw_raise(hwnd);
+        return TRUE;
+    }
     if (hwnd != w32l_the_window())
         return FALSE;
     w32l_host_window_raise();
@@ -63,6 +62,10 @@ HWND WINAPI SetActiveWindow(HWND hwnd)
 {
     HWND old = GetActiveWindow();
 
+    if (w32l_dw_valid(hwnd)) {
+        w32l_dw_raise(hwnd);
+        return old;
+    }
     if (hwnd == w32l_the_window() && hwnd)
         w32l_host_window_raise();
     return old;
@@ -77,18 +80,23 @@ HWND WINAPI GetDesktopWindow(void) { return (HWND)(uintptr_t)0x1D01u; }
  * shows what DirectDraw presents (see GetUpdateRect). */
 BOOL WINAPI InvalidateRect(HWND hwnd, const RECT *rc, BOOL erase)
 {
-    (void)hwnd; (void)rc; (void)erase;
+    (void)rc; (void)erase;
+    w32l_dw_invalidate(hwnd);
     return TRUE;
 }
 
 BOOL WINAPI MoveWindow(HWND hwnd, int32_t x, int32_t y, int32_t w, int32_t h, BOOL repaint)
 {
     (void)repaint;
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_move(hwnd, x, y, w, h, 0);
     return SetWindowPos(hwnd, NULL, x, y, w, h, SWP_NOZORDER);
 }
 
 BOOL WINAPI SetWindowTextA(HWND hwnd, LPCSTR text)
 {
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_set_text(hwnd, text);
     if (hwnd != w32l_the_window() || !text)
         return FALSE;
     w32l_host_window_set_title(text);
@@ -98,7 +106,10 @@ BOOL WINAPI SetWindowTextA(HWND hwnd, LPCSTR text)
 HWND WINAPI WindowFromPoint(POINT pt)
 {
     int32_t x, y, w, h;
+    HWND    dw = w32l_dw_at_point(pt);
 
+    if (dw)
+        return dw;
     if (!w32l_the_window())
         return NULL;
     w32l_host_window_position(&x, &y, &w, &h);
@@ -116,6 +127,8 @@ HWND WINAPI SetCapture(HWND hwnd)
     w32l_captured = hwnd;
     return old;
 }
+
+HWND WINAPI GetCapture(void) { return w32l_captured; }
 
 BOOL WINAPI ReleaseCapture(void)
 {
@@ -241,89 +254,4 @@ int32_t WINAPI wvsprintfA(LPSTR out, LPCSTR fmt, va_list ap)
 {
     /* USER32's wvsprintf writes at most 1024 bytes, like wsprintfA. */
     return vsnprintf(out, 1024, fmt, ap);
-}
-
-/* ---- dialogs ------------------------------------------------------------------------------ */
-
-INT_PTR WINAPI DialogBoxParamA(HINSTANCE inst, LPCSTR templ, HWND parent, DLGPROC proc, LPARAM param)
-{
-    (void)inst; (void)templ; (void)parent; (void)proc; (void)param;
-    w32l_plat_log("DialogBoxParamA: no dialog resources here; failing");
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return -1;
-}
-
-HWND WINAPI CreateDialogParamA(HINSTANCE inst, LPCSTR templ, HWND parent, DLGPROC proc, LPARAM param)
-{
-    (void)inst; (void)templ; (void)parent; (void)proc; (void)param;
-    w32l_plat_log("CreateDialogParamA: no dialog resources here; failing");
-    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-    return NULL;
-}
-
-BOOL WINAPI EndDialog(HWND dlg, INT_PTR result) { (void)dlg; (void)result; return FALSE; }
-HWND WINAPI GetDlgItem(HWND dlg, int32_t id) { (void)dlg; (void)id; return NULL; }
-int32_t WINAPI GetDlgCtrlID(HWND hwnd) { (void)hwnd; return 0; }
-
-UINT WINAPI GetDlgItemInt(HWND dlg, int32_t id, BOOL *translated, BOOL isSigned)
-{
-    (void)dlg; (void)id; (void)isSigned;
-    if (translated)
-        *translated = FALSE;
-    return 0;
-}
-
-UINT WINAPI GetDlgItemTextA(HWND dlg, int32_t id, LPSTR out, int32_t cch)
-{
-    (void)dlg; (void)id;
-    if (out && cch > 0)
-        out[0] = 0;
-    return 0;
-}
-
-BOOL WINAPI SetDlgItemInt(HWND dlg, int32_t id, UINT value, BOOL isSigned)
-{
-    (void)dlg; (void)id; (void)value; (void)isSigned;
-    return FALSE;
-}
-
-BOOL WINAPI SetDlgItemTextA(HWND dlg, int32_t id, LPCSTR text)
-{
-    (void)dlg; (void)id; (void)text;
-    return FALSE;
-}
-
-BOOL WINAPI CheckDlgButton(HWND dlg, int32_t id, UINT check)
-{
-    (void)dlg; (void)id; (void)check;
-    return FALSE;
-}
-
-UINT WINAPI IsDlgButtonChecked(HWND dlg, int32_t id) { (void)dlg; (void)id; return 0; }
-
-LRESULT WINAPI SendDlgItemMessageA(HWND dlg, int32_t id, UINT msg, WPARAM wp, LPARAM lp)
-{
-    (void)dlg; (void)id; (void)msg; (void)wp; (void)lp;
-    return 0;
-}
-
-/* ---- menus ---------------------------------------------------------------------------------- */
-
-HMENU WINAPI LoadMenuA(HINSTANCE inst, LPCSTR name) { (void)inst; (void)name; return NULL; }
-BOOL WINAPI DestroyMenu(HMENU menu) { (void)menu; return FALSE; }
-int32_t WINAPI GetMenuItemCount(HMENU menu) { (void)menu; return -1; }
-
-BOOL WINAPI GetMenuItemInfoA(HMENU menu, UINT item, BOOL byPosition, LPMENUITEMINFOA info)
-{
-    (void)menu; (void)item; (void)byPosition; (void)info;
-    return FALSE;
-}
-
-HMENU WINAPI GetSubMenu(HMENU menu, int32_t pos) { (void)menu; (void)pos; return NULL; }
-
-BOOL WINAPI TrackPopupMenu(HMENU menu, UINT flags, int32_t x, int32_t y, int32_t reserved,
-                           HWND hwnd, const RECT *rc)
-{
-    (void)menu; (void)flags; (void)x; (void)y; (void)reserved; (void)hwnd; (void)rc;
-    return FALSE;
 }

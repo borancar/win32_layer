@@ -24,6 +24,8 @@ deterministic timing on demand, and the same heap answers on every host.
 |---|---|
 | `src/kernel32.cpp`, `src/kernel32crt.cpp` | files, handles, threads, events, critical sections, heaps, the command line and environment, and the import table a PE loader asks by module and name (`w32l_export_lookup`) |
 | `src/user32.cpp` | windows, the message queue, focus, cursor, `MessageBoxA` (to stderr) |
+| `src/resource.cpp` | the program image's resources (`FindResource`, `LoadResource`, `LoadString`, `LoadMenu`), read from the PE the loader mapped (`w32l_pe_image`) |
+| `src/dialog.cpp`, `src/dlghost.cpp` | dialogs: templates (`DLGTEMPLATE` and `DLGTEMPLATEEX`) built into dialog and control windows, the standard controls with their messages, one SDL window per dialog, see "Dialogs" below |
 | `src/gdi32.cpp` | device contexts, palettes (with the 20 Windows static colours under `SYSPAL_STATIC`), fonts drawn with stb_truetype |
 | `src/ddraw.cpp` | DirectDraw: 8-bit palettised or 16-bit RGB565 surfaces (`w32l_display_bpp`), palettes, clipper, Blt/BltFast with colour keys, Flip paced to 60 Hz |
 | `src/amstream.cpp`, `src/cinepak.cpp` | DirectShow multimedia streaming for a game that plays AVI films through `CLSID_AMMultiMediaStream`: an AVI reader, a Cinepak decoder, MS-ADPCM sound |
@@ -75,6 +77,56 @@ set: `w32l_host_frame_hook`, `w32l_host_hotkey`, `w32l_host_cursor_set`/`_query`
 the layer builds a development variant: F5 and F9 go to `w32l_host_hotkey`
 instead of the program, and `W32L_AUDIO_DUMP` works.
 
+## Dialogs
+
+`CreateDialogParam`, `DialogBoxParam` (and the `Indirect` and wide forms), `EndDialog`, `GetDlgItem`,
+`Get/SetDlgItemText/Int`, `SendDlgItemMessage`, `CheckDlgButton`, `CheckRadioButton`, `IsDialogMessage`,
+`EnableWindow`, `ShowWindow`, `DestroyWindow`, `Get/SetWindowLong` (`DWL_MSGRESULT`, `DWL_USER`,
+`GWL_USERDATA`), `GetWindowRect`/`MoveWindow` and the rest of the window calls work on dialogs and on their
+controls. A program's resources come from its own PE image: a loader sets `w32l_pe_image` (platform.h) to
+where it mapped the image (headers included) and `FindResource(NULL, name, RT_DIALOG)`, `LoadString` and
+`LoadMenu` read its `.rsrc`. A program that sets none finds no resources and its dialogs fail as before.
+
+What a dialog is:
+
+- Windows `HWND`s of a dialog or a control are small integers (0x10000 and up), looked up in a table, so a stale
+  one finds nothing. The program's own window keeps its handle; `user32.cpp` hands a dialog's or control's call
+  over to `dialog.cpp`.
+- The standard controls are real: `BUTTON` (push, default, check, radio, group box, auto variants), `EDIT`
+  (single and multi line, `ES_NUMBER`, read only, password, selection, clipboard), `STATIC` (text, frames, etched
+  lines), `LISTBOX` (single, multiple and extended selection, sort, item data), `COMBOBOX` (simple, drop-down,
+  drop-down list) and `SCROLLBAR`, each with the `BM_`, `EM_`, `LB_`, `CB_`, `SBM_` and `WM_*TEXT` messages a
+  game sends, and with the notifications to the parent (`BN_CLICKED`, `EN_CHANGE`, `EN_SETFOCUS`,
+  `LBN_SELCHANGE`, `LBN_DBLCLK`, `CBN_SELCHANGE`, `CBN_DROPDOWN`, `WM_VSCROLL`, ...). Other classes (a tree view,
+  a track bar) are a labelled box, or the procedure of a class the program registered.
+- The dialog procedure follows DLGPROC's rules: `WM_INITDIALOG` with the parameter, `WM_COMMAND`, `WM_CLOSE`
+  (undone by default: `DefDlgProc` sends `IDCANCEL`), `WM_DESTROY`; a `TRUE` answer returns `DWL_MSGRESULT`.
+  `DialogBoxParam` runs its own loop over the program's queue until `EndDialog`.
+- Every top-level dialog is one SDL window (`dlghost.cpp`) drawn by the layer in classic Windows 9x chrome with
+  SDL's 8x8 debug font (Latin-1 letters with accents are drawn as their base letter), at 9 pixels per 4 dialog
+  units across and 12 per 8 down, once a pump when something changed. The game's window beside it keeps
+  working; input to a dialog's window is posted to the program's queue addressed to the control, and reaches it
+  through `DispatchMessage`. Tab, Enter and Esc act as `IsDialogMessage` does. Without a window of the program's
+  own, the dialogs still paint and take events.
+- Headless (`SDL_VIDEODRIVER=dummy` or `offscreen`) the dialogs are drawn into their own canvas: set
+  `W32L_DIALOGDUMP` to see them.
+
+Replay verbs for dialogs (`W32L_REPLAY`, and the step socket; the frame number is the pump):
+
+| verb | effect |
+|---|---|
+| `dlgclick ID` | press and release the left button at the middle of control `ID` of the newest dialog that has one |
+| `dlgat X Y` | the same at client coordinates of the newest dialog |
+| `dlgtype ID TEXT` | click control `ID`, then type `TEXT` (`_` is a space) |
+| `dlgkey NAME` | a key to the newest dialog: `ENTER TAB ESC BACK DELETE LEFT UP RIGHT DOWN HOME END PAGEUP PAGEDOWN SPACE F4` |
+| `dlgsel ID INDEX` | select item `INDEX` of a list or combo box, with its notification |
+| `dlgclose` | the window's close button |
+| `dlgdump PREFIX` | write every visible dialog now as `PREFIX` + `dlgNN-NAME.ppm` |
+
+`tests/dialogs.cpp` (`make test`) builds a dialog from a template in memory, drives it with all of the above
+and checks the answers; `make test IMAGE=comandos.exe DIALOGS="D_DEBUG_INFO ..."` maps a PE and dumps its
+resource dialogs to `tests/out/`.
+
 ## Switches
 
 All read from the environment.
@@ -95,6 +147,8 @@ All read from the environment.
 | `W32L_STEP=SOCKET` | wait for a coordinator before every pump (two programs stepped side by side) |
 | `W32L_FRAMELOG=FILE` | a hash of every presented frame; `W32L_FRAMEDUMP_AT=N` with `W32L_FRAMEDUMP_TO=FILE` writes frame N as PPM |
 | `W32L_PLATFORM_QUIET=1`, `W32L_PLATFORM_DEBUG=1` | less or more of the layer's own stderr diagnostics |
+| `W32L_DIALOGDUMP=DIR` | write every visible dialog as `DIR/dlgNN-NAME.ppm` (NAME: its resource name or title) when first drawn and again after it changed, every `W32L_DIALOGDUMP_EVERY` pumps (default 60), and at exit |
+| `W32L_DIALOG_MODAL_PUMPS=N` | close a modal dialog (`DialogBoxParam`) with `IDCANCEL` after N pumps, so a headless run cannot wait for input for ever |
 | `W32L_BLT_TRACE=1`, `W32L_TRACE_DI=1` | trace blits or DirectInput traffic, within pumps `W32L_TRACE_FROM`..`W32L_TRACE_TO` |
 
 ## License

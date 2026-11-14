@@ -886,10 +886,108 @@ int16_t WINAPI GetKeyState(int32_t vk);
 UINT    WINAPI MapVirtualKeyA(UINT code, UINT type);
 int32_t WINAPI wvsprintfA(LPSTR out, LPCSTR fmt, va_list ap);
 
-/* Dialogs and menus. There is no resource interpreter here: creating one
- * fails and every control query answers "no such control". */
+/* ---- resources, dialogs and menus (resource.cpp, dialog.cpp) ----------------- */
+
+#define RT_CURSOR     MAKEINTRESOURCE(1)
+#define RT_BITMAP     MAKEINTRESOURCE(2)
+#define RT_ICON       MAKEINTRESOURCE(3)
+#define RT_MENU       MAKEINTRESOURCE(4)
+#define RT_DIALOG     MAKEINTRESOURCE(5)
+#define RT_STRING     MAKEINTRESOURCE(6)
+#define RT_RCDATA     MAKEINTRESOURCE(10)
+
+typedef HANDLE HRSRC;
+
+#define WS_CHILD     0x40000000u
+#define WS_CLIPSIBLINGS 0x04000000u
+#define WS_CLIPCHILDREN 0x02000000u
+#define WS_DISABLED  0x08000000u
+#define WS_TABSTOP   0x00010000u
+#define WS_GROUP     0x00020000u
+#define WS_VSCROLL   0x00200000u
+#define WS_HSCROLL   0x00100000u
+#define WS_EX_CLIENTEDGE 0x00000200u
+#define DS_SETFONT   0x0040
+#define DS_CENTER    0x0800
+#define DS_MODALFRAME 0x0080
+#define IDOK     1
+#define IDCANCEL 2
+#define WM_SETREDRAW      0x000B
+#define WM_SETTEXT        0x000C
+#define WM_GETTEXT        0x000D
+#define WM_GETTEXTLENGTH  0x000E
+#define WM_ENABLE         0x000A
+#define WM_SETFONT        0x0030
+#define WM_GETFONT        0x0031
+#define WM_INITDIALOG     0x0110
+#define WM_COMMAND        0x0111
+#define WM_HSCROLL        0x0114
+#define WM_VSCROLL        0x0115
+#define WM_NEXTDLGCTL     0x0028
+#define WM_NOTIFY         0x004E
+#define WM_CONTEXTMENU    0x007B
+#define WM_CTLCOLORSTATIC 0x0138
+#define DM_GETDEFID       (WM_USER + 0)
+#define DM_SETDEFID       (WM_USER + 1)
+#define DWL_MSGRESULT 0
+#define DWL_DLGPROC   4
+#define DWL_USER      8
+#define BN_CLICKED 0
+#define EN_SETFOCUS 0x0100
+#define EN_KILLFOCUS 0x0200
+#define EN_CHANGE   0x0300
+#define EN_UPDATE   0x0400
+#define LBN_SELCHANGE 1
+#define LBN_DBLCLK    2
+#define CBN_SELCHANGE 1
+#define CBN_DBLCLK    2
+#define CBN_EDITCHANGE 5
+#define CBN_DROPDOWN  7
+#define CBN_CLOSEUP   8
+#define BM_GETCHECK 0x00F0
+#define BM_SETCHECK 0x00F1
+#define BM_CLICK    0x00F5
+#define BST_UNCHECKED 0
+#define BST_CHECKED   1
+#define BST_INDETERMINATE 2
+#define SW_SHOWNOACTIVATE 4
+#define SW_MINIMIZE 6
+#define SW_RESTORE  9
+#define SB_LINEUP 0
+#define SB_LINELEFT 0
+#define SB_LINEDOWN 1
+#define SB_LINERIGHT 1
+#define SB_PAGEUP 2
+#define SB_PAGEDOWN 3
+#define SB_THUMBPOSITION 4
+#define SB_THUMBTRACK 5
+#define SB_ENDSCROLL 8
+
+#pragma pack(push, 2)
+typedef struct tagDLGTEMPLATE {
+    DWORD style, dwExtendedStyle;
+    WORD  cdit;
+    SHORT x, y, cx, cy;
+} DLGTEMPLATE, *LPDLGTEMPLATE;
+typedef const DLGTEMPLATE *LPCDLGTEMPLATEA;
+typedef const DLGTEMPLATE *LPCDLGTEMPLATE;
+#pragma pack(pop)
+
+HRSRC   WINAPI FindResourceA(HMODULE mod, LPCSTR name, LPCSTR type);
+HRSRC   WINAPI FindResourceExA(HMODULE mod, LPCSTR type, LPCSTR name, WORD lang);
+HRSRC   WINAPI FindResourceW(HMODULE mod, LPCWSTR name, LPCWSTR type);
+HGLOBAL WINAPI LoadResource(HMODULE mod, HRSRC res);
+LPVOID  WINAPI LockResource(HGLOBAL res);
+DWORD   WINAPI SizeofResource(HMODULE mod, HRSRC res);
+int32_t WINAPI LoadStringA(HINSTANCE inst, UINT id, LPSTR out, int32_t cch);
+int32_t WINAPI LoadStringW(HINSTANCE inst, UINT id, LPWSTR out, int32_t cch);
+
 INT_PTR WINAPI DialogBoxParamA(HINSTANCE inst, LPCSTR templ, HWND parent, DLGPROC proc, LPARAM param);
+INT_PTR WINAPI DialogBoxParamW(HINSTANCE inst, LPCWSTR templ, HWND parent, DLGPROC proc, LPARAM param);
+INT_PTR WINAPI DialogBoxIndirectParamA(HINSTANCE inst, LPCDLGTEMPLATE templ, HWND parent, DLGPROC proc, LPARAM param);
 HWND    WINAPI CreateDialogParamA(HINSTANCE inst, LPCSTR templ, HWND parent, DLGPROC proc, LPARAM param);
+HWND    WINAPI CreateDialogParamW(HINSTANCE inst, LPCWSTR templ, HWND parent, DLGPROC proc, LPARAM param);
+HWND    WINAPI CreateDialogIndirectParamA(HINSTANCE inst, LPCDLGTEMPLATE templ, HWND parent, DLGPROC proc, LPARAM param);
 BOOL    WINAPI EndDialog(HWND dlg, INT_PTR result);
 HWND    WINAPI GetDlgItem(HWND dlg, int32_t id);
 int32_t WINAPI GetDlgCtrlID(HWND hwnd);
@@ -898,8 +996,23 @@ UINT    WINAPI GetDlgItemTextA(HWND dlg, int32_t id, LPSTR out, int32_t cch);
 BOOL    WINAPI SetDlgItemInt(HWND dlg, int32_t id, UINT value, BOOL isSigned);
 BOOL    WINAPI SetDlgItemTextA(HWND dlg, int32_t id, LPCSTR text);
 BOOL    WINAPI CheckDlgButton(HWND dlg, int32_t id, UINT check);
+BOOL    WINAPI CheckRadioButton(HWND dlg, int32_t first, int32_t last, int32_t check);
 UINT    WINAPI IsDlgButtonChecked(HWND dlg, int32_t id);
 LRESULT WINAPI SendDlgItemMessageA(HWND dlg, int32_t id, UINT msg, WPARAM wp, LPARAM lp);
+LRESULT WINAPI DefDlgProcA(HWND dlg, UINT msg, WPARAM wp, LPARAM lp);
+BOOL    WINAPI IsDialogMessageA(HWND dlg, LPMSG msg);
+BOOL    WINAPI MapDialogRect(HWND dlg, LPRECT rc);
+HWND    WINAPI GetNextDlgTabItem(HWND dlg, HWND ctl, BOOL previous);
+BOOL    WINAPI EnableWindow(HWND hwnd, BOOL enable);
+BOOL    WINAPI IsWindow(HWND hwnd);
+BOOL    WINAPI IsWindowVisible(HWND hwnd);
+BOOL    WINAPI IsWindowEnabled(HWND hwnd);
+HWND    WINAPI GetParent(HWND hwnd);
+int32_t WINAPI GetWindowTextA(HWND hwnd, LPSTR out, int32_t cch);
+int32_t WINAPI GetWindowTextLengthA(HWND hwnd);
+HWND    WINAPI GetCapture(void);
+BOOL    WINAPI SetForegroundWindow(HWND hwnd);
+LRESULT WINAPI CallWindowProcA(WNDPROC proc, HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 HMENU   WINAPI LoadMenuA(HINSTANCE inst, LPCSTR name);
 BOOL    WINAPI DestroyMenu(HMENU menu);
 int32_t WINAPI GetMenuItemCount(HMENU menu);

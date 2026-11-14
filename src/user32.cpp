@@ -3,6 +3,7 @@
  * than the game ever asks for.
  */
 #include "platform.h"
+#include "dialog.h"
 
 #include <pthread.h>
 #include <stdio.h>
@@ -44,6 +45,17 @@ static LRESULT w32l_call_proc(WNDPROC proc, HWND hwnd, UINT msg, WPARAM wp, LPAR
     w32l_plat_debug("wndproc msg 0x%04x wp=0x%x lp=0x%x -> 0x%x", (unsigned)msg,
                     (unsigned)wp, (unsigned)lp, (unsigned)r);
     return r;
+}
+
+/* A registered class's procedure by name, for a dialog control of that class. */
+WNDPROC w32l_class_proc(const char *name)
+{
+    int32_t i;
+
+    for (i = 0; i < w32l_class_count; i++)
+        if (!strcasecmp(w32l_classes[i].name, name))
+            return w32l_classes[i].proc;
+    return NULL;
 }
 
 HWND w32l_the_window(void)
@@ -120,6 +132,8 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR cls, LPCSTR title,
 
 BOOL WINAPI DestroyWindow(HWND hwnd)
 {
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_destroy(hwnd);
     if (hwnd != W32L_HWND || !w32l_window.alive)
         return FALSE;
     w32l_call_proc(w32l_window.proc, W32L_HWND, WM_DESTROY, 0, 0);
@@ -137,6 +151,8 @@ BOOL WINAPI ShowWindow(HWND hwnd, int32_t cmd)
 {
     int32_t was;
 
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_show(hwnd, cmd);
     if (hwnd != W32L_HWND || !w32l_window.alive)
         return FALSE;
     was = (w32l_window.style & WS_VISIBLE) != 0;
@@ -169,6 +185,8 @@ BOOL WINAPI ShowWindow(HWND hwnd, int32_t cmd)
  * the queue. */
 BOOL WINAPI UpdateWindow(HWND hwnd)
 {
+    if (w32l_dw_valid(hwnd))
+        return TRUE;
     if (hwnd == W32L_HWND && w32l_window.alive && w32l_paint_pending) {
         w32l_paint_pending = 0;
         w32l_call_proc(w32l_window.proc, hwnd, WM_PAINT, 0, 0);
@@ -188,7 +206,9 @@ BOOL WINAPI AdjustWindowRectEx(LPRECT rc, DWORD style, BOOL menu, DWORD exStyle)
 BOOL WINAPI SetWindowPos(HWND hwnd, HWND after, int32_t x, int32_t y,
                          int32_t cx, int32_t cy, UINT flags)
 {
-    (void)after; (void)x; (void)y;
+    (void)after;
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_move(hwnd, x, y, cx, cy, (int32_t)(flags & (SWP_NOMOVE | SWP_NOSIZE)));
     if (hwnd != W32L_HWND || !w32l_window.alive)
         return FALSE;
     if (!(flags & SWP_NOSIZE) && cx > 0 && cy > 0 &&
@@ -209,6 +229,8 @@ LONG WINAPI GetWindowLongA(HWND hwnd, int32_t index)
 {
     LONG v;
 
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_getlong(hwnd, index);
     if (hwnd != W32L_HWND)
         return 0;
     if (index >= 0) {
@@ -230,8 +252,11 @@ LONG WINAPI GetWindowLongA(HWND hwnd, int32_t index)
 
 LONG WINAPI SetWindowLongA(HWND hwnd, int32_t index, LONG value)
 {
-    LONG old = GetWindowLongA(hwnd, index);
+    LONG old;
 
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_setlong(hwnd, index, value);
+    old = GetWindowLongA(hwnd, index);
     if (hwnd != W32L_HWND)
         return 0;
     if (index >= 0) {
@@ -251,6 +276,8 @@ LONG WINAPI SetWindowLongA(HWND hwnd, int32_t index, LONG value)
 
 BOOL WINAPI GetClientRect(HWND hwnd, LPRECT rc)
 {
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_rect(hwnd, rc, 1);
     if (hwnd != W32L_HWND || !rc)
         return FALSE;
     rc->left = rc->top = 0;
@@ -263,6 +290,15 @@ BOOL WINAPI GetWindowRect(HWND hwnd, LPRECT rc)
 {
     int32_t x, y, w, h;
 
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_rect(hwnd, rc, 0);
+    if (hwnd == GetDesktopWindow() && rc) {
+        w32l_dlghost_desktop(&w, &h);
+        rc->left = rc->top = 0;
+        rc->right = w;
+        rc->bottom = h;
+        return TRUE;
+    }
     if (hwnd != W32L_HWND || !rc)
         return FALSE;
     w32l_host_window_position(&x, &y, &w, &h);
@@ -277,6 +313,8 @@ BOOL WINAPI ClientToScreen(HWND hwnd, LPPOINT pt)
 {
     int32_t x, y, w, h;
 
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_to_screen(hwnd, pt);
     if (hwnd != W32L_HWND || !pt)
         return FALSE;
     w32l_host_window_position(&x, &y, &w, &h);
@@ -294,6 +332,9 @@ HMENU WINAPI GetMenu(HWND hwnd) { (void)hwnd; return NULL; }
 
 HWND WINAPI GetFocus(void)
 {
+    HWND f = w32l_dw_focus();
+    if (f)
+        return f;
     return w32l_window.alive && w32l_focused ? W32L_HWND : NULL;
 }
 
@@ -305,6 +346,8 @@ HWND WINAPI GetActiveWindow(void)
 HWND WINAPI SetFocus(HWND hwnd)
 {
     HWND old = GetFocus();
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_set_focus(hwnd);
     if (hwnd == W32L_HWND)
         w32l_host_window_raise();
     return old;
@@ -543,8 +586,11 @@ BOOL WINAPI TranslateMessage(const MSG *msg)
 LRESULT WINAPI DispatchMessageA(const MSG *msg)
 {
     w32l_time_trace("disp", msg->message, __builtin_return_address(0));
-    WNDPROC proc = w32l_window_proc(msg->hwnd);
+    WNDPROC proc;
 
+    if (w32l_dw_valid(msg->hwnd))
+        return w32l_dw_send(msg->hwnd, msg->message, msg->wParam, msg->lParam);
+    proc = w32l_window_proc(msg->hwnd);
     if (!proc)
         return 0;
     return w32l_call_proc(proc, msg->hwnd, msg->message, msg->wParam, msg->lParam);
@@ -552,6 +598,8 @@ LRESULT WINAPI DispatchMessageA(const MSG *msg)
 
 LRESULT WINAPI SendMessageA(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
+    if (w32l_dw_valid(hwnd))
+        return w32l_dw_send(hwnd, msg, wp, lp);
     WNDPROC proc = w32l_window_proc(hwnd);
     return proc ? w32l_call_proc(proc, hwnd, msg, wp, lp) : 0;
 }

@@ -220,6 +220,13 @@ int32_t w32l_handle_fd(const void *handle);
 /* crt.cpp's fopen, with the Windows path translated (see w32l_native_path). */
 FILE *w32l_fopen(const char *path, const char *mode);
 
+/* ---- the program's resources (resource.cpp) ----------------------------- */
+
+/* The program's own PE image, as mapped by its loader (the headers at the
+ * start): where FindResource and the dialogs read RT_DIALOG, RT_MENU and
+ * RT_STRING from. NULL, the default, means the program has no resources. */
+extern const uint8_t *w32l_pe_image;
+
 /* ---- the window and its queue (user32.cpp) ------------------------------ */
 
 /* The one window the game creates, or NULL. */

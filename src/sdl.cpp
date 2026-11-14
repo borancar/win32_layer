@@ -17,6 +17,7 @@ extern void w32l_time_trace(const char *what, unsigned long long v, void *ra);
 #include "platform.h"
 #include <dinput.h>
 
+#include "dialog.h"
 #include <SDL3/SDL.h>
 #include <pthread.h>
 
@@ -767,7 +768,7 @@ const char *(*w32l_host_lua)(const char *code);
  */
 typedef struct W32L_ReplayLine {
     uint32_t frame;
-    char     verb[8];
+    char     verb[16];
     int32_t  a, b;
     char     text[512];
 } W32L_ReplayLine;
@@ -913,6 +914,11 @@ static void w32l_replay_parse(int32_t n, uint32_t frame, const char *verb,
             }
         } else if (!strcmp(verb, "move") || !strcmp(verb, "cursor")) {
             w32l_replay_add(frame, verb, atoi(w1), atoi(w2), NULL);
+        } else if (!strncmp(verb, "dlg", 3)) {
+            /* a dialog's input or dump (dialog.cpp): the text is the verb's
+             * own word, the last one the verb takes */
+            w32l_replay_add(frame, verb, atoi(w1), atoi(w2),
+                            !strcmp(verb, "dlgtype") ? w2 : w1);
         } else if (!strcmp(verb, "dump")) {
             w32l_replay_add(frame, verb, 0, 0, w1);
         } else if (!strcmp(verb, "exit")) {
@@ -954,6 +960,8 @@ static void w32l_replay_apply(void)
                 w32l_plat_log("replay: cursor: this binary installs no cursor setter");
         } else if (!strcmp(l->verb, "dump")) {
             snprintf(w32l_framedump_path, sizeof w32l_framedump_path, "%s", l->text);
+        } else if (!strncmp(l->verb, "dlg", 3)) {
+            w32l_dlg_replay(l->verb, l->a, l->b, l->text);
         } else if (!strcmp(l->verb, "exit")) {
             w32l_plat_log("replay: exit at pump %u, %u frames presented",
                          (unsigned)w32l_pump_count, (unsigned)w32l_present_count);
@@ -1290,6 +1298,8 @@ static void w32l_step_host_events(void)
     int32_t   moved = 0;
 
     while (SDL_PollEvent(&ev)) {
+        if (w32l_dlghost_event(&ev, 0))
+            continue;
         switch (ev.type) {
         case SDL_EVENT_QUIT:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -1360,14 +1370,21 @@ static void w32l_step_host_events(void)
 void w32l_host_pump(void)
 {
     SDL_Event ev;
-    int32_t   moved = 0;
+    int32_t   moved = 0, focus_lost = 0;
 
-    if (!w32l_sdl_window)
+    if (!w32l_sdl_window) {
+        /* No window of the program's own (a program that only opens dialogs):
+         * the dialogs' windows still need their events and their painting. */
+        w32l_dlg_frame();
+        while (SDL_PollEvent(&ev))
+            w32l_dlghost_event(&ev, !w32l_host_lockstep());
         return;
+    }
     if (w32l_host_frame_hook)
         w32l_host_frame_hook();
     w32l_dik_table_init();
     w32l_mouse_pay_releases();
+    w32l_dlg_frame();
     if (w32l_host_lockstep()) {
         /* The pump IS the clock: one step, the timers it passes, one
          * step's worth of sound, and the script's actions for this frame.
@@ -1386,9 +1403,12 @@ void w32l_host_pump(void)
             w32l_step_host_events();
             return;
         }
-        while (SDL_PollEvent(&ev))
+        while (SDL_PollEvent(&ev)) {
+            if (w32l_dlghost_event(&ev, 0))
+                continue;
             if (ev.type == SDL_EVENT_QUIT || ev.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
                 w32l_window_on_close();
+        }
         return;
     }
     /* A replay script also drives a free-running pump (W32L_REPLAY=<file>),
@@ -1399,16 +1419,25 @@ void w32l_host_pump(void)
         w32l_replay_apply();
     }
     while (SDL_PollEvent(&ev)) {
+        /* A dialog's window takes its own events; the program's window is
+         * not told the focus left it while it only moved to a dialog. */
+        if (w32l_dlghost_event(&ev, 1))
+            continue;
         switch (ev.type) {
         case SDL_EVENT_QUIT:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
             w32l_window_on_close();
             break;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            focus_lost = 0;
             w32l_window_on_focus(1);
             break;
         case SDL_EVENT_WINDOW_FOCUS_LOST:
-            w32l_window_on_focus(0);
+            focus_lost = 1;
+            break;
+        case SDL_EVENT_WINDOW_MOUSE_ENTER:
+            if (!w32l_cursor_shown)
+                SDL_HideCursor();
             break;
         case SDL_EVENT_WINDOW_MOVED:
             w32l_window_on_moved(ev.window.data1, ev.window.data2);
@@ -1497,6 +1526,8 @@ void w32l_host_pump(void)
             break;
         }
     }
+    if (focus_lost && !w32l_dlg_has_host_focus())
+        w32l_window_on_focus(0);
     w32l_mouse_flush();
     /* Windows asks the window what cursor to show whenever the pointer
      * moves over it; the game answers "none". */
@@ -1807,6 +1838,7 @@ void w32l_host_timer_remove(uint32_t id)
 
 void w32l_host_exit(int32_t code)
 {
+    w32l_dlg_shutdown();
     w32l_host_audio_close();
     w32l_host_window_close();
     SDL_Quit();
@@ -1842,6 +1874,7 @@ int main(int argc, char **argv)
         return 1;
     }
     rc = WinMain((HINSTANCE)(uintptr_t)0x400000u, NULL, cmdline, SW_SHOWNORMAL);
+    w32l_dlg_shutdown();
     w32l_host_audio_close();
     w32l_host_window_close();
     SDL_Quit();
