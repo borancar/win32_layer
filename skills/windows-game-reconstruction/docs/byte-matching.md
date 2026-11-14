@@ -2922,3 +2922,15 @@ mostly header-less, so the lever is what else is defined in the unit.
   slot; the vector destructor iterator with a constant count is `delete p` on a struct with an
   array member; written-out `delete`s of a class with a base and a member take one state each.
   A member destructor called with no state store is declared `throw()`. *(match)*
+- `[vc8]` `operator new`, a null test and an init-function call written out by a port is a
+  `new` expression with a declared constructor; the EH state around the constructor comes
+  with it. In its arguments, a small struct built in place is `&T(a, b, c)` with an inline
+  constructor, and an int read as a float through an inline getter gives `fild; fstp tmp;
+  fld tmp`. *(match)*
+- `[vc8]` The receiver of a member call loaded in front of the argument pushes (`mov ecx,[g];
+  mov ecx,[ecx+N]; add eax,8; push eax`) is an inline getter for the receiver together with
+  the argument held in a pointer local declared first; either alone gives another order.
+  *(match)*
+- `[vc8]` Several function statics that each carry an EH state in the image all call a
+  throwing initialiser; a port that declared a `throw()` twin of the callee to drop states
+  also loses the immediate-operand guard tests. *(match)*
