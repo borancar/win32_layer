@@ -2352,3 +2352,31 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Trap: a variant loop that prints only the tail of the compare** drops the `DIFF` line of the early
   functions of a long file, and they look matched. Grep the whole output for the symbol, and run the full
   match before recording anything as identical. *(one false match caught)*.
+- **A field loaded and stored straight back (`mov ecx,[esi+0x18]; mov [esi+0x18],ecx`) beside a real
+  update of its neighbour: the two are one pair struct copied by value.** `Par p; p.x = e->x; p.y = e->y
+  + n; *(Par *)&e->x = p; *(Par *)&e->x2 = p;` keeps the self-store and gives the image's order (both
+  loads, then the four stores); scalar locals (`int x = e->x; e->x = x;`) lose the store as dead. The same
+  for a size pair set from two locals (`Par q; q.x = w; q.y = h;` copied to two places: the stores come
+  out `y, y2, x, x2` around the next load). `[vc8]` **held** *(1 match, 1 function aligned)*.
+- **A counted loop with `sub reg,1` at its top, entered by `test; je` and closed by `test reg,reg; jne`:**
+  `unsigned k = n; while (k) { k--; ... }`. `for (k = n; k > 0; k--)` puts the decrement at the bottom
+  and closes with `ja`. `[vc8]` **held** *(1 match)*.
+- **`sub eax,1; cmp eax,7; ja; mov eax,[eax*4+table]` is the index in an unsigned local** (`unsigned i =
+  level - 1; if (i <= 7) ... table[i]`); the cast inside the condition with `table[level - 1]` gives
+  `lea ecx,[eax-1]` and `table[eax*4-4]`. A table loop closing with `cmp esi,0x40; jb` on a scaled index
+  is `for (unsigned i = 0; i < 16; i++)` (the `int` index walks a pointer and closes with `jl`). `[vc8]`
+  **held** *(1 match, 1 function to 2 bytes)*.
+- **`mov ecx,esi` in front of a call whose callee was matched as a `__stdcall` free function: the callee
+  is a member that never touches `this`.** Both compile to the same callee bytes; only the callers tell.
+  Call it through a local struct member with a second symbols line for the address, and leave the matched
+  definition alone. `[vc8]` *(1 caller, 24 bytes closer)*.
+- **Frame slot order is not declaration order, and one more slot reshuffles the others.** Moving,
+  renaming or re-scoping locals leaves the layout alone; adding or removing a variable that owns a slot
+  changes the order of the same-size scalars (`c2, a, b` became `b, c2, zz, a`). The copy of `this` kept
+  for the unwind funclet in a function with a GS buffer (`_this$GSCopy$`) sits directly under the buffers;
+  a spilled value shares its slot only when no other slot is free for it (a second address-taken local
+  took the spill instead). An image whose `this` copy is the lowest slot, shared with other locals, is
+  still open. `[vc8]` *(observations, no match)*.
+- **Trap: an experiment compiled in a second file leaves its object behind**, and the next full match
+  reports that file's matched function as different. Delete the object of every file touched only for an
+  experiment before the full run. *(one false alarm)*.
