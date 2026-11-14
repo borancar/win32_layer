@@ -2872,3 +2872,32 @@ mostly header-less, so the lever is what else is defined in the unit.
   a new function. *(tool)*
 - Never start a second build-and-replay run while the first is still replaying: they share
   the binary and the output directories, and both results are void. *(tool)*
+- `[vc8]` The `/GS` pointer-parameter copy is sweepable: list every unmatched function whose
+  image stores the cookie in a frame slot and copies a stack argument into a callee-saved
+  register in front of the first call, compute the argument's index from the frame size and
+  the pushes so far, and compare with the declared type. Six matches from one such list
+  (Commandos round 87); "the image loads the id early" comments in older ports were this.
+  Three arguments all copied at the top only mean the function uses them often.
+- `[vc8]` A destructor whose vtable store comes in front of the EH state store is a real
+  virtual destructor; write it in a class that carries the RTTI name and the base chain,
+  because the comparison follows the vtable's relocations into `??_R0` (the name) and
+  `??_R3` (the base count). The compiler then emits the scalar deleting destructor from the
+  same file: drop the hand-written one. A member destructor that is called through a pushed
+  address (vector destructor iterator) or an unwind funclet needs a symbol line of its own
+  for any build that links by name, even where the byte comparison tolerates the unknown.
+- `[vc8]` A vector deleting destructor (`??_E`) is emitted wherever `delete[]` meets a class
+  with a destructor, and its layout depends on the unit's declarations; if the class name
+  is one the symbol table knows, the copy from the new unit is compared and fails. Use a
+  unit-local element name with an alias line.
+- `[vc8]` An inline constructor shared through a header can exist in two source spellings in
+  one binary (Commandos' list: the step stored third in one class, last in another, and the
+  array from `operator new[]` in some units and `operator new` in others). Read the store
+  order per call site and name the class by the destructor in the unwind funclet.
+- `[vc8]` VC8 inlines a small member into every caller in the same unit regardless of
+  definition order. A caller that calls it while a sibling inlines it lives in another
+  unit: split the file rather than mark the member `noinline`.
+- `[vc8]` A function whose first stack argument is the receiver of a constructor call and
+  comes back in `eax`, with a zero store to a frame slot in front, returns a class by
+  value; ports written from a decompiler listing show it as an extra pointer parameter.
+- The native generator binds an address comment at the end of a struct line to an inline
+  constructor on that line: keep `// 0xADDR` off lines that define inline members.
