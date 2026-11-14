@@ -252,6 +252,7 @@ static uint32_t w32l_win_next, w32l_win_serial, w32l_win_dialogs;
 static DWin   **w32l_zombies;
 static int32_t  w32l_nzombies;
 static int32_t  w32l_mods;      /* 1 shift, 2 control, from the host's key events */
+static int32_t  w32l_send_depth; /* messages being delivered: a destroyed window is freed only when none is */
 
 static DWin *dw_get(HWND h)
 {
@@ -294,6 +295,18 @@ static DWin *dw_new(int32_t kind, DWin *parent)
     }
     w32l_win[slot] = d;
     return d;
+}
+
+static void dw_free(DWin *d)
+{
+    int32_t i;
+
+    for (i = 0; i < d->nitems; i++)
+        free(d->items[i].text);
+    free(d->items);
+    free(d->kids);
+    free(d->text);
+    free(d);
 }
 
 static DWin *dw_top(DWin *d)
@@ -1928,9 +1941,14 @@ static LRESULT ctl_send(DWin *d, UINT m, WPARAM w, LPARAM l)
 
 static LRESULT dw_send(DWin *d, UINT m, WPARAM w, LPARAM l)
 {
+    LRESULT r;
+
     if (d->dead)
         return 0;
-    return d->kind == K_DIALOG ? dlg_send(d, m, w, l) : ctl_send(d, m, w, l);
+    w32l_send_depth++;
+    r = d->kind == K_DIALOG ? dlg_send(d, m, w, l) : ctl_send(d, m, w, l);
+    w32l_send_depth--;
+    return r;
 }
 
 LRESULT w32l_dw_send(HWND h, UINT m, WPARAM w, LPARAM l)
@@ -2597,7 +2615,7 @@ BOOL WINAPI EnableWindow(HWND h, BOOL enable)
     return was;
 }
 
-BOOL WINAPI IsWindow(HWND h) { return dw_get(h) != NULL || h == w32l_the_window(); }
+BOOL WINAPI IsWindow(HWND h) { return dw_get(h) != NULL || (h && h == w32l_the_window()); }
 
 BOOL WINAPI IsWindowVisible(HWND h)
 {
@@ -2940,8 +2958,8 @@ void w32l_dlg_frame(void)
     uint32_t        i;
     char            dir[512];
 
-    while (w32l_nzombies)
-        free(w32l_zombies[--w32l_nzombies]);
+    while (w32l_nzombies && !w32l_send_depth)
+        dw_free(w32l_zombies[--w32l_nzombies]);
     if (!w32l_win_dialogs)
         return;
     if (every < 0) {
