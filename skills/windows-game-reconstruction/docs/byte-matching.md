@@ -2511,3 +2511,19 @@ mostly header-less, so the lever is what else is defined in the unit.
   2 later; `if (x == 2)` gives `cmp x,2`. `cond ? f(A) : f(B)` as two pushes on two paths with one
   call is `if (c) f(A); else f(B);`; the conditional expression computes the argument with `sete`
   and `lea`. `[vc8]` *(3 functions)*.
+- A value rounded to `float` twice in a row and then spilled as a QWORD across a call
+  (`call __CIsqrt; fstp [s]; fld [s]; fstp [s]; fld [s]; fst QWORD [tv]`) is a `float` result kept
+  in a `double` local and narrowed again at its use: `double s = (float)sqrt(d2); float t =
+  (float)s;`. No inline wrapper, float parameter or second float variable produces the second
+  store. `[vc8]` *(1 function, three siblings carry the same lines)*.
+- x87 compares, read by load order: the operand loaded first is the left one; `test ah,0x41; jne`
+  (skip) is `<`, `test ah,5; jp` (skip) is `>`. `fld K; fcomp [x]; test ah,5; jp` is `x > K` with a
+  float literal; the mirrored `K < x` loads `x` and compares with a double constant. A port with
+  the right logic and the operands swapped differs in every one of these. `[vc8]` *(2 functions)*.
+- A decompiler that shows a float parameter assigned several unrelated values is showing stack
+  colouring: VC8 puts temporaries and block locals into a dead parameter's home slot. Write
+  separate locals. `[vc8]`
+- When a re-read `*p` comes out as a reload where the image copies a register (`mov eax,edi`),
+  look for stores into an address-taken local between the two reads: they kill the common
+  subexpression. Removing the local in a scratch build confirms it. `[vc8]` *(open case)*.
+
