@@ -2569,3 +2569,55 @@ mostly header-less, so the lever is what else is defined in the unit.
   image shares all three)*.
 - `[vc8]` `test ecx,ecx; je` in front of an inline `rep stos` fill is an unsigned counter
   (`for (unsigned n = w * h; n; n--)`); the signed `n > 0` gives `jle`. *(match)*
+- `[vc8]` **Rank the functional ports by differing instructions after alignment, not by
+  differing bytes.** A port with one wrong idiom near its top differs in a hundred bytes and
+  in three instructions. Ports that were never opened (their comment says only "functional
+  port") fall fastest: nineteen of twenty-three opened in one round, each on one of the forms
+  below. *(match)*
+- `[vc8]` Two stack slots swapped between two out-arguments, with every later read at the
+  slot the image uses, is not a slot question: the port passes the two addresses in the other
+  order. Read which slot is tested as what before trying declaration orders. *(match, and a
+  behaviour bug)*
+- `[vc8]` A by-value class argument with a user copy constructor is built in place
+  (`sub esp,N; mov eax,esp; fstp [eax]...`). In a function with an EH frame the caller also
+  stores `esp` into a `$T` slot, unless the call is made by a callee that was inlined (the
+  small member that forwards the argument): write the forwarding call, not its body.
+  The same three floats passed as three `float` parameters are pushed without `mov eax,esp`,
+  and stored by the callee as floats where the struct assignment moves ints. *(match)*
+- `[vc8]` Stores into three members in front of the derived vtable store are the base
+  constructor's (inlined, its own vtable store dead): call it in the initialiser list.
+  *(match)*
+- `[vc8]` `movzx eax,WORD [arg]; sub eax,2; jne` is `switch ((unsigned short)arg) { case 2: }`;
+  the `if` gives `cmp WORD [arg],2`. `movzx eax,ax; push eax` is the `(unsigned short)` cast
+  (`MAKEINTRESOURCE`); `& 0xffff` gives `and eax,65535`. *(match)*
+- `[vc8]` `js; cmp eax,N; jae` is `k >= 0 && (unsigned)k < N` (an index checked against an
+  unsigned size); `k <= N-1` gives one unsigned compare. *(match)*
+- `[vc8]` `je; push A; jmp; push B; push ...; call` (the pushes inside the branches) is the
+  call written in both arms of an `if`/`else`; a conditional expression as the argument gives
+  `mov eax,A; jne; mov eax,B; push eax`. *(match)*
+- `[vc8]` A parameter loaded into a callee-saved register in front of the first call although
+  it is first used in a loop behind it: a local copy declared at the top (`int py = y;`).
+  Compound assignment to the parameters themselves (`x += rect[0]`) gives
+  `mov ecx,[x]; add ecx,[member]`; a new local gives `mov ecx,[member]; add ecx,[x]`. *(match)*
+- `[vc8]` A value kept in a callee-saved register across a call and added to its member only
+  after a second value is computed: the two values are the elements of one two-int local
+  (`int d[2]`), added afterwards; `add [m+4],eax` in front of the next statement's first load
+  is the add written through a pointer to the member pair (`int *q = &caja.x; q[0] += d[0];
+  q[1] += d[1];`). *(match)*
+- `[vc8]` `mov ecx,[p+0x194]; add p,0x194; test ecx,ecx` (the address of a member made after
+  its first field is read) is an inlined member function of the sub-object: a pointer to the
+  sub-object as a local (`Nodo *s = &a->nodo; if (s->otro) s->otro->f = 1; s->f = 1;`), the
+  sub-object declared as a struct member in place of loose fields. Scan the image for the
+  `add reg,OFF` to find the other functions with the same inline. *(match)*
+- `[vc8]` Three dwords copied as ints and the fourth as a float, with the destination pointer
+  reloaded for it: a three-float struct assignment and one float member (`{V3 v; float w;}`),
+  not a four-float struct. A zero vector moved through a stack temporary as ints is the
+  assignment of a constructor temporary (`e->v = V3(0, 0, 0)`). *(match)*
+- `[vc8]` `fld [member]; fstp [t]; fld [t]` on a plain float copy that the compiler would
+  normally forward: the local's address is taken (`float h = rumbo; float *ph = &h;` and the
+  value read through `*ph`); a float-returning inline, a float parameter of an inline and an
+  out-parameter inline are all forwarded. *(match)*
+- `[vc8]` `fld x; fadd st(0),st(0)` is `x * 2.0f`; `x + x` loads twice or duplicates with
+  `fld st(0)`. *(match)*
+- `[vc8]` `mov ecx,eax; test ecx,ecx; je; ...div...; mov ecx,edx; L: mov [m],ecx` is
+  `if (d) d /= 50; m = d;`; the conditional expression materialises the zero. *(match)*
