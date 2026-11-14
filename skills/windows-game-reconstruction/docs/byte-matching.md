@@ -2380,3 +2380,36 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Trap: an experiment compiled in a second file leaves its object behind**, and the next full match
   reports that file's matched function as different. Delete the object of every file touched only for an
   experiment before the full run. *(one false alarm)*.
+- **Float literals in a port copied from a decompiler as raw words (`*(unsigned *)&p.x = 0x45764000`) never
+  match an image that loads them (`fld DWORD PTR const; fstp [slot]`).** The image built the place as a
+  class temporary with a float constructor in the argument (`l.Poner(&V3(3940.0f, 2136.0f, 57.0f))`);
+  word stores and aggregates give `mov reg,imm; mov [slot],reg`. `[vc8]` *(3 functions in one edit)*.
+- **A float compared with a literal: the literal as the right operand is loaded as a `float` constant,
+  as the left operand as a `double`** (`v <= 9.0f` gives `fld DWORD PTR`, `9.0f >= v` gives
+  `fld QWORD PTR`; one opcode byte). `[vc8]` *(1 function, the last byte)*.
+- **Function statics a porter wrote as file statics with hand-made guard bits: write the real `static`
+  locals.** The guard's load, the `or` and the stores schedule differently by hand. No EH frame in the
+  image although an initialiser calls a function means the callee is `throw()`; a callee that can throw
+  brings the frame, one state per static and funclets that clear the guard bit. `[vc8]` *(1 function,
+  196 bytes)*.
+- **Arithmetic a porter spelled out step by step from the disassembly is worth writing back as the
+  operator**: `rand() % 64` for `and eax,0x8000003f; jns; dec; or; inc` (the hand version moved the
+  schedule of everything after it, 160 bytes), `(float)fabs(a - b)` for a compare with zero and a
+  negation, `(int)(100.0 < x ? 100.0 : x)` for two conversions, `p <= 0 ? 0 : p` for `setle; sub 1; and`.
+  `[vc8]` *(3 functions)*.
+- **A file-static helper used several times is called through a private register convention, not
+  inlined**; `__forceinline` (or a member defined in its class) gives the image's inline copies.
+  `[vc8]` *(1 function)*.
+- **A vector difference used once as a temporary (`(a - b).Angulo()`) spills the constructor's arguments
+  and then copies them into the object** (three `fstp [t]`, then three `fld [t]; fstp [obj]`); a named
+  result or a named local has only the first three. And `mov reg,[this+m]; lea ecx,[reg+off]; call` (the
+  object kept in a register for a call on its sub-object) is an inline member of the object doing the
+  call. `[vc8]` *(2 functions)*.
+- **An argument of a later parameter loaded before an earlier parameter's temporary is built, with the
+  receiver's null test after both: the send is an inline member taking all the arguments**, and a block
+  the image repeats with its own function static each time (different guard bits) was written out in each
+  place, not shared through a helper. `[vc8]` *(1 function, 602 to 22 bytes)*.
+- **Trap: a generator that reads addresses from declaration comments loses a callee when a one-line
+  struct is spread over several lines.** Keep each address comment on the line of its declaration; the
+  list of unresolved names of a native build shows the loss, the byte compare does not.
+  *(one unresolved name caught before the commit)*.
