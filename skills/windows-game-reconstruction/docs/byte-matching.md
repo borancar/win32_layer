@@ -2934,3 +2934,27 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` Several function statics that each carry an EH state in the image all call a
   throwing initialiser; a port that declared a `throw()` twin of the callee to drop states
   also loses the immediate-operand guard tests. *(match)*
+- `[vc8]` **The EH state count as a file-boundary detector.** When the image's function has
+  N more unwind states than the port and N is a multiple of the number of function statics
+  in the class's state setter (`PonerModo`, `Cambiar`, `Estado`...), each multiple is one
+  inlined call of that setter with a constant argument: replace the port's hand-written
+  stores (`estado = 5; avisos cleared; ...`) by the call. The setter is inlined only when
+  its body is in the same translation unit, so a port kept in another file (or one that
+  calls a file-local reduced copy of the setter) has to move next to the real setter; the
+  image's guard variable address tells which function the statics belong to (search the
+  disassembly for the other users of the guard). A reduced copy is also a behaviour risk:
+  it drops the arms the first caller did not need. Two inlined copies with the same
+  constant are tail-merged (one arm pushes the arguments and jumps into the other's
+  stores): write both calls in an `if / else if` chain, not with early returns. *(match)*
+- `[vc8]` A float store followed by a re-read of the same member with no value forwarding
+  (`fstp [m]; ...; fld [p]; fadd [m]`), and the object pointer loaded after the store:
+  the store and the read go through different pointer expressions (`float *q = v; q[0] =
+  cos(a) * 100.0;` then `((Vec *)v)->x += p[0];`). One expression for both lets the
+  compiler keep the value in a rounding temporary; the member written directly lets it
+  hoist the unrelated pointer load above the store. *(match)*
+- `[vc8]` A function static array of a class with a constructor and a destructor
+  (`static T tabla[10] = { T(...), ... };`) takes one EH state per element, registers a
+  compiler-made `??__F<name>@...@YAXXZ` stub with `atexit` (the stub pushes the destructor,
+  the count and the size for the vector destructor iterator) and needs no hand-written
+  guard; a second static array with an inline constructor in front of it takes the guard's
+  first bit and no state. *(match)*
