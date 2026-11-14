@@ -3032,3 +3032,23 @@ mostly header-less, so the lever is what else is defined in the unit.
   the funclet differs (the comparison reports zero differing bytes with relocation
   mismatches): make the class derive from the type whose destructor the funclet calls.
   *(match)*
+- `[vc8]` A member kept in a register across a call (`mov edi,[esi+0x24]` at the top,
+  `cmp edi,5` after the call) means the callee is defined in the same translation unit and
+  stores nothing: VC8 uses the effect summary of functions it compiled in the same file.
+  With the callee in another file the member is read again. Move the callee into the
+  caller's file. *(match, 768 bytes)*
+- `[vc8]` Whether a callee is inlined at one site depends on what is inlined into the
+  callee first: a state setter was inlined only at the constant that folds its switch to
+  one small case, and only once its own callee lived in the same file and was inlined into
+  it. `inline` changes nothing, `__forceinline` inlines every site. A port file named
+  after one address is a split of the original file; sweep for game callees the image
+  inlines and ours calls, and for wrong callees at the same time (image-only against
+  ours-only callee sets: one real logic bug found that way). *(match)*
+- `[vc8]` Virtual calls on a stream that push their arguments before reading the vtable,
+  next to calls that read it first, come from an inline switched by a constant mode
+  (`inline void Ser(int modo, void *p, IStream *s) { if (modo) s->Write(p, n); else
+  s->Read(p, n); }`); a plain inline, a member of the element or a cast all read the vtable
+  first. *(match, two functions)*
+- `[vc8]` An argument read before the null test of the receiver (`cmp [obj+k],0; mov
+  edx,[this+0x20]; je`) is an inline forwarder `void F(a, b, c, d) { if (m) m->f(a, b, c,
+  d); }`: arguments are evaluated in front of the inlined body. *(match)*
