@@ -2436,3 +2436,37 @@ mostly header-less, so the lever is what else is defined in the unit.
   displacement was a call the port had put inside an `if` (the image runs it either way), and an inlined
   callee showed a parameter named like a member hiding it (`id`). Read the last bytes as logic first.
   *(2 bugs)*.
+- **Count the function statics the decompiler shows against the port's.** A lookup macro used twice
+  gives two statics with the same string and two guard bits (`id == idA || id == idB` in the condition
+  and a fresh `static int idA2 = Lookup("A")` inside the block); the port that reuses the first one is
+  right in behaviour and off in every later guard bit and register. A scan that counts the lookup calls
+  of each port against the decompiled function lists the candidates (inline helpers and macros show up
+  too: read before rewriting). A shared helper holding a static is the same finding from the other side:
+  when the image's guard bit belongs to the caller's own guard word, the loop was written out in each
+  function. `[vc8]` *(3 functions)*.
+- **`if (p->organ) p->organ->Msg(a, b, c, d);` with an argument loaded in front of the null test, and
+  `mov eax,[this+p]; lea ecx,[eax+N]; call` for `p->member.F()`, are inline helpers** (`static inline
+  void Send(P *p, ...) { if (p->organ) p->organ->Msg(...); }`, `static inline float Rumbo(P *p) { return
+  p->member.F(); }`). Both are regular enough to sweep: a script that rewrites each occurrence through a
+  generated template helper and keeps what gets closer matched four functions in one pass and brought
+  three more within reach. `[vc8]` *(7 functions)*.
+- **A `switch` whose compare tree is `cmp x,M; jg; je; cmp x,L; jne` has four cases**, one of them
+  assigning the default value (three cases compile to a linear chain). And a frame exactly 16 bytes
+  larger with only the EH record and cookie displaced is a buffer declared 16 bytes larger.
+  `[vc8]` *(1 function, 307 to 0 bytes)*.
+- **Temporaries chained in one expression (`v.Token(0).Valor("X").CopiarA(buf, n);`) alternate their two
+  slots and EH states between statements**; named locals in a block give the same calls with other slots.
+  `[vc8]` *(1 function, 425 to 0 bytes)*.
+- **Two float locals that never share a slot with the temporaries around them are the first members of a
+  three-float struct local** (the third unused); and `fld x; fld y; fmul st,st; fld st(1); fmulp st(2)`
+  is `double a = v.x, b = v.y; ... b * b + a * a` (both loaded, then the products), whatever operand
+  order the single expression is given. A counter that only feeds `fild` is the loop variable itself
+  kept in memory (`for (int i = 0; i < 8; i++) f((float)(i * 45.0))`), not a second variable.
+  `[vc8]` *(2 functions)*.
+- **A `case` that falls into the next one in the port but has the next case's statements repeated in the
+  image was written twice with a `break`**; the fall-through shares the code and moves every later
+  block. `[vc8]` *(1 function)*.
+- **Tool: compare frame displacements, not only instructions.** A side-by-side that normalises
+  `[esp+N]` hides slot swaps; resolve the listing's `_x$ = -N` equates and print the lines whose
+  displacement differs once the instruction streams agree. That is where struct locals, buffer sizes and
+  store order show. *(4 functions finished from their last 2 to 33 bytes)*.
