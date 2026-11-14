@@ -2527,3 +2527,23 @@ mostly header-less, so the lever is what else is defined in the unit.
   look for stores into an address-taken local between the two reads: they kill the common
   subexpression. Removing the local in a scratch build confirms it. `[vc8]` *(open case)*.
 
+- Two branches that each end in the same float test and share the block behind it (`fabs; fstp;
+  fld; jmp L` / `fabs; fstp; fld; L: fcomp`) are a flag set under one condition in each branch
+  (`if (b < 0 && a > 0 && (float)fabs(b) < 90.0f) fin = 1;`) and `if (fin) { ... }` behind them.
+  The compiler threads the flag away and merges the two compares, not the rounding in front of
+  them. The block written twice stays twice; a variable with a default that fails the test is
+  materialised. `[vc8]` *(2 functions)*.
+- A call result subtracted from a QWORD spill without a rounding store, with `lea ecx,[r+N]` for
+  the receiver, is the call written inside the expression through an inline that returns the
+  sub-object's address (`Orient(pp)->Angulo()`). A float-returning inline getter rounds its
+  result into a temporary and is evaluated first. `[vc8]` *(2 functions)*.
+- The order in which the two products of `(px - cx) * dx + (py - cy) * dy` are evaluated does not
+  follow the written order: it follows the value numbers of the subtractions, which another
+  block of the function may have defined first (`ex = px - cx; ey = py - cy;` in a sibling
+  `case`). Swap those statements in a scratch build to prove the dependency before trying
+  forms of the expression. `[vc8]` *(open: the image has the reverse in two functions)*.
+- A sibling function with a matched twin is a behaviour check: one class's "go to point" slot
+  skipped a repeated order when the motor stood (`&& stopped`), while the image and the two
+  matched twins of other classes skip it when the motor is under way (`cmp [this+N],0; je end`).
+  The port had copied the condition of a neighbouring slot whose test has the other sense. Read
+  the branch sense of every flag test against the disassembly, not against the neighbour.
