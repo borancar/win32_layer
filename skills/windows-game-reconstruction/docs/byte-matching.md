@@ -2486,3 +2486,28 @@ mostly header-less, so the lever is what else is defined in the unit.
   pointer from the third parameter where the image reads the second (`[esp+0x28]` against `[esp+0x2c]`
   after four pushes); the callers leave the third 0, so the port compared against a null pointer on a
   path no replay reached. The decompiler's `a2`/`a3` names make this a one-line check. *(1 bug)*.
+- **A callee the image inlines with constant arguments sits in the caller's translation unit, in front
+  of it; it is not a header inline.** The sign: the inlined copies use the same function-static (same
+  guard word and bit) as the out-of-line copy, and callers passing non-constant arguments still `call`
+  it. Define the callee as an ordinary member in the same `.cpp` ahead of its callers and write plain
+  calls: the compiler takes the same per-call decision as the original. An `inline` definition in a
+  header gives a COMDAT static that may alias other stores, and the schedule around the static's load
+  differs (15 bytes in every copy); a hand-made `static inline` twin has a guard of its own. So the
+  split of the port into files matters: functions of one original source file that inline each other
+  must share a file. Scan for it by comparing, per port, the callees our build calls with the calls
+  in the image (a callee we call more often than the image does is inlined there). `[vc8]`
+  *(3 functions at once, 2 more after merging files)*.
+- **Cases with identical bodies written one by one are not the same as stacked labels.** `case 0: x =
+  s; break; case 2: x = s; break; case 3: x = s; break;` is merged by the compiler into one block that
+  jumps over the next case; `case 0: case 2: case 3:` falls into the code after the switch and moves
+  the remaining case to the end of the function. A test of the switch value after the switch (`if (e
+  != 1)`) stays as a dead `cmp; je` on the default path and is threaded away on the case paths: do
+  not replace it with a flag set in the case. `[vc8]` *(3 functions)*.
+- **`cmp x,3; jle out; cmp x,5; jg out` where the compiler would normally emit `lea r,[x-4]; cmp r,1;
+  ja` is a range test written through a conditional**: `(x > 3 ? x <= 5 : 0)`. `x > 3 && x <= 5`, an
+  inline predicate and a nested `if` are all merged into the unsigned range compare. `[vc8]` *(2
+  functions)*.
+- A one-case `switch` gives `mov eax,x; sub eax,2; jne` in front of code that still compares `x` with
+  2 later; `if (x == 2)` gives `cmp x,2`. `cond ? f(A) : f(B)` as two pushes on two paths with one
+  call is `if (c) f(A); else f(B);`; the conditional expression computes the argument with `sete`
+  and `lea`. `[vc8]` *(3 functions)*.
