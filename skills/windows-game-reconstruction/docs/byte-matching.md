@@ -2470,3 +2470,19 @@ mostly header-less, so the lever is what else is defined in the unit.
   `[esp+N]` hides slot swaps; resolve the listing's `_x$ = -N` equates and print the lines whose
   displacement differs once the instruction streams agree. That is where struct locals, buffer sizes and
   store order show. *(4 functions finished from their last 2 to 33 bytes)*.
+- **Two small locals can decide the register allocation of a whole function.** A 1400-byte handler kept
+  its handled flag in a register and reloaded the argument everywhere; with the two message arguments of
+  its sends read into locals in the image's load order (`int para = pa[1]; int de = ac->id;`) the flag
+  moved to the stack and the argument into a callee-saved register as in the image: 1077 to 152 differing
+  bytes from four lines. Run the cheap local sweeps on large functions too, not only on near-misses, and
+  include non-member arguments (`((int *)a)[1]`) and both orders. `[vc8]` *(2 functions)*.
+- **A handler's result variable carries the answer it gives when it handled the message**: `mov edi,1`
+  at entry and `xor edi,edi; call Base; mov eax,edi` at the end is `int base = 1, hecho = 0; ...; if
+  (!hecho) { base = 0; Base(...); } return base;` (declared in that order: the other order derives the 1
+  from the zero register with `lea`); `mov edi,1; call Base; mov eax,edi` is the same with 0 and 1
+  swapped. Sweep the tail forms, the nested state guard and the argument locals together: each alone
+  often shows no gain. `[vc8]` *(5 functions)*.
+- **Check the argument index of every parameter use against the decompiler.** A port read the payload
+  pointer from the third parameter where the image reads the second (`[esp+0x28]` against `[esp+0x2c]`
+  after four pushes); the callers leave the third 0, so the port compared against a null pointer on a
+  path no replay reached. The decompiler's `a2`/`a3` names make this a one-line check. *(1 bug)*.
