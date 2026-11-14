@@ -2695,3 +2695,20 @@ mostly header-less, so the lever is what else is defined in the unit.
   `fld st(0)`. *(match)*
 - `[vc8]` `mov ecx,eax; test ecx,ecx; je; ...div...; mov ecx,edx; L: mov [m],ecx` is
   `if (d) d /= 50; m = d;`; the conditional expression materialises the zero. *(match)*
+- `[vc8]` A commutative float sum whose products come out in an order no spelling in the caller
+  produces: the sum is the body of an inline member (`float Dot(const V &o) const { return y * o.y
+  + x * o.x + z * o.z; }`); inside the inline the written order survives. Two sums over the same
+  loaded operands: the first sum's written order fixes the load order, the second keeps its own.
+  *(match)*
+- `[vc8]` A register one off for a pushed address or a call's `this` (`lea eax` against `lea
+  edx`): give the intermediate pointer of the chain its own local (`M *m = g->menus; l =
+  m->lista;`), or the pointer argument a local in front of the call. *(match)*
+- `[vc8]` `add eax,-1; mov [m],eax` with a later `cmp [m],reg` re-reading memory, where the port
+  keeps a register copy: the counter is used through a pointer local (`int *n = &field; if (*n >
+  0) { --*n; if (*n == 0)`). *(match)*
+- `[vc8]` One argument pushed before the call that computes the next argument: only that
+  argument is a local, the others are expressions inside the call. *(match)*
+- `[vc8]` A callee followed by `[ecx+k]` reads and a second call with no `mov ecx,...`: the
+  linker knew the callee keeps `ecx`; not reachable from per-file source, skip it. *(triage)*
+- Ranking tools that drop "addresses already in the docs" by substring also drop an address
+  quoted as a range marker ("the pool from 0x41e7d0 on"); match on entry headings only. *(tool)*
