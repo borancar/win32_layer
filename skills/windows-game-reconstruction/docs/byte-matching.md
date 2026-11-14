@@ -2809,3 +2809,38 @@ mostly header-less, so the lever is what else is defined in the unit.
   line may bind it to an overload on the next line (a default constructor's address taken for
   the inline three-argument constructor): leave the comment off when the name resolves through
   the symbol table, and read the generator's duplicate report after every batch. *(tool)*
+- `[vc8]` One record in two frame slots, one per arm of an `if`: the record is declared and
+  filled inside each arm. A single record in front of the `if` gives one slot. *(match)*
+- `[vc8]` A small struct stored in the middle of a call's argument pushes is a constructed
+  temporary bound to a `const &` parameter (`F(a, Color(255, 255, 0), 0)`); a by-value point
+  copied `fld/fstp` into the argument area has a user copy constructor. The callee's mangled
+  name changes with the reference: check its other callers first. *(match)*
+- `[vc8]` Two arms laid out in the other order whatever the spelling of the condition
+  (negation, `continue`, swapped `else`): the condition is an inline predicate that returns
+  the negated form (`int Expired() { return !alive || age + 5 >= limit; }`). *(match)*
+- `[vc8]` `cdq; mov ecx,K; idiv ecx` for `/ K` and `% K` of one value: the dividend is a
+  member assigned just before (`a = x >> 13 & 63; m = a % 20 + 1; a = a / 20;`); a local
+  dividend gives the magic multiply. *(held)*
+- `[vc8]` A member constructed with literal arguments whose `this` is computed in front of
+  the argument pushes, with an unwind funclet that calls a one-`jmp` thunk: the member's
+  class is a wrapper derived from the constructed class with an inline forwarding
+  constructor. Its implicit destructor is a COMDAT the image keeps out of line; give it its
+  own symbol-table line or the comparison reports a difference of zero bytes. *(match)*
+- `[vc8]` Constructors: N consecutive `mov [m+4k],reg` from the function's zero register are
+  N statements; a counted loop over the same members takes a fresh `xor eax,eax`. A zero
+  vector member re-assigned in the body through stack slots is `v = Vec(0.0f, 0.0f, 0.0f);`.
+  *(match)*
+- `[vc8]` `mul edx; seto cl; neg ecx; or ecx,eax; push ecx; call` is `new T[n]` with a
+  variable count (the overflow test), not `malloc(n * sizeof(T))`. *(match)*
+- `[vc8]` A record built in a frame slot in member order and copied whole (`rep movs`) is a
+  local constructed with an initialiser list and assigned (`*p = Rec(a, b, c);`); members the
+  constructor leaves unset are copied as stack residue, so the port must clear them itself.
+  *(match)*
+- A callee that takes `ecx` plus stack arguments the caller cleans is a whole-program
+  (`/GL`) static with a private convention: its callers cannot match from plain sources.
+  *(negative)*
+- Before renaming a mangled name, grep every source and the native build's reports for the
+  old name with a tool that does not expand globs (a zsh `--include=*.cpp` pattern silently
+  matched nothing): one missed user aborts the native build's first replay. Inline members
+  added to a one-line struct take over the address comment at the end of that line: put them
+  on their own lines. *(tool)*
