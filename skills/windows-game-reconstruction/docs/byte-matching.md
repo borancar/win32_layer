@@ -2996,3 +2996,39 @@ mostly header-less, so the lever is what else is defined in the unit.
   starts with the fall-back value and is returned as it is. A further sign conversion in
   the source makes the compiler merge the two compares into one loop with a variable
   size. *(6 bytes from a match)*
+- `[vc8]` **A dynamic initialiser of a table is matched by defining the table**: `T g[N] =
+  { T(...), T(...) };` at file scope compiles to `??__Eg@@YAXXZ` (give it the address of
+  the image's initialiser in the symbol map) and, when `T` has a destructor, to the
+  `atexit` call at its end with the stub `??__Fg@@YAXXZ` (`push dtor; push N; push size;
+  push g; call ??_M; ret`). The EH state stored after each element's constructor and the
+  funclets `mov ecx,elem; jmp dtor` are the array's partial destruction; a plain function
+  with placement `new` cannot produce them. A native (non-MSVC) build of the same source
+  emits its own `.init_array` entry for such a global: if the port's runtime already walks
+  the image's initialiser table, drop that section from the object and export the `??__E`
+  symbol instead, or the table is constructed twice and in another order. *(match, nine
+  initialisers, the largest 11859 bytes)*
+- `[vc8]` A table whose elements have a destructor (the `??__F` stub is registered) while
+  the initialiser has no EH frame: the element's constructor is declared `throw()`.
+  *(match)*
+- `[vc8]` `sub esp,8; mov eax,esp; mov [tmp],esp; ...; mov [eax+4],v; mov [eax],v` inside
+  an argument list is a by-value argument of a class that has a user copy constructor,
+  built in place; without the copy constructor the class goes as plain pushes. The order
+  of the member stores tells which constructor made each argument (a default constructor
+  that zeroes `b` then `a` against a two-argument one that stores `a` then `b`). *(match)*
+- `[vc8]` Aligned byte loops `mov cl,[esi+src]; mov [esi+dst],cl; add esi,eax; cmp cl,bl;
+  jne` with 1 and 0 held in registers are `strcpy` inside an inline constructor that is
+  called with literals; `strcpy` on a literal written directly is a dword copy and a
+  hand-written loop loses the alignment. A call that sits between the member stores of an
+  inlined constructor is made in the constructor body (`m = name ? Lookup(name) : dflt;`),
+  not in the argument list: an argument is evaluated before the body, keeps the function's
+  constants live across the call and moves them to callee-saved registers everywhere.
+  *(match, 7502 bytes)*
+- `[vc8]` An initialiser that is only `push stub; call atexit; pop ecx; ret` is a global
+  whose constructor folded into static data and whose destructor did not; the stub is the
+  inlined destructor (`mov [g],base_vtable; ret` for an empty virtual destructor of a
+  derived class). *(match, five pairs)*
+- `[vc8]` An unwind funclet `mov ecx,[this]; jmp dtor` with no `add ecx,k` destroys a base
+  class. If the port models those fields as a member, the body is byte-identical and only
+  the funclet differs (the comparison reports zero differing bytes with relocation
+  mismatches): make the class derive from the type whose destructor the funclet calls.
+  *(match)*
