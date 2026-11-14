@@ -2413,3 +2413,26 @@ mostly header-less, so the lever is what else is defined in the unit.
   struct is spread over several lines.** Keep each address comment on the line of its declaration; the
   list of unresolved names of a native build shows the loss, the byte compare does not.
   *(one unresolved name caught before the commit)*.
+- **A member read passed as an argument is a local in front of the call when the image loads the other
+  arguments first** (`mov ecx,[idX]; mov eax,[this+actor]; mov eax,[eax+4]; push 0; push 0; push ecx`):
+  `int n = actor->numero; g->Enviar(-1, n, idX, 0, 0);`. In the argument list the compiler loads the
+  object first and the other value into `eax` (a shorter encoding, every later byte shifted). Two such
+  arguments are two locals in the order the image loads them; in a loop with a call between the reads
+  and the pushes they take callee-saved registers and push the loop counter and `this` out of theirs. A
+  sweep that hoists the member-read arguments of every call and keeps what gets closer found six
+  identical functions in one pass. `[vc8]` *(6 functions, one more from 298 to 1 byte)*.
+- **A message handler that answers 0 at once in one state (`xor eax,eax; cmp [this+state],N; je end`)
+  holds its whole body under the test with the result declared outside** (`int base = 0; if (estado != 4)
+  { int hecho = 0; ... } return base;`); `if (estado == 4) return 0;` in front swaps the registers of the
+  flag and the id. And `mov eax,[base]; test eax,eax; je end; call Base` is `if (base) base = Base(...);
+  return base;`. `[vc8]` *(2 functions)*.
+- **`call f; fstp [x]; fld const; fcomp [x]` (a returned float stored before a compare against a literal)
+  is the value passed through an inline function's `float` parameter**; a local compares `st(0)`
+  directly. `[vc8]` *(1 function)*.
+- **`if (p) p->x = 1; m = 1;` beside a call of a member of the same sub-object is that member's body
+  inline**: declare an inline twin on the struct; the same statements on the owner's members schedule the
+  pointer test first. `[vc8]` *(1 function, 22 to 0 bytes)*.
+- **The last differing byte is sometimes a behaviour bug of the port, not codegen**: a one-byte jump
+  displacement was a call the port had put inside an `if` (the image runs it either way), and an inlined
+  callee showed a parameter named like a member hiding it (`id`). Read the last bytes as logic first.
+  *(2 bugs)*.
