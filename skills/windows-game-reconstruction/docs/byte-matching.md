@@ -2740,3 +2740,32 @@ mostly header-less, so the lever is what else is defined in the unit.
   `fabs` needs the intrinsic (`#pragma intrinsic(fabs)`), `fabsf` is a call. *(match)*
 - The match harness must print compiler errors: a wrapper that greps for the symbol's line
   hides them and you compare the previous object. *(tool)*
+- `[vc8]` Float code full of stack slots the port does not have (`fstp [t]; mov r,[t]` runs,
+  a 12-byte frame) is the game's vector class, not scalar code: rewrite the port with one
+  small class (`V3(x,y,z)`, a copy constructor, `operator+`, `operator+=`, `operator-`) and
+  the plausible original statement (`V3 v(cos*r, sin*r, 0.0f); v += pos; v.z += alto;`,
+  `f->p = a + b;`). Ports hundreds of bytes off matched on the first or second build. Which
+  operand is the receiver decides the load order of `operator+` (`actor + offset` against
+  `offset + actor`); spelling the sum inside the operator the other way changes nothing. *(match)*
+- `[vc8]` One zero temporary copied to several places (`fst [t]; fst [t+4]; fst [t+8]` once,
+  then four groups of three `mov`s) is a chained struct assignment
+  (`c->a = c->b = c->c = c->d = V3(0.0f, 0.0f, 0.0f);`), and the scalar stores between them a
+  chained float assignment (`c->fa = c->fb = c->fd = 0.0f;`). A loop over the floats gives
+  `rep stos` or plain float stores. *(match)*
+- `[vc8]` A missing `mov [state],-1` (after a function static, or after `new T[n]`) with
+  everything else equal: the calls behind it are known not to throw. Declare the callee
+  `throw()` (the member called last in a message handler; `void __cdecl operator delete(void *)
+  throw();` at the top of the file when the only call left is the delete). Per file: the same
+  declaration breaks functions of other files that keep the store. *(match)*
+- `[vc8]` `call Token; mov ecx,eax; call Numero` (the returned object used through `eax`)
+  is the unnamed temporary (`x = v.Token(0).Numero();`); a named local gives `lea ecx,[t]`.
+  A discarded first call of the same expression in the image is a statement of its own. *(match)*
+- `[vc8]` A store order across an inlined setter that no statement order gives
+  (`mov eax,[dur]; mov [estado],6; mov [cuenta],eax`): the setter is one `__forceinline`
+  member and its sub-object notice (`if (otro) otro->avisar = 1; avisar = 1;`) another
+  `__forceinline` member inside it; VC8 leaves small members outline on its own. *(match)*
+- A pushed constructor address (vector constructor iterator) is compared at the thunk unless
+  the inline constructor has its own symbol line at the real address: "0 bytes differ" with a
+  DIFF means a note on a referenced COMDAT, print the notes. *(tool)*
+- Before any float idiom hunt, grep the tree for the same statement shape in other unmatched
+  ports: one zeroing idiom matched four functions in three files. *(method)*
