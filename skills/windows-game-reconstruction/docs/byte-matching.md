@@ -2901,3 +2901,24 @@ mostly header-less, so the lever is what else is defined in the unit.
   value; ports written from a decompiler listing show it as an extra pointer parameter.
 - The native generator binds an address comment at the end of a struct line to an inline
   constructor on that line: keep `// 0xADDR` off lines that define inline members.
+- `[vc8]` A destructor that starts in a lower EH state than its members give (two members
+  with destructors, one unwind funclet, `mov [state],0` at the top), or calls a member's
+  destructor with no state store in front: nothing can throw while the dropped state is
+  current. With `delete a; delete b;` as the body, `operator delete` and `operator delete[]`
+  declared `throw()` at the top of the file remove the last member's state. Sweeping the two
+  declarations over every file is cheap and shows where they hurt. *(match)*
+- `[vc8]` A function static whose guard takes EH state 1 or 2 with no other static in the
+  function: a callee that has a static of its own is inlined in front of it and the constant
+  argument folded the static's branch away (`modo = 2; espera = 20;` was `PonerModo(2)`). The
+  bytes are equal except the state numbers. Comparing the image's `__ehfuncinfo` state count
+  with ours lists every function of this shape, and the ones that need real members,
+  constructors or `new` expressions. *(match)*
+- `[vc8]` `mov cl,[eax]; mov [edx+eax],cl; add eax,1; test cl,cl; jne` with `lea edx,[dst];
+  sub edx,eax` in front is the `strcpy` intrinsic (`#pragma intrinsic(strcpy)`), not a written
+  loop; no loop spelling gives the delta-indexed store. *(match)*
+- `[vc8]` A flat "destroy" port of a class with a vtable converts in one pass when each owned
+  part is written as `delete`: a null test, a destructor call and a free is `delete p` with a
+  declared destructor; `call [vt+4](1)` is `delete p` through a virtual destructor in that
+  slot; the vector destructor iterator with a constant count is `delete p` on a struct with an
+  array member; written-out `delete`s of a class with a base and a member take one state each.
+  A member destructor called with no state store is declared `throw()`. *(match)*
