@@ -1296,6 +1296,44 @@ an item says otherwise.
   `-a`) is older than an object built from another version of it; make keeps
   the stale object and the function looks absent or identical. Touch what you
   copy or delete the object.
+- `[vc8]` *(match, 17 constructors in one round)* **A functional port of a
+  constructor that writes its zero stores through `this` casts is a class
+  without its members.** Read the image between the base constructor's call
+  and the first body call: stores behind the vptr store are member
+  constructors, in declaration order. A run that goes back to a lower address
+  after a higher one (`+0x74, +0x78, +0x44, +0x40, +0x64.., then +0x28, +0x2c,
+  +0x30`) is a member whose own constructor body runs after its nested
+  member's: declare the outer struct with the inner one as its last member
+  and give each its inline constructor with the stores in the image's order.
+  Three floats stored high to low are a vector member (`{ z = 0; y = 0; x = 0; }`),
+  `[m+4]` before `[m]` a pair. The same sub-object then shows in the body:
+  later writes to it go through the member, and its inline methods give the
+  `mov ecx,[m]; test; je; mov [ecx+8],1; mov [m+8],1` blocks.
+- `[vc8]` The global that takes `*(int *)this` reads the vptr back
+  (`mov ecx,[esi]; mov [g],ecx`) when member constructors stored between the
+  vptr store and the read, and is an immediate when nothing did. A port that
+  folds it has the stores in the body.
+- `[vc8]` `mov byte [esp+N],1` behind a member constructor's call is an EH
+  state: the member's class declares a destructor. Take the destructor's
+  address from the unwind funclet (`mov ecx,[ebp-0x10]; add ecx,OFF; jmp
+  dtor`) and name it; a member built through a `Construir()` helper or a
+  placement `new` has no state.
+- `[vc8]` Three loads into registers and three stores from a stack temporary
+  (`fst [t]; mov edx,[t]; fst [t+4]; ...`) in a constructor body is the member
+  assigned a temporary (`c68 = Punto(0.0f, 0.0f, 0.0f)`), not three stores.
+- `[vc8]` `xor eax,eax` and eight dword stores, three times over, is three
+  `memset(p, 0, 0x20)` with the intrinsic: one `memset` of 0x40 calls the
+  function.
+- `[vc8]` A pointer loaded in front of a run of stores and used behind them
+  (`mov eax,[esi+0x1c]` ... `lea ecx,[eax+0x44]; call`) is a local declared
+  there; written inside the call expression it is loaded at the call
+  (`add ecx,0x44`).
+- `[vc8]` `push dtor; push ctor; push n; push size; push p; call` in a
+  constructor without an EH frame is a member array of a class with a
+  constructor and a destructor (`eh vector constructor iterator`); with only
+  a constructor declared the compiler writes the loop inline.
+- Trap: an edit that leaves the file uncompilable keeps the previous object,
+  and the comparison shows the old code. Make the loop print compiler errors.
 
 ## 7. Register allocation: the measured model
 
