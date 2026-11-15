@@ -3205,3 +3205,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   the pairs are members with an inline default constructor (`x = y = 0`) and one member
   initialised in the list (`tam(1, 1)`); body assignments let the call's pushes rise
   above the vtable stores.
+- `[vc8]` A virtual call through the vtable on a local object (`mov edx,[obj]; mov
+  eax,[edx+N]; call eax`) where the port's `obj.Method()` is a direct call: the original
+  called through the interface pointer (`IStream *f = &obj; f->Read(p, n);`). A member's
+  address pushed from a `lea` with the slot loaded after the pushes is a local for that
+  address (`void *p = data; f->Read(p, n);`).
+- `[vc8]` A `/GS` cookie in a 4-byte frame of a function that uses no buffer: an
+  initialised, unused `char b[16] = "";`. The array is removed, the cookie stays.
+- `[vc8]` `mov DWORD PTR [buf],imm32` holding a short literal, then one byte stored over
+  it: `char s[4] = "a:\\"; s[0] = 'A';`. A brace list of characters gives byte stores.
+- `[vc8]` `x * -c + y` written in one expression becomes `y - x * c` (`fsubr`); with the
+  product in a `double` local (`double d = x * -c; y = (float)(d + y);`) the image's
+  `fmul [-c]; fadd [y]` comes back.
+- `[vc8]` The loop foot `add p,16; jne top` with the terminator test at the head is
+  `for (; p; p += 4) { if (p[0] == -1) break; ... }`; a guard `if (!p) return;` and
+  `p[0] != -1` as the loop condition put the terminator test at the foot.
+- `[audit]` In a fresh port every member offset low (or high) by the same 4 bytes is the
+  file's own declaration of the class missing a base word; a build-only function shows it
+  in no run. Compare the first mismatching `[reg+N]` with the declaration's offset
+  comments before reading anything else.
+- `[tool]` Rank variants by an aligned instruction diff (difflib over normalised lines),
+  not by differing bytes: one missing `push` at the top makes every variant "204 bytes"
+  apart, and a pasted side-by-side shifts after the first missing line.
