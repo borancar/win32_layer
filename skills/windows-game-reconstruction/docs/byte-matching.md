@@ -4003,3 +4003,33 @@ mostly header-less, so the lever is what else is defined in the unit.
   `?:` form converts through `__ftol2_sse` and joins). A frame larger than
   ours by a round number with an unused text buffer: the buffer's size (512
   against a measured 452).
+- `[vc8]` A constant 1 loaded into a callee-saved register, pushed wherever a
+  1 is an argument and copied to `eax` at the success exit, with the failure
+  exits `xor eax,eax`: the result is a variable with one `return`. Three
+  spellings, each its own code: `int r = 1; if (f1 || f2 || ...) { err = k;
+  r = 0; } return r;`; `int r = 1; if (ok) { ... } else r = 0; return r;`;
+  `int r; if (bad) { ...; r = 0; } else { r = 1; ...; } return r;` (the 1
+  lives over a call and seeds a loop counter). `return 1;` in the arm and
+  `return 0;` at the end fold the constant into every use. A result through
+  an `else if` chain (`int r = 0; if (on) { if (a) r = -1; else if (b) r = 1;
+  else if (c) r = 1; } return r;`) gives one `xor eax,eax` on top where early
+  returns give separate exits.
+- `[vc8]` `mov r,[p]; add r,[n]` straight from two home slots where ours has
+  `lea r,[a+b]`: the parameter itself is advanced (`p = (const char *)p + n;`),
+  there is no local pointer. A loop whose guard and bottom test each load a
+  member for their own `add` and whose body loads it again is a plain
+  `while`, not the guarded `do ... while` the code looks like.
+- `[vc8]` `mov eax,[i]; mov edx,[table]; scale eax; add eax,edx` (the table
+  in a register in front of the scaling) where ours has `add eax,[table]`,
+  the element address formed again in every pass: the table is a vector
+  class with an inline `T &operator[](unsigned i) { return data[i]; }`,
+  spelled `table[i]` at each test and bound to a reference inside the body.
+- `[vc8]` A found exit that tests the pointer again (`cmp eax,edi; je found
+  ... found: test eax,eax; jne ok`) while the exhausted exit goes straight to
+  the failure return: `while (p && p != x) { p = next(p); i++; } if (!p)
+  return -1; return i;`. Spelling the image's jumps as nested tests gives
+  other code. A dereferenced argument (`f(*id)`) read into a named local in
+  front of the call moves the scratch rotation back one register for what
+  follows the call. A pair copied from a pointer into the slots of an array
+  used earlier (frame smaller by the pair): the array and its uses are in a
+  block of their own and the pair is a struct local behind it.
