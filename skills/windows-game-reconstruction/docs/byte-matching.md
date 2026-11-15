@@ -3503,3 +3503,18 @@ mostly header-less, so the lever is what else is defined in the unit.
 - With several agents committing, a private working copy of a file taken before someone
   else's commit reverts that commit when copied back whole: re-copy from HEAD and
   re-apply the edit right before committing.
+- `[vc8]` Where the scratch cycle breaks, fix the load before it (round 108B): a copy
+  that restarts at `eax`, or an argument in `edx` where the image has `eax` with `ecx`
+  busy, is one step ahead because the previous single-use load, often in the handler
+  above, is an inline getter in the original. Wrapping the call that shows the
+  difference changes nothing.
+- `[vc8]` Static guard masks shifted by one bit from some point on, plus a second guard
+  word tested with bit 1, mean that one static lives in an inline member (a class's
+  "mark changed and tell the parent" helper). A plain inline member with a live static
+  stays out of line in VC8; `__forceinline` inlines it with its own guard word.
+- `[vc8]` Both arguments of a virtual send loaded before the pushes, with the vtable in
+  a callee-saved register that is re-made afterwards (`or ebp,-1`), is an inline sender
+  taking them as parameters; the open call also exchanges the function's constant and
+  id registers from the prologue on.
+- Markers in source comments go stale: check every "not matched" marker against the
+  symbol list and a full compare before trusting a candidate list built from them.
