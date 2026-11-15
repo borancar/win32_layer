@@ -3936,3 +3936,35 @@ mostly header-less, so the lever is what else is defined in the unit.
 - A stale `// ADDR ~` marker in another file sends marker-driven tools to the
   wrong source (`lines N 0`, every variant the same number). An edit script
   that cuts a function at the first `// ADDR` may hit a declaration's comment.
+- `[vc8]` Plain stores of loaded values come out exchanged two by two (`load
+  b; load a; store b; store a`): for a run of `w[i] = argN;` statements the
+  emitted order is the source order with each adjacent pair exchanged from the
+  first statement on. A port written in the image's store order is off by one
+  exchange per pair; apply the exchange to the image's order to get the
+  source. A score that normalises offsets cannot see a store order.
+- `[vc8]` A message test laid out with both refusals jumping and the body in
+  line: a flag set inside the compares and tested once (`int c = 0; if (a !=
+  -1) { if (a == k) c = 1; } if (c) {...}`), the shape an inline predicate
+  leaves; `a != -1 && a == k` in one condition gives other code. Worth a
+  mechanical transform over every `if (A && B)`.
+- `[vc8]` `v == 0` still computed (`xor eax,eax; test r,r; sete al`) on a path
+  where `v` was just tested: the steps are a row (`if (!v) v = B(); if (!v) v
+  = C(); ... if (!v) {ok} else {fail} return v == 0;`) with one `return`. The
+  jumps are threaded to the failure arm, the return is duplicated late and
+  not folded; a `return` inside the innermost arm of a nest is folded.
+- `[vc8]` A known-zero value returned from its register (`mov eax,esi`), not
+  as a constant: the result is a variable initialised from the tested value
+  and assigned in both arms of the inner test, read once behind the join.
+- `[vc8]` A frame of 8 with two word stores, then a dword and a word copied
+  out: three shorts are one six-byte record assigned as a struct, not a pair
+  plus a separate word.
+- Two byte-equal deleting destructors next to each other are the base
+  template's and the derived class's with the base inlined; the vtable slot
+  that reaches each (through the link thunks) says which symbol goes where. A
+  "missing" compiler-generated function may only lack its symbols line.
+- An edit helper that ends a function at the first `}` followed by a blank
+  line swallows the functions that follow without one; nothing reports
+  `different`, the identical count is short. Diff every changed file against
+  the head before committing. A commit helper that copies the own file over
+  the working file destroys another agent's uncommitted edit there: write the
+  blob to the index and three-way merge into the working file.
