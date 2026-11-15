@@ -793,6 +793,49 @@ an item says otherwise.
   element has an inline constructor. A by-value argument taken from a local
   copy (`T t = f->tam; F(t);`) loads both words before `sub esp` when `T` has a
   user copy constructor. **Held.**
+- `[vc8]` **A constructor port is declared, not tuned.** A functional port
+  that writes a constructor as stores through `(char *)this` behind a
+  base-constructor call misses the image's EH frame (`push -1; push handler`,
+  `this` kept in a stack slot, `mov [state],N`). Read the class off the frame:
+  the base has a (virtual) destructor (state 0 behind its constructor call);
+  each member with a constructor and a destructor adds a state; the unwind
+  funclets in front of the handler (`mov ecx,[ebp-N]; add ecx,OFF; jmp ~T`)
+  give every such member's offset and destructor. `fldz; fst z; fst y; fstp x`
+  triples behind the vtable store are vector members with a zeroing inline
+  constructor (declaration order); `fst [tmp]; mov r,[tmp]` triples in the body
+  are `v = Vec(0, 0, 0);`; `push ~T; push T::T; push n; push size; call
+  eh-vector-constructor-iterator` is an array member; a scalar stored between
+  two member constructors is in the initialiser list. Declare the class in the
+  port's own file (base stub, members in address order, padding between), reuse
+  the names the symbol table already has for the callees, add the vtable's
+  `??_7` line. Nine constructors (197 to 789 bytes) matched at the first or
+  second build this way. A scan for "image has an EH prolog, ours none" finds
+  the candidates. **Held.**
+- `[vc8]` **The implicit destructor trap.** A class with a virtual base
+  destructor and no declared one makes the compiler emit an inline `??1X` in
+  the object; if the symbol table has `??1X` for the real out-of-line
+  destructor the whole-tree compare reports a new difference in a function
+  nobody touched. Declare `~X();` when the image's is out of line, define it
+  inline when the image's deleting destructor inlines it. Check the whole
+  object's result, not only the port's line. **Held.**
+- `[vc8]` **Where a load sits is where an inline member starts.** A
+  `mov r,[this+K]; cmp` that the compiler hoists far up when the statements
+  are plain (it carries the flags to the branch) stays in place when the test
+  is inside an inline member of the sub-object; the stores in front of it stay
+  plain statements (`o.a = x; o.b = 0; o.Activar();`). All four statements in
+  the inline put the load in front of the two stores instead. **Held.**
+- `[vc8]` **`strcpy` from a constant that is not folded.** A literal source
+  becomes immediate stores; the byte loop with `mov eax,OFFSET s` is `strcpy`
+  from an `extern const char s[]` the compiler cannot see into. **Held.**
+- `[vc8]` **Three shorts and no security cookie.** `short c[3]` brings the
+  cookie; a three-short struct is 4-aligned in an 8-byte slot; three stores at
+  slot+2 are the tail of a four-short struct whose first is never written, or a
+  temporary with an inline constructor (then a later temporary, such as a
+  new-expression's pointer, takes the same slot). **Held.**
+- `[vc8]` **A lead that leaves three bytes is an empty function.** A sweep
+  transform that drops the `return` makes the compiler drop the body; discard
+  such results unread. A symbol whose spelling the compiler never produces
+  (`PAXPAX` for `PAX0`) is never compared at all.
 - `[vc8]` **Result variables on shared exits.** A zero kept in a callee-saved
   register as the return: `int r = 0; if (o) r = o->F(); return r;`. A global
   set on two tail-duplicated exits through `eax`: a result variable, then
