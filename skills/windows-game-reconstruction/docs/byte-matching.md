@@ -3156,3 +3156,27 @@ mostly header-less, so the lever is what else is defined in the unit.
   behaviour (33 dialog classes, three slots each). Also scan the symbol table for one
   name at two addresses: tools that take the first and tools that take the last line
   disagree silently (a base's empty virtual aliased to another class's method).
+- `[audit]` A library address under two names hides a wrong call. One CRT entry was listed
+  both as `strncpy` and as `memmove`; ports that called `memmove(d, s, n)` compared
+  byte-identical (the relocation resolves to the same address) while the native build
+  linked libc's `memmove` and copied `n` bytes past the terminator. Read the code at a
+  library address once (a copy loop that tests each byte for zero is `strncpy`), keep one
+  name per address, and grep the sources for the wrong one.
+- `[audit]` Compare floating constants by value and width. A `QWORD` constant whose low
+  29 bits are zero is a `float` literal promoted in a double expression (`x < 0.0001f`);
+  the port's `0.0001` gives the same code bytes and a different constant, so the function
+  shows "0 bytes differ" with a data line, or hides among other differences. A sweep of
+  the image's x87 memory operands against the build's `__real@` names found eleven such
+  literals in one pass.
+- `[vc8]` The order of `if`/`else` arms is the order of the EH state numbers, not of the
+  code layout: an arm placed last with the highest states is the last arm of the source
+  even when its test comes first in the code.
+- `[vc8]` A save call that follows the destructor of the value just stored means the value
+  sits in a block of its own (`{ T v(x); b->Set(k, v); } b->Save();`); the same holds for
+  a sub-object fetched by value and saved before the outer save.
+- `[vc8]` `add eax,-1` on a call's result (against `sub eax,1`): the result is a named
+  local and the subtraction is written where it is used once
+  (`int n = f(); T t((double)(n - 1));`).
+- `[vc8]` Among sibling blocks that each hold one object of the same class, the last block
+  never shares the first slot: it gets its own or joins the temporaries of inner scopes.
+  A frame larger by exactly one object is not a missing buffer.
