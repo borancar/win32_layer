@@ -1843,9 +1843,10 @@ once the binary matches.
   `char`/`int` locals, block scopes, ternary/if, chained assignments, an inline helper's parameters exchanged.
   A result can score closer for the wrong reason (reading an uninitialised local, returning a value the image
   does not): read it, then find what the image really does there. **held.**
-- `[vc8]` **A loop's strength-reduced pointers are created in the order of their uses' count, so a cached
-  element spelled out once more flips two `lea`s** (`o = l->v[i]; ... f(l->v[i])`), and the same lever makes
-  VC8 recompute a difference instead of spilling it. **held** (three functions).
+- `[vc8]` **A cached array element spelled out once more at a later use exchanges the order in which a loop's
+  two strength-reduced pointers are formed** (`o = l->v[i]; ... f(l->v[i])`: the two `lea`s in front of the
+  loop flip; why is not measured), and the same lever makes VC8 recompute a difference instead of spilling it.
+  **held** (three functions).
 - `[vc8]` **A result that is reloaded from the stack behind every call, in a frame one word larger, is a member
   of a local struct whose other member's address goes to a callee.** `volatile` and a pointer to the result
   give other code. **held.**
