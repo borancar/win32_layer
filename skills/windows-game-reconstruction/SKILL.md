@@ -161,6 +161,17 @@ Read the file for the stage you are in.
 | Byte matching: ideas with their survival status, per compiler | `docs/byte-matching.md` |
 | Register allocation, per compiler | `docs/vc6-regalloc.md`, `docs/vc8-regalloc.md` |
 
+### Native build: the original code is never run
+
+Map the exe's sections (data, `.rsrc`) at their original addresses and fill the
+code range with `int3` (0xCC). Give each ported function a trampoline at its
+original address that jumps to the compiled source. A call into a function that
+has no port then traps at its own address; the fault handler prints
+`no native code for 0xADDR`. This makes every gap fail loudly and gives the
+progress count (functions that would still trap). Only reached code traps, so
+sweep every mission, call table and vtable slot with replays and a call harness,
+and give dead functions a port anyway so the count reaches zero.
+
 ## The byte-match loop
 
 Read with the `kuna-decompiler` skill, write with the original compiler,
