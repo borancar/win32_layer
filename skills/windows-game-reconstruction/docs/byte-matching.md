@@ -3301,3 +3301,30 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[tool]` Rank variants by an aligned instruction diff (difflib over normalised lines),
   not by differing bytes: one missing `push` at the top makes every variant "204 bytes"
   apart, and a pasted side-by-side shifts after the first missing line.
+- `[vc8]` `cmp [this+N],0; je; mov eax,[this+N]` (a member tested in memory and then
+  loaded, where a port gives `mov eax,[this+N]; test eax,eax`) has three sources. (1) The
+  member is spelled at every use and never copied to a local: `if (img) { r.w = img->w;
+  r.h = img->h; dc->Draw(img->id, ...); }`; VC8 gives the uses one temporary loaded at
+  the first of them and leaves the test a memory compare, while `T *o = img; if (o)`
+  merges. (2) An array slot whose index is read through the member it was just stored in
+  (`cur = i; if (tab[cur]) tab[cur]->Show();`), usually because a neighbouring
+  `Show(int)` is inlined: call the neighbour instead of repeating its body with the local
+  index. (3) In an iterator loop the element is read through the cursor each time
+  (`if (*it.p && (*it.p)->r) (*it.p)->r->f(...)`, what `operator*` or a macro leaves), not
+  through an element local.
+- `[tool]` Count such instruction pairs per function in the image and in the build and
+  list the functions where the image has more: one script turns an idiom into a work list.
+- `[vc8]` A row of `test r,r; je; mov x,[r+N]; jmp; xor x,x` blocks on one pointer is a
+  set of inline accessors returning 0 for a null pointer, used as arguments of one call:
+  the blocks come in the right-to-left order of the arguments and, inside each argument,
+  left to right. A local for a second object read in both arms is hoisted over the branch
+  and costs a callee-saved register: read it from the member in each arm.
+- `[vc8]` A zero loaded once in front of a branch and kept on the x87 stack for a later
+  store (`fldz; fst [m]`), where the image has `fldz` in the arm and again at the store:
+  the arm's zero is a double inside the cast, `(float)(flag ? 0.0 : a * b)`.
+- `[vc8]` With `double r = a * k;` used by two calls VC8 hoists an unrelated product over
+  the statement that stores `a`; writing `a * k` in both calls (`cos(a * k)`,
+  `sin(a * k)`) keeps the statement order and still computes the product once.
+- `[vc8]` `sete cl; mov eax,ecx` at the end against `test eax,eax; je one; xor eax,eax`:
+  `if (r != 0) return 0;` falling into the function's final `return 1`, not
+  `if (r == 0) return 1; return 0;`.
