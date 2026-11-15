@@ -4551,3 +4551,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   mangled argument bytes of every name at the address (struct returns and
   by-value structs counted; a function that ends in a tail jump has no `ret`
   of its own). **Held** *(46 callees, no mismatch)*.
+- **Locals can live in a dead parameter's home slot.** A function with no
+  `sub esp` that stores bytes into a parameter's slot and returns `mov
+  eax,[param]` on paths that never set a result has (a) a result variable
+  left unset there and (b) small locals (a 4-byte union, a 3-byte array)
+  that VC8 coloured into the slot. A second small local alive at the same
+  time gets a frame slot (`push ecx`): put the bytes in one array. Set the
+  result for other compilers. **Held** *(one 1028-byte fill, not yet
+  identical)*.
+- **Three states of what the compiler knows about a small callee.** Only
+  declared: calls kill every address-taken local. Defined out of class in
+  front: no memory written and the registers it leaves alone are kept
+  across the call. Defined inside the class with `__declspec(noinline)`
+  (an inline that was not inlined): no memory written, but no register is
+  trusted, so a hoisted load goes to a callee-saved register. Try the third
+  when a load is hoisted over a call yet sits in `esi`/`edi`. **Held**
+  *(measured on one function)*.
+- **A callee re-declared in a stand-in struct is an unknown callee.** If the
+  image omits `mov ecx,this` behind a call, call the member through the
+  class that defines it in front in the same file, not through a local
+  look-alike. **Held** *(1 function, the `mov ecx` gone)*.
+- **The same value stored twice in both arms**, the image with `xor
+  eax,eax` in the else arm: one conditional value (`int d = o ? o->m : 0;`)
+  stored twice, not the arms written out. **Held** *(1 match)*.
+- **Workspace trap: `rsync -a` keeps file times**, so a header committed by
+  someone else with an older time than your objects does not rebuild them
+  and a full run shows differences HEAD does not have. Touch the headers
+  and rebuild before believing a regression.
