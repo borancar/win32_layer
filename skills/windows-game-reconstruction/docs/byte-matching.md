@@ -3606,3 +3606,41 @@ mostly header-less, so the lever is what else is defined in the unit.
   files and a variant runner reported matches; a build directory reached through
   a symlink was cleaned in another round's tree. Keep a base copy per edited file
   and merge three-way before committing when several agents commit to one tree.
+- `[vc8]` A "zero kept in a callee-saved register" note is often not about the
+  zero. Count what each side keeps in the callee-saved registers: when ours holds
+  one variable more (typically a loop's element local), that variable does not
+  exist in the source. Write the element as an inline getter of the container at
+  every use (`if (l->At(i)) { ...; l->At(i)->f(); }`); the freed register takes
+  the zero and the element is reloaded behind each call, as in the image.
+- `[vc8]` A zero register that only feeds the first stores of a stack block and is
+  then reused by another variable: the block is initialised in front of the first
+  call and VC8 scheduled its stores between that call's pushes. Put the stores
+  first, in the image's order, and nest calls whose results are arguments
+  (`f(r, s, g(h) != 0, k(h, -20))`: rightmost called first, `neg; sbb; neg` for
+  the `!= 0`).
+- `[vc8]` `xor ebx,ebx; mov [n],ebx` at the top, `mov eax,ebx` in two early
+  epilogues and a load of `n` at the loop's exit, the register reused inside: the
+  inner early exit is a `goto` to the single `return n;` under an outer `if`.
+  Nested `if`s join the exits (no zero register); `return n;` at each exit folds
+  to `xor eax,eax`; a `goto` for both tests joins the two epilogues.
+- `[vc8]` An inline sender with by-value parameters (`int Send(int from, int to,
+  int a, int b, int c) { return Msg(from, to, a, b, c); }`) loads both id
+  arguments in front of the pushes, in argument order, and reads the vtable into
+  a callee-saved register; the open virtual call loads the second id between the
+  pushes. A tiny forwarding wrapper marked "register choice" is worth this try.
+- `[vc8]` A plain `inline` helper that contains a loop is called, not inlined;
+  `__forceinline` gives the image's shape. `jns` behind `test r,r` is a mask test
+  (`k & 0x80000000`), `(int)k < 0` gives `jge`/`jl`. `and r16,0xfff8` as imm16 is
+  an unsigned short destination; a signed one narrows to `and r16,-8` (imm8).
+- `[vc8]` `sub [n],1; jne` with the count on the stack and `test eax,eax; jle` in
+  front is `for (i = 0; i < n; i++)`; `if (n >= 1) do ... while (--n)` gives
+  `cmp eax,1; jl`. A member whose single exit has `xor eax,eax` returns `int 0`:
+  a `void` port can never match (rename the symbol, keep the old name as an alias
+  for callers that declare it `void`).
+- Tooling traps (round 108C): a replace-the-function-at-ADDR helper must anchor on
+  the comment at column 0 *below* the class declaration (the declaration carries
+  the same address in a trailing comment) and must not assume the function ends
+  at the first `}` line (a one-line port has none: the helper swallowed the next
+  function). A deleted unmatched port does not lower the identical count, so diff
+  every edited file against its base before committing. Drop the base copies
+  after each commit or the next three-way merge conflicts with your own commit.
