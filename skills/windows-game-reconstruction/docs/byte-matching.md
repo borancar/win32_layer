@@ -3358,3 +3358,29 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` Two callee-saved registers exchanged over a whole function written as a
   `__fastcall f(self, int, ...)` stand-in: make it a real member (a file-local derived
   class and a renamed symbol do).
+- `[vc8]` `cmp [this+N],0; je; mov ecx,[this+N]` in front of a virtual call needs a real
+  member spelled twice (`if (m) x.Put("K", m->Save());`). Read through an offset template
+  or an inline getter the test and the load merge, so a port built on `Field<T>(this, off)`
+  cannot show the pair. `if (P *p = g->m) p->Step();` is the merged form.
+- `[vc8]` `movsx r,[m+4]; mov cx,[m+2]; mov ax,[m]; ... movsx ecx,cx`: a struct of shorts
+  copied through its copy constructor, then its members converted.
+- `[vc8]` Listing equal line for line and bytes still different at a `call`: compare the
+  call's encoding. `call [iat]` against a direct call was `wsprintfA` for `sprintf`.
+- `[vc8]` Two object slots used A,B in one arm and B,A in the other, both pushed by `lea`
+  after construction: the first object is a named local in an inner scope, the second a
+  named local of the arm. Two inner scopes, temporaries or inline helpers share one slot.
+- `[vc8]` `fld m; fstp tmp; fld tmp` with the frame 4 bytes larger: a float returned by
+  value from an inline getter into a `const float &` parameter of an inline function.
+- `[vc8]` Most arguments of one call loaded before the first push, one in a callee-saved
+  register: the call sits in an inline function with by-value parameters.
+- `[vc8]` `mov eax,[arg]` first, then `lea ecx,[local]; push ecx; push eax` (ours: the
+  `lea` first): the first argument is `this` of an inline member wrapper around the free
+  function. A local copy or a static inline wrapper does not give it.
+- `[vc8]` `add esi,N` and all later offsets relative to it: a sub-object whose save or
+  load is a force-inlined member called on a member. As a second base class the call
+  is not inlined and the cast is null-adjusted. A loader that has a callee's load half
+  written out while the saver calls it wants that half as a force-inlined member.
+- A native regression binary built incrementally from `git archive` trees can keep stale
+  objects (every file is stamped with the commit time, which may be older than objects
+  built before the commit). Sync by checksum without times, or build clean, before
+  claiming two frame logs agree; cross-run the binaries when a count looks off.
