@@ -4256,3 +4256,37 @@ mostly header-less, so the lever is what else is defined in the unit.
   member of `this` differently from one loaded through a parameter.
   Differences that stay on the x87 stack across several products are
   `double` locals.
+- `[vc8]` **Buffer sizes first.** In a function with several stack buffers,
+  read every size off the distances between the buffers' `lea`s (the cookie's
+  offset closes the sum) before reading anything else: with four wrong sizes a
+  1960-byte function was 1494 bytes off, with them right 150. A size the port
+  enlarged can hide an overrun the original has; keep the larger size for the
+  native compiler only. **Held** *(match)*.
+- `[vc8]` **String intrinsics by signature.** `strlen`: `mov cl,[r]; add r,1;
+  test cl,cl; jne; sub r,r2`. `strcpy`: `mov dl,[s]; mov [d+s],dl; add s,1`
+  (one increment, the destination as a difference). `strcat`: `add edi,-1;
+  mov cl,[edi+1]; add edi,1; test cl,cl; jne` in front of the copy. A byte
+  copy with two pointers stepped is a hand loop in the original too. Count the
+  signatures per function in the image and in the build instead of hunting
+  hand loops in the source. **Held** *(three matches)*.
+- `[vc8]` **No `mov ecx,this` between two member calls** is not whole-program
+  code generation: the first callee is defined in front of the caller in the
+  same file and the compiler saw that it keeps `ecx`. Write the callee's body
+  in the caller's file, in front, `__declspec(noinline)`; when it is already
+  matched elsewhere under another name, add the second name at the address and
+  keep the second body away from the native compiler. **Held** *(match)*.
+- `[vc8]` **Try shapes as a product.** For a small function a few lines off,
+  build every combination of loop heads (`for`, `while (*s)` with the read
+  inside, `do`, the test in the condition or as a `break`), bodies (locals
+  declared in either order, an inline, a pair) and tails (the fallback inside
+  `if (!e) {...; return v;}` with the found return last, a `switch` with a
+  fall-through for a value reloaded at a shared label). Four matches in 20 to
+  100 builds each, none reachable by one edit. Score by bytes only while the
+  length is unchanged. **Held.**
+- `[vc8]` **The cases of a `switch` are written in the order of their blocks,**
+  not of the jump table. A wrong order compares as zero differing bytes in the
+  function and shows only as two literals at each other's address.
+- `[vc8]` **A sweep's alignment score is a lead, not a patch.** Removing a
+  local often raises the score while the bytes get worse, and can change
+  behaviour (`n--; if (!n)` for `old = n; n--; if (!old)`). Reset the port and
+  solve it by hand.
