@@ -3018,6 +3018,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   cases sharing sub-expressions): removing the shared sub-expression from the other case flips
   the order, so the order comes from value numbers, not from the spelling. No fix known; stop
   permuting spellings. *(negative)*
+- `[vc8]` Three component sums of a vector add with the operands of one of them exchanged
+  (`fld [d]; fadd [s]`, then `fld [s+4]; fadd [d+4]`): the vector's `operator+=` is a loop
+  (`float *a = &x; const float *b = &o.x; for (int i = 0; i < 3; i++) a[i] += b[i];`), which
+  VC8 unrolls without one shared operand order. Member-wise bodies tuned per line (`x = x +
+  o.x; y = o.y + y;`) are the sign that the loop was meant; one loop then serves every caller.
+  `__forceinline` where a caller with other calls leaves it out of line. *(match)*
+- `[vc8]` The order of a commutative x87 operation on two memory operands follows the
+  operands' other occurrences in the function, counted lexically (a call or a store in
+  between changes nothing): an operand read anywhere else goes second; with one use each the
+  higher offset goes first, and at equal offsets a pointer loaded from a member before a
+  pointer parameter, parameters in declaration order, a parameter before a global, `this`
+  last. Occurrences are compared before addresses are folded, so `p[1]` with `p = &s->e` is
+  not `s->f`. A product that loads the "wrong" operand behind a copy of that operand
+  (`f = s->f; g = s->f * k;` gives `fld k; fmul [s->f]`) wants the copy spelled through a
+  pointer to the neighbouring member (`const float *p = &s->e; e = p[0]; f = p[1];`). Change
+  the other occurrence, not the product. *(match)*
+- `[vc8]` A zeroed local vector stored highest word first: `v[2] = 0; v[1] = 0; v[0] = 0;` or
+  the chain `v[0] = v[1] = v[2] = 0`; an aggregate initialiser stores upwards. The two
+  spellings store alike and change the operand order of later sums over `v`. *(match)*
+- A variant runner must print the port's own DIFF line or fail: one that cuts the build
+  output (`tail -400` over a large file) reports every variant as identical. After a sweep
+  that restores the source, delete the objects it built; `make` will not. *(tool)*
+- Compare an own copy's base with HEAD in the same command that commits it. Another agent's
+  commit between a check and the commit is taken back silently when the own file is copied
+  over the tree. *(process)*
 - A native-build generator that reads a callee's address from the comment on a declaration
   line may bind it to an overload on the next line (a default constructor's address taken for
   the inline three-argument constructor): leave the comment off when the name resolves through
