@@ -4621,3 +4621,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   someone else with an older time than your objects does not rebuild them
   and a full run shows differences HEAD does not have. Touch the headers
   and rebuild before believing a regression.
+- `[vc8]` **Lifting generated placeholders into real classes.** Generated
+  stubs (`*(void**)this = vt; dtor(); if (f & 1) delete(this)`) are replaced
+  by the class's own destructor declaration, read off the stub: base
+  destructor called directly = no destructor (implicit); class vtable stored
+  first = `~X() {}`; own destructor called = `virtual ~X();` with its address;
+  `delete[] m` before the base call = `~X() { delete[] m; }` with
+  `operator delete[]` declared `throw()` (else an out-of-line, EH-framed
+  destructor). The compiler then emits `??_GX` wherever the vtable is emitted
+  (the constructor's file). `mov eax,ecx; mov [eax],vt; ret` with no caller is
+  an inline constructor's out-of-line copy (declare the constructor out of line
+  in a small class of its own; the header keeps it inline). Count distinct
+  addresses, not names: the stubs were often duplicates. **Held** *(about 460
+  placeholder names removed, distinct matches unchanged)*.
+- **Native hazard of lifted classes (clang, MS ABI): a class clang sees as
+  abstract gets a trap (`ud2`) as its deleting destructor.** Per-file class
+  declarations that omit a base's pure slots make it abstract; declare the
+  overrides, and keep a stub for real interfaces. Vtables named `??_7X@@6B@`
+  are redirected to the image's copy by the loader's name rules; with multiple
+  inheritance they are `??_7X@@6B<Base>@@@` and need their own lines.
