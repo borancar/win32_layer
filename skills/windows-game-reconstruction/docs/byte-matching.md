@@ -1252,6 +1252,11 @@ an item says otherwise.
   `[vc8]` Every case copies its own literal (`strcpy(buf, "...")` per case);
   VC8 merges the copies and hoists the setup. One pointer chosen in the switch
   and a single copy sets up behind it.
+- **Two failure exits laid out in the other order.** `[vc8]` Nested `if`s
+  and one `&&` condition compute the same thing and lay the exits out
+  differently (0x5bcae0: `if (n < 10 && o->Probar(x))` puts the outer test's
+  exit first). Likewise `r = n++; t[r] = o;` loads, bumps through `lea`, then
+  stores, where `t[n++] = o` stores and then `add [n],1`.
 - **`cdq; mov ecx,K; idiv ecx` for `/K` and `%K`.** `[vc8]` The divisor is a
   local (`int n = 20; q / n; q % n`); the literal gives two magic multiplies.
 
