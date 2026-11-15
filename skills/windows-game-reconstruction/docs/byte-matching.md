@@ -1638,6 +1638,51 @@ an item says otherwise.
   for a second `*pp`) and ours reloads: look for stores into an address-taken local between the two reads; they
   kill the reuse (0x447cf0, open). **record**.
 
+- `[vc8]` **Two to four values all loaded (or all computed) before the first is stored: constructor arguments.**
+  `call f1; mov edi,eax; call f2; add [m1],edi; add [m2],eax` where ours adds the first result before the second
+  call; `mov ecx,[eax+0x4c]; mov eax,[eax+0x48]; mov [c+0x20],ecx; mov [c+0x24],eax` (the last value in the
+  dying base's register) where ours takes a third register and another order; register sums stored afterwards
+  where ours folds `add [mem],reg`. The values are the arguments of a pair's or a box's inline constructor:
+  `Par d((int)(nx - px), (int)(ny - py)); x += d.a; y += d.b;`, `c->size = Size(f->w, f->h);`,
+  `r.p = Point(dx + r.p.x, dy + r.p.y);`, `*r = Box(q->x, q->y, q->w, q->h);`. Plain locals, member-wise
+  assignments and inline setters with the same parameters do not do it (they are scheduled statement by
+  statement). A by-value pair whose words are both loaded before `sub esp,8` has a copy constructor that itself
+  assigns such a temporary (`Par(const Par &o) { *this = Par(o.a, o.b); }`). A zero held in a callee-saved
+  register for the later stores often arrives with the fix (the register is saved anyway). Seven Commandos ports
+  whose notes said "register only" or "store scheduling" (0x47c250, 0x47dd20, 0x588cf0, 0x4f8df0, 0x581fc0,
+  0x563550; 0x64e6c0 through an inline over the pair's address, `Shrink(&w, a, b)`). **held** *(match)*.
+- `[vc8]` **An argument loaded into the register of the pointer it is read through (`mov ecx,[ecx+0x5c]; push
+  ecx`) where ours takes `eax`:** the call is the body of an inline that takes the value as a parameter
+  (`static inline char *F(int v) { return g.Set(v); }`, `F(member)`); an inline getter called on a pointer
+  parameter and a by-value struct local do the same, the member spelled out, a pointer local and a reference
+  parameter do not. Only for a base that arrived in a register (`this`, a `__fastcall` argument): for a base
+  loaded from a global (`mov eax,[g]; mov eax,[eax+8]; push eax`) 29 inline, getter and local forms all give two
+  registers, **open** (Commandos 0x581d70, 0x5944c0, 0x5cf530, 0x512640, 0x4e3930). The inverse case, ours
+  `mov ecx,[g]; mov ecx,[ecx+N]` against the image's `mov eax,[g]; ...; mov ecx,[eax+N]`, is an inline getter of
+  the global's class (`g->Names()->Index(n)`, 0x4dbb40). **held** *(match)*.
+- `[vc8]` **A pointer member loaded in front of the argument to its right** (`mov eax,[this+4]; mov ecx,[a]`
+  where ours loads and pushes `a` first): the by-value struct argument is read through an inline getter that
+  returns a reference, `Point &Pos() { return obj->pos; }`, `Line(Pos(), a, o->pos, ...)` (0x5b8530). A getter
+  of the object pointer, a pointer local and a reference local give other orders. **held** *(match)*.
+- `[vc8]` **A float local with a slot of its own (`push ecx` at the top) where ours reuses a dead float
+  parameter's slot:** the floats are one struct passed by value; VC8 reuses a dead scalar parameter's home and
+  never a by-value aggregate's (0x428b40; the result was a struct returned by value there: same pushes and
+  `ret N` in every caller). **held** *(match)*.
+- `[vc8]` **The result's stores strictly in front of the first read of `this`, ours with the member load hoisted
+  between them:** the function writes through a pointer parameter, which may alias `this`
+  (`Box *Fig::Get(Box *r) { r->y = 0; ... }`); a local returned by value is known not to alias and its loads are
+  scheduled early (0x581fc0). **held** *(match)*.
+- `[vc8]` **One byte differs, an `esp` displacement behind a call, every instruction equal:** a callee in between
+  pops bytes the source thinks belong to another call. `c->Put(img.Find(), name)` and `c->Put(img.Find(name))`
+  push the same bytes in the same order when `name` is a by-value struct; only the compiler's idea of `esp`
+  after `Find` differs (the image reloads a spilled vptr at `[esp+0x10]`, ours at `[esp+0x30]`). Check the
+  callee's `ret N` before anything else: the port's signature was wrong and would have broken under any other
+  compiler (0x588cf0). **held** *(match)*.
+- `[vc8]` **A tail `jmp` to the last call with the arguments left in place while other parameters sit in
+  callee-saved registers** (0x6455b0): VC8 tail-calls a `__cdecl` function with identical arguments only while
+  no parameter is enregistered (13 shapes: inline halves, block copies, an early return, a returned result).
+  **open**.
+
 ## 7. Register allocation: the measured model
 
 `[vc6]` Full detail, with the experiment behind each rule and the traces of the
