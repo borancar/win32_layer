@@ -4115,3 +4115,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   strength-reduced offset as SIB base) where ours has the pointer as base.
   No spelling of the index expression changes it; a local copy of the pointer
   gives the image's order but keeps the pointer in a register.
+- `[vc8]` `[native]` A matched spelling may leave a local unset that the
+  original compiler happened to home in a live slot (an inline's output
+  local placed in the caller's argument slot, so "unset" reads the
+  argument). Under another compiler it is stack residue. After a matching
+  rewrite, audit every dropped initialiser and every new output local, and
+  give it the value the image's slot holds (the parameter, not always zero)
+  under the native compiler's `#ifdef`. A scan of the matching commits for
+  removed `= 0`, `= { 0 }`, `= ""` and `memset` lines finds the candidates.
+- `[vc8]` A value that lives in one callee-saved register from its `xor`
+  at the top, serves as the function's zero, and leaves no constant
+  register beside it: declared first with its zero and filled through an
+  inline that takes the old value and returns the new one
+  (`v = IfPresent(tok, v)`). The reference form (`IfPresent(tok, v)`)
+  homes it on the stack; a default-taking form adds a default arm and a
+  constant register. Both inlines can stand in one function, line by line.
+- `[vc8]` A pair returned by value and read as `mov r,[eax]; mov r2,[eax+4]`
+  right behind the call: the result bound to a reference, not a named
+  local.
+- `[vc8]` Stack slots: temporaries bound to references never share a slot
+  with named locals of dead scopes, in braces or inside a forced inline;
+  when the image's frame says they do, the earlier sections were inline
+  functions (try `__forceinline` members for each section: it can also
+  undo an exchange of `this` and a parameter between two registers). A
+  forced inline that returns a struct and owns locals with destructors is
+  not inlined at all.
+- `[vc8]` Matrix runs: the differing-byte count is misleading while the
+  frame size is wrong; rank by it, then read the listing of the best few.
