@@ -3411,3 +3411,49 @@ mostly header-less, so the lever is what else is defined in the unit.
   zero register is made first.
 - A DIFF byte count jumps by a hundred when one instruction changes length (a short
   jump's reach); rank variants by aligned mismatching lines.
+- `[vc8]` The result variable behind a "zero kept in a register" (round 106C): `xor edi,edi`
+  at the top, `cmp [m],edi` for every zero test, `push edi` for zero arguments, `mov eax,edi`
+  at the common exit and `mov eax,1` in a copied epilogue mean one result variable assigned
+  on a path and returned once (`int r = 0; switch (...) { case X: ...; r = 1; break; }
+  return r;`). The compiler keeps the variable in a callee-saved register and reuses it
+  wherever the body needs its initial value; `return 1;` inside and `return 0;` at the end
+  fold to immediates. Works with 1 cleared on the failing paths and with a pointer result;
+  an `if`/`else if` chain folded where the `switch` did not. Seven ports identical; grep
+  the notes of parked functions for "zero" and "keeps". **held** *(match)*
+- `[vc8]` A sweep of meaning-preserving source transforms pays when a trial costs a
+  quarter of a second: each `if`/`else` turned round, `>= 1` against `> 0`, an early
+  return nested, a float constant as a literal, scored by aligned mismatching
+  instructions and kept when lower. Over 707 ports: 2 identical at once, 145 closer, and
+  most of the hand-finished matches of the round started from its output. Arm order is
+  the commonest single difference between a decompiler's port and the original.
+- `[vc8]` Two parameters with equal use counts in exchanged callee-saved registers: the
+  one loaded in the prologue into the first register is pointer-typed (a handle), the
+  other an integer. Check each parameter's register before trusting an all-`int`
+  prototype. **held** *(match)*
+- `[vc8]` The then arm of `if (a != 0 || b != 0)` in line with the else arm behind it
+  (ours: the then arm moved behind the function's end): the condition is an inline
+  predicate of the tested object. **held** *(match)*
+- `[vc8]` `cmp [p],0` kept on a path where a zero store through the same address is the
+  only write before it: store and test do not both go through one local pointer (the
+  member is spelled at one of them); with the same local at both the jump is threaded.
+  **held** *(match)*
+- `[vc8]` An inline function that matches out of line is not yet the source: check it
+  where it is inlined. A list walk written `do { n = cur->next; ...; cur = n; ... } while
+  (n->next)` under an `if` and one written `while (cur->next) { ... }` gave the same
+  out-of-line bytes; inlined, the second copies the forwarded store into a scratch
+  register (`mov edx,ecx; cmp [edx],0`) and shifts the scratch rotation behind it, as the
+  image has it. **held** *(match)*
+- `[vc8]` `sub eax,1; je; sub eax,1; jne` on a state member with the second case's block
+  first is a `switch` whose cases are written 2, 1; an `if (s == 1) ... else if (s == 2)`
+  compares with immediates. `add r,-1; js` in front of a loop is a second variable for the
+  loop (`for (int m = k - 1; m >= 0; m--)`). Destructor calls in front of a function's last
+  calls are an inner block around the objects. `neg; sbb; add 1` kept across a temporary's
+  destructor is an `int` local holding the comparison. **held** *(match)*
+- `[vc8]` Calls checked by address in parked functions (round 106C): `delete[] p` in a
+  file that does not declare `operator delete[]` is compiled as a call of `operator
+  delete`; the image calls the array operator's own thunk. Count the image's calls per CRT
+  address against ours for every parked function before tuning it.
+- A variant runner that replaces "from the function's first line to an end marker" must
+  not take end-of-file as the marker for a function that is not the last: the functions
+  behind it vanish, and vanished functions lower the identical count without a DIFF.
+  After every full match compare the count with the base plus the lines you claim.
