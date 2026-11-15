@@ -4339,6 +4339,50 @@ mostly header-less, so the lever is what else is defined in the unit.
   (bytes without addresses) and list the owning symbols: seven copies of one
   350-byte function matched at the first build each, two more of a paint
   routine by copying an already matched sibling's text. **Held** *(match)*.
+- `[vc8]` **Run the sibling search over every unmatched port, not from one
+  match.** Normalise every image function (numbers wildcarded, registers
+  kept), call an 8-instruction run distinctive when at most 12 functions hold
+  it, and for each unmatched port list the MATCHED functions sharing its
+  distinctive runs with the share of the port they cover. High cover with a
+  high mismatch count is a port written from the decompiler whose twin in
+  another class is already matched: copy the twin's text, rename the fields.
+  Fourteen matches from the first sixty lines, most at the first build (up to
+  1007 bytes); about 950 ports had some matched sibling. Take the matched set
+  from a verbose match, not from the symbol table (aliases without a body).
+  What the copies still needed, each a general rule: a dereference spelled at
+  every use where the twin had a local (`(*m->owner)->x; (*m->owner)->y`
+  reloads per switch case; a local lets VC8 keep the function's first load);
+  the same call written at the end of both arms of an `if`/`else` (the merged
+  tail loads `this` in front of the pushes); a user copy constructor on a
+  vector passed by value straight from the object (`fld`/`fstp` into the
+  outgoing slot). **Held** *(match)*.
+- `[vc8]` **`mov eax,ecx` at the entry and `this` in `eax` to the `ret` is a
+  function that returns `this`**, also when every caller ignores the value (a
+  constructor called as a plain function by static initialisers). And a run of
+  stores from arguments that looks shuffled is usually the source order with
+  neighbours exchanged two by two (`b,a`, `d,c`): undo the pairs to read it.
+  **Held** *(match)*.
+- `[vc8]` **Pointer or integer, member or free function, decide the registers
+  of a forwarded argument.** A wrapper `f(h) { char b[256]; g(h, b); return
+  !strcmp(b, "{"); }` was 23 bytes off as `__stdcall f(int)`, 4 as a member
+  with `int`, identical as a member taking `const char *` and calling
+  `const char *g(const char *, char *)`: check whether the callers load `ecx`
+  (a member that never reads `this`) and give handles their pointer type.
+  Three words stored in order behind a later argument loaded first are one
+  struct taken by value (`Set(Vec3 v, int w) { on = 1; wait = w; dest = v; }`).
+  **Held** *(match)*.
+- `[vc8]` **An inline member called on its own members** leaves a copy of the
+  one it overwrites: `p.FromPolar(p.x, base + p.y)` gives `fld [x]; fstp [r]`
+  and multiplies the cosine by the member, the sine by the copy. A pair's
+  setter `Set(a + u, b + v)` computes the second argument first into a
+  temporary and stores the first directly. `int k = (n & 1) ? n : -n;` stores
+  once in a dead parameter slot where `k = n; if (!(k & 1)) k = -k;` stores
+  twice in its own. An inline that returns `*this` used as the next call's
+  argument (`v.Add(a.Scale(f))`) keeps the first product on the x87 stack and
+  rounds it through the parameter slot. **Held** *(match)*.
+- **Build trap:** a tree extracted with `git archive` carries commit times, so
+  a file changed by a newer commit can be older than its object and `make`
+  keeps the stale object. Sync by checksum and touch what changed.
 - `[vc8]` **An expression spelled at every use is not a local.** `sin(g * k)`
   and `cos(g * k)` with the product written at both calls (VC8 computes it
   once) against `double r = g * k;`: same instructions for the angle, but the
