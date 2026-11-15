@@ -762,6 +762,37 @@ an item says otherwise.
   `g = r; return r;`. `-1` returned through the shared `ret`: `if (i != -1)
   i = F(); return i;`. A call result stored and reloaded before use is a named
   float local. **Held.**
+- `[vc8]` **A zero register that is not a result variable.** Three sources,
+  told apart by where the `xor` sits. *Behind a `call operator new`* (`xor
+  ecx,ecx; cmp eax,ecx; je`, later null tests as `cmp r,ecx`, even in a `void`
+  function): the class has a constructor that zeroes its members and the
+  function assigns them all right after; the dead stores go, their register
+  stays. *In front of four plain stores that the next statements overwrite*
+  (`xor eax,eax; mov [o],eax; ...` kept, ours has dropped them): the
+  constructor is `memset(this, 0, sizeof(*this))`, expanded after the
+  dead-store pass. *At entry, the register then reused for a flag*: the flag
+  is the result variable (`r = !(f & 0xc); if (m) r = r && ...; else r = r &&
+  ...; return r;`), not a second local. A result that ends a loop sits in the
+  loop condition (`i < n && !r`), not in an `if (r) return r;` at the body's
+  top. **Held.**
+- `[vc8]` **An out word read back from the argument's own home slot** with
+  the argument kept in a callee-saved register: the call is inside an inline
+  helper that takes the argument by value and returns the out word; the
+  inlinee's local lands in the dead parameter slot. A copy of the argument
+  (`int t = a; F(t, &a)`) goes through `eax`. **Held.**
+- `[vc8]` **A call in front of the pushes of the call it feeds** (`call
+  GetDlgItem; push 0; push 0; push msg; push eax`): its result is a local;
+  nested in the argument list the earlier pushes come first. A pointer stored
+  as `xor eax,eax; mov [m],eax` in the empty arm: one conditional expression
+  (`Set(n ? new T[n] : 0)`); an `if`/`else` of two calls stores an immediate.
+  **Held.**
+- `[vc8]` **`delete[] p` and `new T[n]` call the scalar operators in a file
+  that does not declare `operator delete[]` and `operator new[]`.** Declare
+  both wherever the image calls the array thunks; where a matched function's
+  image calls the scalar one, the source says `delete p`. The per-function
+  byte count does not see a call to the wrong operator when relocations are
+  masked: audit by call target. With the array operator declared (it may
+  throw) an EH state store appears in front of the call. **Held.**
 - `[vc8]` **Local pointer copy before a member call.** `mov eax,[p+N]; lea
   ecx,[eax+0x44]` comes from `q = p->x; q->m()`; the direct `p->x->m()` gives
   `mov ecx; add ecx`. Testing a member just stored: `quien = p->quien; if
