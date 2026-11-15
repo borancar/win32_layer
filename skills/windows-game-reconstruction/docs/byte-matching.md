@@ -3180,3 +3180,28 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` Among sibling blocks that each hold one object of the same class, the last block
   never shares the first slot: it gets its own or joins the temporaries of inner scopes.
   A frame larger by exactly one object is not a missing buffer.
+- `[audit]` Check library calls by address, on both sides. List every library address
+  that carries two names and every C name that the native linker resolves by name
+  (`strcpy`, `memmove`, ...), then read the body at the address: one more pair of this
+  kind was `_sprintf`/`_strcpy` at one address (`strcpy(d, s)` with the intrinsic off was
+  `sprintf(d, s)` in the image). Then, for every functional port, count the calls into the
+  library range per target address in the image's function and in the build (the build's
+  names mapped through the symbol table) together with the inline idioms (`rep movs`,
+  `repe cmps`): a line `strncpy 1/0 ; rep movs 0/1` is a `memcpy(d, s, n)` that is
+  `strncpy` in the image (sixteen in one pass), `strncmp 1/0 ; _strnicmp 0/1` a compare
+  with the wrong case rule. Names the comparer only "learns" (no symbol line) are never
+  checked: list them per address too.
+- `[audit]` A port whose image constants are nowhere in the build, not even in its
+  helpers, is a rewrite of the idea and not of the code (a polygon distance computed as
+  true segment distances where the image has tolerances and a facing test). Extend the
+  constant sweep to the callees the image does not call before reading a lead as "the
+  constants live in a helper".
+- `[vc8]` "0 bytes differ" with a note on `??_R0...` (the RTTI type descriptor reached
+  through the constructor's vtable) is a class whose name is not the image's: read the
+  name at the address. With a note on a vtable slot it is this file's declaration of the
+  class missing an override (`virtual int v02(...)`).
+- `[vc8]` Vtable stores first, then pairs of stores high word first, then a pair stored
+  low word first with a constant, with the pushes of the body's first call between them:
+  the pairs are members with an inline default constructor (`x = y = 0`) and one member
+  initialised in the list (`tam(1, 1)`); body assignments let the call's pushes rise
+  above the vtable stores.
