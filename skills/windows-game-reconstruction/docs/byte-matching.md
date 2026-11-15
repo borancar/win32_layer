@@ -4380,3 +4380,34 @@ mostly header-less, so the lever is what else is defined in the unit.
   pair left to right) and stores x, y, width, height in order with the
   subtractions between; an inline setter with the same body stores the sizes
   first. **Held** *(match)*.
+- `[vc8]` **The cases of a `switch` stand in the source in the order of their
+  blocks behind the jump, and this can be scanned.** Group the jump table's
+  entries by target and sort by address, in the image and in our listing; a
+  port where the two orders differ has most of its body shifted and reads as
+  hundreds of differing bytes. Reordering the cases alone matched four
+  functions of 260 to 575 bytes; function statics declared in the cases are
+  numbered in the same order (guard bits, EH states). Where ours has one block
+  for two cases and the image one each, the statements are written out in both
+  cases. **Held** *(match)*.
+- `[vc8]` **`mov ecx,this` in front of a callee that never reads `ecx`: the
+  callee is a thiscall member**, also when it was ported as a `__cdecl`
+  function without arguments (`mov ecx,esi; call f` against `call f`). Scan
+  for call sites where the image loads `ecx` and ours has none since the last
+  call, then check the target for a read of `ecx` before a write. The callee
+  stays byte-identical as a member; only its name changes. The opposite sign
+  (ours loads `ecx`, the image does not) is a load hoisted in front of a
+  branch or a callee defined in front that keeps `ecx`, never a missing
+  `this`. **Held** *(match)*.
+- `[vc8]` **A function declared `int` whose exits set no `eax`, with exits in
+  the middle**: `return;` is an error there (C2561) and falling off the end
+  needs `#pragma warning(disable: 4716)`. A macro that is `goto fin` for VC8
+  (with `fin:;` as the last statement) and `return 1` for the other compiler
+  gives every exit its own epilogue, as `return` does. **Held** *(match)*.
+- `[vc8]` **Two float differences stored to adjacent slots and loaded back in
+  the order they were stored** (ours loads the second first, 2 bytes): they are
+  the arguments of an inline taking two floats (`N2(a->x - b->x, a->y - b->y)`
+  with `return x * x + y * y`). Parameter slots are assigned from the last
+  argument up and the loads of a commutative sum follow the slots; no
+  declaration order, operand order or cast on two locals reproduces it. The
+  inline called inside the condition (no local for the result) keeps the
+  compared constant on the x87 stack for later uses. **Held** *(match)*.
