@@ -2227,6 +2227,16 @@ mostly header-less, so the lever is what else is defined in the unit.
   frame and its state numbers come from members with destructors, by-value
   temporaries and function-local statics; write those and the frame follows.
   A frame-less constructor over a base with a destructor is still open.
+- **Vtables and RTTI are part of the match.** `[vc8]` **held** *(match)*. A class's vtable, complete object
+  locator, type descriptor name (`.?AVClass@@`), hierarchy and base class descriptors are compiler output: check
+  them like code (`tools/vtcheck.py` here: slots resolved through the symbol table and the image's jmp thunks, then
+  the RTTI structures). A class passes when it declares every virtual in the original slot order (destructor where
+  the image has it, a placeholder for each slot it does not override), derives from the original bases in the
+  original order and access (a private base changes the base descriptor's attributes), uses `class`/`struct` as the
+  image does (`.?AV`/`.?AU` in the name string), and is compiled with RTTI on (`/GR`, the default here). `shorter`
+  means an incomplete declaration; once a class passes, the native build need not read its vtable or RTTI from the
+  exe. clang cannot emit ELF objects for vtables with RTTI on the MS ABI (`largest` COMDAT): go through LLVM IR with
+  `comdat any` for a check-only build.
 - **Incremental-link thunks.** `[vc8]` **held** *(record)*. Callers reach most
   functions through a `jmp` table; map a name to the thunk where callers use
   the thunk, and give a body reached both ways a second name.
