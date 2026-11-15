@@ -3477,3 +3477,29 @@ mostly header-less, so the lever is what else is defined in the unit.
   a plain local there (the reference dangles). **held** *(frame)*
 - A native check that prints frame counts after a failed compile ran the old binary: grep
   the build output for `error:` before reading the counts.
+- `[vc8]` A constant in a callee-saved register on our side only (round 107B): `mov
+  ebx,2` with `cmp [this+N],ebx; test [flags],bl` where the image compares with the
+  immediate (and keeps another constant, or nothing, in the register) means the member
+  compared comes through an inline getter (`if (Fase() == 2)`); the getter's constant
+  does not join the other uses of the same value. The same getter in a function's
+  opening test also moves `this` and the zero register.
+- `[vc8]` The scratch-register model is predictive (round 107B): read the image's loads
+  as a cycle first, then write the inline accessor, getter or wrapper where the cycle
+  breaks (a global's member reached three times: the accessor at all three; a load that
+  repeats `eax` behind a three-word copy: an inline getter of the object; `eax` in front
+  of a member call where ours has `ecx`: an inline wrapper of the callee).
+- `[vc8]` Macro-generated handler families declare their locals at the top: a loop
+  counter that reuses the function's zero register is `int i;` at the top and `for (i =
+  0; ...)`; two zeroed flags with exchanged stack slots are declared in the other order.
+  The handled flag is set on the id alone (`cmp [m],K; mov r,1; jne` is `hecho = 1; if
+  (m == K) ...`): a port that tests the member in the same condition changes which
+  messages reach the base class.
+- `[vc8]` Struct copies by their instructions (round 107B): three dword moves from the
+  source are a struct assignment; three `fld/fstp` to the frame and then dword moves are
+  a copy-constructed local assigned; `fstp` straight into the outgoing argument area with
+  `mov [T],esp` is a by-value argument built by its copy constructor.
+- An aligned instruction diff that normalises stack slots hides exchanged frame slots:
+  trust the byte count of the compare, not "0 mismatching lines".
+- With several agents committing, a private working copy of a file taken before someone
+  else's commit reverts that commit when copied back whole: re-copy from HEAD and
+  re-apply the edit right before committing.
