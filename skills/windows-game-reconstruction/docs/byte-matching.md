@@ -1431,6 +1431,34 @@ an item says otherwise.
   by-value argument are an assignment to a declared local (`P p; p = *src; f(p, ...)`) of a class whose copy
   constructor copies floats. **held** *(match)*.
 
+- `[vc8]` **A temporary passed by `lea; push` instead of the constructor's `eax`: a named local in its own block.**
+  `call T::T; lea ecx,[tmp]; push ecx` with the frame smaller than ours by the object's size is `{ T b(t);
+  r.Poner("K", b); }`: the block scope lets `b` share the temporaries' slot. A function-scope `b` keeps its own
+  slot; `r.Poner("K", T(t))` pushes `eax`; an inline function returning `T` gets the frame and swaps two
+  registers. Read the char buffer's size off `sub esp` only after the scopes are right. A callee whose result is
+  destroyed by a direct destructor call under an EH state returns the class by value (declare the same address
+  under that prototype), not a pointer to a raw buffer. The idiom sweeps by regex over sibling writers. **held**
+  *(match)*.
+
+- `[vc8]` **A port class with the vtable set by address is usually an overloaded constructor of the real class.**
+  Vptr store, member stores, then the EH state store (ours: state first) means the members' constructors ran
+  before the body. `fldz; fst [m+8]; fst [m+4]; fst [m]` right after the vptr store is a member whose default
+  constructor zeroes z, y, x; an assigned temporary goes through dword moves. Count the arguments at `ret N`
+  before reading a "variant" as a wrapper around the other constructor: the image repeats the body. An EH frame
+  without `__$ArrayPad$` means the local with the destructor holds no char array (`int c[15]`). **held**
+  *(match)*.
+
+- `[vc8]` **A member reloaded right after it was stored (`fst [m1]; fstp [m2]; fld [m1]`) came in by reference.**
+  An inline setter with a `const float &` parameter bound to the member, storing through another pointer first,
+  forces the reload; plain member reads are forwarded. A constant kept on the x87 stack across uses (`fld QWORD
+  PTR [k]; fmul st(1),st`) is a literal, not an `extern const double`. **held** *(match)*.
+
+- `[vc8]` **By-value struct arguments built through `mov eax,esp`** (`sub esp,N; mov eax,esp; fstp [eax]; ...`, or
+  word moves for shorts) are copy-constructor calls; giving the struct a copy constructor also moved the rest of
+  the loop to the image's registers. Struct stores that fall after the pushes are a temporary constructed in the
+  argument list (`&Color(0, 0x80, 0)`; a ternary of two gives two slots). A call with `ecx` loaded and no `add
+  esp` afterwards is a `__thiscall` member (`ret N`), not a register-argument static. **held** *(match)*.
+
 
 ## 7. Register allocation: the measured model
 
