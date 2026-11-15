@@ -3968,3 +3968,38 @@ mostly header-less, so the lever is what else is defined in the unit.
   the head before committing. A commit helper that copies the own file over
   the working file destroys another agent's uncommitted edit there: write the
   blob to the index and three-way merge into the working file.
+- `[vc8]` One recipe closes a family of script readers at once: every triple
+  `call Token; mov callee-saved,eax` (tokens fetched last to first, read first
+  to last) followed by `fstp [t]; mov r,[t]; mov [dst],r` three times is
+  `dst = LeerTrio(TEMP(v.Token(0)), TEMP(v.Token(1)), TEMP(v.Token(2)))` with
+  an inline that takes three references and returns the vector by its
+  three-float constructor; a pair of ints read second-first is the same inline
+  with `int y = (int)b.Numero(); int x = (int)a.Numero();`. Six readers of
+  700 to 2700 bytes matched on the first or second build. When the temporaries
+  die only after several more statements (a `sqrt`, a member call on the pair,
+  two stores), all of those statements are inside the inline; if VC8 then
+  calls it out of line, `__forceinline` it.
+- `[vc8]` An element of a member array spelled `m[i].f` at every use
+  (`mov ecx,[this+N]` in front of every store, the index scaled in one
+  register) is no element pointer; `T *e = &m[i]` folds the reloads.
+- `[vc8]` Three sums `fld [a]; fadd [b]` with the same side first where every
+  spelling on scalars loads the other side (or a loop gives a mix): an inline
+  `V3 Suma(const V3 &a, const V3 &b) { return V3(a.x + b.x, a.y + b.y, a.z + b.z); }`
+  whose result is a named local, read as `w.x`, `w.y`, `w.z` afterwards. Two
+  rows of a projection with the first row's middle product first and the
+  loaded components kept on the x87 stack for the second row: two `int`
+  locals, `int px = (int)(m[1] * w.y + m[0] * w.x + m[2] * w.z); int py = ...;`
+  stored into the box afterwards; storing straight into the array elements
+  loses the shared loads.
+- `[vc8]` The scratch registers restarting at `eax` for a member passed as an
+  argument (`mov eax,[f+N]; push k; push eax; lea eax,[v]; push eax`, where
+  the rotation would give `edx`) is an inline getter (`f->Volumen()`), also
+  where the same member is passed to a second call. A frame 4 bytes smaller
+  than ours with a small struct sharing the slot of dead float locals: the
+  struct is declared in a block of its own. Three `mov word [t+k],ax` with no
+  buffer cookie: a struct of three shorts, not `short t[3]`.
+- `[vc8]` A float conversion done inline (`fnstcw ... fistp qword`) in one arm
+  with direct stores in both arms: `if (c) m = (unsigned)x; else m = 0;` (the
+  `?:` form converts through `__ftol2_sse` and joins). A frame larger than
+  ours by a round number with an unused text buffer: the buffer's size (512
+  against a measured 452).
