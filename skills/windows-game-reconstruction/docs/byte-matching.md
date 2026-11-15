@@ -3676,3 +3676,9 @@ mostly header-less, so the lever is what else is defined in the unit.
   brought in (same-second sync and build): a DIFF on a function you did not touch
   that the main tree does not show is a stale object. Touch the source and rebuild
   before reporting a regression.
+- `[vc8]` A search loop whose found block has several exits, with the result's
+  zero in `eax` for the loop's compares and a callee-saved register pushed only
+  inside the found block: every exit of the block sets the result variable and
+  leaves through the one `return r;` (`r = h | flag; break;` at each, or a
+  `goto`). A single `return expr;` inside the block folds the zero to immediates;
+  the copied tails in the image are VC8's own.
