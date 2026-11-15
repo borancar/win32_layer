@@ -4226,6 +4226,23 @@ mostly header-less, so the lever is what else is defined in the unit.
   arm may be missing (a real bug behind a "register choice" note), a call
   the original repeats per case may be shared in yours, or yours may call
   a helper for a body the original has in line.
+- `[vc8]` Audit every port for missing code by comparing call sequences,
+  not lengths: take the original's direct call targets by address and its
+  indirect calls in order, the same from your compiler listing (the
+  assembly listing, not a disassembly of the object: a linear disassembler
+  loses its place in COFF objects), align the two with an LCS in which an
+  unresolved name of yours matches any direct call, and list the ports
+  where the original has calls without a counterpart and yours has none
+  extra. Length ratios, branch counts and "targets never called" are
+  noise next to it (inlined getters, unnamed neighbours in the extent).
+  On 1,383 ports it gave 95 candidates; thirty read, no second missing
+  arm, eight matches from the ones that were a loop for what the original
+  writes out.
+- `[vc8]` Never take a `learn` address from a function that is not
+  identical: with another length the relocation sits on other bytes, and
+  the value lands in the symbol table as a name inside some other
+  function, where it validates nothing and cuts that function's extent.
+  Check the table for names at non-instruction addresses.
 - `[vc8]` A parameter kept in its callee-saved register and stored from it
   in both arms, where yours stores a constant in the arm that knows the
   value: the store stands once behind the `if`/`else`; the compiler
@@ -4233,6 +4250,31 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` A `switch` whose cases each hold the same call with a different
   scratch register: every case is written out complete with its own
   `break`, in ascending order; fall-through into a common call shares it.
+- `[vc8]` One loop serving several messages with the message tested inside
+  (`if (id == A) f(); else if (id == B) g(); else h();`) where the
+  original has one loop per message and no test: each message is its own
+  `case` with its own loop. A table of constants or of member addresses
+  walked by a loop where the original has the calls in a row (six calls
+  with six constants, five members ended one by one, eight lookups by
+  name) is the same finding: write them out, and spell the object's
+  member at every call when the original reloads it.
+- `[vc8]` Zero differing bytes with a `label ... image != ...` note and the
+  callees of several cases reported exchanged: the case bodies are right
+  and in the wrong order. Bodies are laid out in the order the cases were
+  written, not in numeric order; reorder the cases to the original's
+  block order (here 0x2a, 0x24, 0x26, and a later case in front of an
+  earlier one).
+- `[vc8]` `push arg; mov ecx,esi; call f` where `f` is known as a free
+  `__stdcall` function: `f` is a `thiscall` member that never reads
+  `this` (the callee pops the same bytes either way). Declare it as a
+  member and call it on `this`; only the caller's code and the callee's
+  symbol change. Sweep the original for calls of free-function symbols
+  with `mov ecx,reg` right in front.
+- `[vc8]` A row of zero stores that uses the function's zero register and
+  stays in front of the statement behind it, where yours takes a fresh
+  `xor` (a loop) or hoists the next statement's loads over the stores
+  (assignments in the body): the stores are an inline member of the
+  sub-object, written out one by one.
 - `[vc8]` The type of a pushed local takes part in load scheduling: a
   `%s` argument held in a `const char *` local is loaded early, the same
   value in an `unsigned` local late.
