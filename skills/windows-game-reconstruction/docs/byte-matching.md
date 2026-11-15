@@ -590,7 +590,18 @@ an item says otherwise.
   source's `if (p) {...}` and one `return p != 0;`: VC8 threads the null arm to the return (folded to 0) and
   leaves the test where the pointer is a join. Constructor stores written inside the port's own `if (p)` give
   one test and one return path (0x4a8ad0). **held** *(match)*.
-
+- `[vc8]` **One call behind an `if/else` appears in both arms, each with its own `jmp` to the shared call; the
+  copy written in both arms merges with another case instead.** Every case of a dialog `switch` ends in its own
+  `SetFocus(GetDlgItem(h, id)); return 1;` (tail-merged at the call: `mov r,[this+hwnd]; push id; push r; jmp`),
+  and in the toggle case the call stands once behind the `if/else`: VC8 copies it into the arms itself. Written
+  in both arms, the first arm was cross-jumped into another case's member call (`push id; jmp`, an extra
+  `mov ecx,esi`). With it: a pointer into `this` that the image takes inside each case (`lea edi,[esi+0x80]`
+  four times) is the member spelled at every use, not a local in front of the `switch` (0x4cb750). **held** *(match)*.
+- `[vc8]` **Cases in block order where the low cases leave through `sub/je` and the rest through the table**: the
+  order is read by hand from both (0x4a81f0: `5, 4, 3, 0x411`, then the table's blocks by address); a scan that
+  reads the jump table alone reorders half of it and the count rises. **A tool that reorders case chunks must
+  refuse a chunk without `break`/`return`**: `case 0x19: if (!x) break; case 0x18: ...` moved apart falls into
+  another case (0x5e9a30, caught by reading the diff; `fallchk.py` lists them). **held** *(match)*.
 
 
 ## 4. Variables, loads and stores
@@ -1000,6 +1011,18 @@ an item says otherwise.
   vel = -lo; if (vel > v) m[0] = vel; }`. A `float` copy is stored and reloaded; function-scope locals, declaration
   orders and an inline clamp keep the shared slot (0x45bd70, 2 bytes with no instruction differing). This
   supersedes "no spelling moved it" above for the case where the wanted slot is a parameter's. **held** *(match)*.
+- `[vc8]` **`add eax,-1` and then `xor ecx,ecx; test eax,eax; setle cl; sub ecx,1; and eax,ecx`, where the port
+  has `xor ecx,ecx; sub eax,1; test eax,eax`**: the clamp is `max(v - 1, 0)` as the macro expands it, the
+  difference written twice (`v = (v - 1) > 0 ? (v - 1) : 0;`). The difference is then a shared subexpression with
+  its own `add`; `v = x - 1; v = v > 0 ? v : 0;`, `v--`, `v -= 1`, `+ -1` and an unsigned subtraction all fuse the
+  decrement into the test's `sub eax,1` (0x4bbe60, 14 spellings). **held** *(match)*.
+- `[vc8]` **An x87 minimum whose two arms both end in the same `fstp [slot]; fld [slot]`** (`fld f; fld g; fcom
+  st(1); fnstsw; test ah,0x41; jne L; fstp st(0); jmp M; L: fstp st(1); M: fstp [slot]`): a new variable from the
+  conditional (`float m = f < g ? f : g;`), the true arm the fall-through. `if (g <= f) f = g;` stores in one arm
+  only; `f = f < g ? f : g` without the new variable too. With it: `flag = (a > K || b > K) ? 1 : 0;` against
+  `a <= K && b <= K ? 0 : 1` (the same blocks, `je`/`jnp` for `jp`/`jne`), and `x < -g` (`fchs; fstp t; fld x;
+  fld t; fcom st(1); fnstsw; fstp st(1); test ah,0x41; je`) against `!(-g <= x)` (`fcomp; test ah,1; jne`), which
+  also differ for a NaN (0x45d1b0, 0x4644c0, 0x463050). **held** *(match)*.
 
 
 ## 5. Structures, types and parameters
@@ -1741,6 +1764,27 @@ an item says otherwise.
   callee-saved registers** (0x6455b0): VC8 tail-calls a `__cdecl` function with identical arguments only while
   no parameter is enregistered (13 shapes: inline halves, block copies, an early return, a returned result).
   **open**.
+- `[vc8]` **`mov [slot],eax; test eax,eax; mov [EH state],n; je` behind `operator new`, where the port has
+  `test eax,eax; mov [p],eax; je; mov [T],eax; mov [EH state],n`**: a real new-expression (`new T(args);`) for
+  `void *p = operator new(N); if (p) new (p) T(args);` (0x4a81f0). Swept over the 57 ports with the placement form:
+  16 closer, and 8 of those only because the stub class is smaller than the allocation (`push 1` for
+  `push 0x2fb8` is fewer differing bytes than the placement form). **Compare `sizeof(T)` with N in the listing
+  before keeping a new-expression**: a native build of the same source would allocate the stub's size.
+  **held** *(match)*, with the trap.
+- `[vc8]` **Flag-guarded destructors (`test bl,4; je; and ebx,~4; lea ecx,[tmp]; call dtor`, one bit per
+  temporary) around a constructor call behind `operator new`**: a chain of by-value calls is the argument of the
+  new-expression (`new T(Dir(a.Obtener("X").ObtenerEn(i).Obtener("Y")), ...)`); the temporaries live in the
+  conditionally evaluated part and get a flag each. Named locals inside `if (p)` have plain destructors. The
+  constructor's `int` parameter takes the temporary's address through an inline over `const T &` (0x4c4dc0, matched
+  from the image in one writing: result variable `r = 1`, `default: r = 0`, cases in block order, the inner
+  `switch` with case 7 in front of case 1). **held** *(match)*.
+- `[vc8]` **`mov ecx,eax; call member` right behind a call that returns an object by value**: the member is
+  called on the temporary (`g.Valor(s + 1).CopiarA(p, n);`); a named local gives `lea ecx,[local]` and two more
+  bytes of frame traffic (0x5af720). **A local's destructor in front of a later call on another local**
+  (`mov BYTE PTR [state],0; call ~V; lea ecx,[t]; call Guardar`): the local has its own block
+  (`{ V v(buf); t.Cambiar("XYZ", v); } t.Guardar();`); the value as a temporary argument is 65 bytes off
+  (0x4c8590). **held** *(match)*.
+
 
 ## 7. Register allocation: the measured model
 
@@ -2018,6 +2062,14 @@ once the binary matches.
   stub comment of another file; one that ends a function at "`}` followed by a blank line" swallows what follows
   a port with an inline helper in front; a helper that copies stdin to a scratch file must not be fed that file.
   Diff the own copy against its base after every helper call.
+- `[vc8]` **A sweep's aligned-lines leads, read as bytes**: of 554 leads the 125 best by remaining score were
+  applied one by one and measured in differing bytes (`lb.sh`: keep when lower). Six became identical, each with
+  one more hand step that the listing showed at once (a temporary used directly, a new variable for a minimum, the
+  `max` macro, the operand order of a compare, a block for a local); none by the lead alone. A lead that leaves
+  under about 30 bytes is worth opening; the rest are ports a few statements nearer. Leads of the kinds `noret`,
+  `stswap`, `fltdbl` and `inlvar` over a member change what the code does (a value read again after a store, a
+  `float` rounding dropped): read the diff before keeping one as a "closer port".
+
 
 ## 11. Declarations and headers move code
 
@@ -4455,3 +4507,47 @@ mostly header-less, so the lever is what else is defined in the unit.
   declaration order, operand order or cast on two locals reproduces it. The
   inline called inside the condition (no local for the result) keeps the
   compared constant on the x87 stack for later uses. **Held** *(match)*.
+- `[vc8]` **A symbol table must be scanned for names that are no function
+  start.** A `learn` value printed for a port that is not identical is not an
+  address; taken over as a symbol it sits inside another function, cuts that
+  function's extent in every tool that reads "to the next symbol", and shows
+  up in audits as a port ten times longer than its image. Check every code
+  symbol against the start list, the extra starts and the thunk table (thunk
+  or target), and every name that carries an address (`F<thunk>_<n>`)
+  against that address, the thunk and its target. Real starts the list merged
+  are 16-aligned behind padding, a `ret` or a jump table. Before removing one,
+  check that no source, no hand-kept table and no generated trampoline uses
+  it. **Held** *(ten removed, match count unchanged)*.
+- `[vc8]` **The written-out kind again, generated**: a port's loop over a
+  table of (source slot, destination slot) pairs is in the image one statement
+  per row (72 lookups, 1584 bytes). Generate the statements from the port's
+  own table. In the same function the image's `mov eax,1` / `xor eax,eax` at
+  the exits showed the port's `void` to be an `int`, and a handle stored to a
+  global and tested through it (`g = f(); if (g) { int h = g; ...; return 1; }
+  return 0;`) gives `test eax,eax; mov [g],eax; je end` with the copy to the
+  callee-saved register behind the pushes; a local tested first moves the copy
+  in front of the test. **Held** *(match)*.
+- `[vc8]` **A `$GSCopy$` slot for a parameter that the image keeps in a
+  register is a missing local elsewhere.** The image held a member read once
+  in a callee-saved register across calls; with that local (`int est =
+  estado;`) the fourth register is in use, the prologue pushes it, and the
+  copied parameter goes to a register as well (frame 4 bytes smaller).
+  **Held** *(match, 896 bytes)*.
+- `[vc8]` **A small member defined in its class and still called**: `/Ob2`
+  does not inline a body with an int-to-float conversion and a call;
+  `__forceinline` does, where the image has the body in line at every call
+  site. **Held** *(match)*.
+- `[vc8]` **`mov eax,1; je; cmp; jne; cmp; jne; xor eax,eax; mov [m],eax`** is
+  a local set to 1 and cleared under the negated condition, then stored; the
+  boolean expression assigned directly materialises with `xor; jmp; mov 1`,
+  and an inline helper with early returns with `setne`. Which register holds
+  the 1 follows the rest of the function and was not steerable by locals,
+  `goto` forms or helpers. **Held** *(structure; registers open)*.
+- `[vc8]` **A callee that reads `ecx` under a free-function name is not
+  always a caller bug**: check whether the caller is dead code (its thunk has
+  no reference), whether the callee only spills `ecx` (`push ecx; mov
+  [ebp-4],ecx` of a member with an `__asm` body) and whether the other
+  compiler reaches it through a thiscall adapter. Compare `ret N` with the
+  mangled argument bytes of every name at the address (struct returns and
+  by-value structs counted; a function that ends in a tail jump has no `ret`
+  of its own). **Held** *(46 callees, no mismatch)*.
