@@ -569,6 +569,15 @@ an item says otherwise.
   and `if (q) q = r` all fold to `neg eax; sbb eax,eax; and eax,edi`. An entry test `cmp [m],0; jbe` in front of a
   loop whose body starts with the exit test is a `for` over an unsigned bound, not `if (n) do ... while`.
   **held** *(match)*.
+- `[vc8]` **A float compared with 0 or 1 has the constant loaded first.** VC8 turns `v < 1.0f` into `fld1; fcom
+  [v]; test ah,0x41; jne` (1 > v) and `v > 1.0f` into `fld1; fcom [v]; test ah,5; jp` (1 < v), and likewise with
+  `fldz`: write the variable first and read the image's test as the mirrored one. Writing the constant first
+  (`1.0f > v`) gives `fld [v]; fcomp QWORD PTR [1.0]`. A clamp whose arms end in `fstp [r]; fld [r]` assigns the
+  result variable (`if (r < 0.0f) r = 0.0f; else if (r > 1.0f) r = 1.0f; return r;`), early returns of the
+  constants do not; a port's `!(a <= b)` for `a > b` shows as `jnp`/`jp` against `jne` and differs for a NaN.
+  A flag set by `cmp [m],0; jne set` whose set path stores 1 is one expression (`m = m || a > x || b > y;`), not
+  `if (!m) m = ...`. **held** *(match)*.
+
 
 
 ## 4. Variables, loads and stores
@@ -909,6 +918,14 @@ an item says otherwise.
   callee first: the zero rule for slots the image really reads uninitialised is a different case. The statement
   whose `fstp` comes after two integer stores to globals is written in front of them; an unsigned converted with
   `fadd DWORD PTR [2^32]` was cast to `float`, with the qword constant to `double`. **held** *(match)*.
+
+- `[vc8]` **A frame 8 bytes larger than the image: locals that belong in block scopes.** Two small structs of
+  disjoint blocks (a point for two calls, a colour for a later one) share a slot only when each is declared in
+  its own block; at function scope each keeps its own (0x20 against 0x18). An integer store that the image has
+  one statement later (`mov [m],1` behind the `fld` of the next statement) was written after that statement:
+  move it down before trying anything else. A named float that the image keeps in a dead argument's slot is the
+  compiler's packing (first fit over the dead homes); when it picks another slot than ours no spelling moved it.
+  **held** *(match)*.
 
 
 ## 5. Structures, types and parameters
@@ -1403,6 +1420,16 @@ an item says otherwise.
   dereferenced argument as a local (`int c = *p; return f(a, c);`); `f(a, *p)` takes `edx`. An `xor edx,edx` the
   image lacks before a call means the callee is a `__thiscall` member, not `__fastcall` with a dummy argument.
   **held** *(match)*.
+
+- `[vc8]` **Unlink stores in front of the vtable load are a `delete`.** `mov [n+8],0; mov [n+4],0; mov edx,[n];
+  mov eax,[edx]; push 1; mov ecx,n; call eax` is `n->ant = 0; n->sig = 0; delete n;` through a virtual
+  destructor; a named virtual `n->Borrar(1)` lets the stores sink behind `mov ecx,n`. `mov eax,[eax]; lea
+  ecx,[eax+N]` (ours `mov ecx,[eax]; add ecx,N`) is a pointer returned by an inline accessor with the callee a
+  member at +N (`O()->angulo.F()`). A null-tested pointer whose two fields are written with one test, the second
+  through a reload, is one inline setter of both (`void Pon(int x, int y) { if (m) { m->a = x; m->b = y; } }`)
+  called in each arm; two setters test twice. Three dword moves into a local and float pushes from it for a
+  by-value argument are an assignment to a declared local (`P p; p = *src; f(p, ...)`) of a class whose copy
+  constructor copies floats. **held** *(match)*.
 
 
 ## 7. Register allocation: the measured model
