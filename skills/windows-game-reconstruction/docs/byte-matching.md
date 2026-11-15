@@ -564,6 +564,12 @@ an item says otherwise.
   `do {...} while (c != '\\' && c); if (!c) fin = 1; else p[k-1] = 0;`; a
   `goto`, or a `for (;;)` with two `break`s, gives a peeled or rotated loop
   instead (0x62ae30). **Held.**
+- `[vc8]` **A result assigned over another keeps its branch.** `test eax,eax; jne L; pop; ret; L: mov eax,edi;
+  pop; ret` after two calls is `int q = b.F(); if (!q) r = q; return r;`. `if (!q) return 0;`, `return q ? r : q`
+  and `if (q) q = r` all fold to `neg eax; sbb eax,eax; and eax,edi`. An entry test `cmp [m],0; jbe` in front of a
+  loop whose body starts with the exit test is a `for` over an unsigned bound, not `if (n) do ... while`.
+  **held** *(match)*.
+
 
 ## 4. Variables, loads and stores
 
@@ -898,6 +904,12 @@ an item says otherwise.
   float literal; a named float local is stored and reloaded instead. Reusing a
   dead parameter (`pos %= periodo`) or a parameter-derived local puts the value
   in the argument slot the image uses (0x62e570). **Held.**
+- `[vc8]` **A defensive initialiser is one store too many.** A port's `int x = 0` in front of a call that takes
+  `&x` shows as a single extra `mov [x],0`; when the callee writes every out parameter the image has none. Read the
+  callee first: the zero rule for slots the image really reads uninitialised is a different case. The statement
+  whose `fstp` comes after two integer stores to globals is written in front of them; an unsigned converted with
+  `fadd DWORD PTR [2^32]` was cast to `float`, with the qword constant to `double`. **held** *(match)*.
+
 
 ## 5. Structures, types and parameters
 
@@ -1385,6 +1397,13 @@ an item says otherwise.
   variable was a logic bug in a functional port).
 - Trap: an edit that leaves the file uncompilable keeps the previous object,
   and the comparison shows the old code. Make the loop print compiler errors.
+- `[vc8]` **Look at the call's target before its arguments.** A port that pushes a value where the image pushes
+  an address may be calling the wrong neighbour: the image called a 16-byte wrapper (`mov eax,[esp+8]; mov
+  eax,[eax]; mov [esp+8],eax; jmp f`) in front of the function the port named. That wrapper matches with the
+  dereferenced argument as a local (`int c = *p; return f(a, c);`); `f(a, *p)` takes `edx`. An `xor edx,edx` the
+  image lacks before a call means the callee is a `__thiscall` member, not `__fastcall` with a dummy argument.
+  **held** *(match)*.
+
 
 ## 7. Register allocation: the measured model
 
