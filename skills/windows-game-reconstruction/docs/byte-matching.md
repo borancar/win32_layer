@@ -957,6 +957,23 @@ an item says otherwise.
   move it down before trying anything else. A named float that the image keeps in a dead argument's slot is the
   compiler's packing (first fit over the dead homes); when it picks another slot than ours no spelling moved it.
   **held** *(match)*.
+- `[vc8]` **A commutative x87 sum is not evaluated in source order; a `double` local fixes it.** `(px - cx) * dx +
+  (py - cy) * dy` came out `y` product first in one function and `x` first in its twin, whichever way the sum, the
+  products and the declarations were written. VC8 orders the two operands by where their member loads first
+  appear in the function's layout: exchanging two statements in the *other* `switch` case (the one laid out first)
+  flipped this one. The first product in a `double` local (`double a = (px - cx) * dx; float t = (float)(a + (py -
+  cy) * dy);`) stays on the x87 stack, costs no store, and the sum takes the local first; two double locals are
+  ordered like the plain sum again, and a split into two float statements adds a rounding store (Commandos
+  0x44dbe0, 0x451de0). A single product of two memory operands (`s * y`) is ordered by the same key and no local
+  moved it (0x5d4100, 0x59e740: 138 spellings). The aligned listing shows nothing for an operand exchange when
+  it replaces numbers: rank such ports by differing bytes. **held** *(match)*.
+- `[vc8]` **A rounding store in the "wrong" dead argument slot: assign the parameter itself.** Two block locals
+  with disjoint lives share one dead home (first fit), so a second clamp's `fstp [slot]; fld [slot]` landed in the
+  first argument's slot where the image uses the second's. The image's variable is the parameter, reassigned
+  after its old value was copied to a `double`: `double v = vel; m[0] = (float)v; if (hi < v) m[0] = hi; else {
+  vel = -lo; if (vel > v) m[0] = vel; }`. A `float` copy is stored and reloaded; function-scope locals, declaration
+  orders and an inline clamp keep the shared slot (0x45bd70, 2 bytes with no instruction differing). This
+  supersedes "no spelling moved it" above for the case where the wanted slot is a parameter's. **held** *(match)*.
 
 
 ## 5. Structures, types and parameters
@@ -1514,6 +1531,19 @@ an item says otherwise.
   a default followed by an `if`; a constant in a callee-saved register shared by a member store, a guard mask and
   the EH state comes from the store written in each arm instead of once behind the `if`/`else`; `and r,1` behind a
   `sete` in a loop is `res &= cond`. **held** *(match)*.
+- `[vc8]` **A virtual call with a call among its arguments reads the vptr in front of that call.** `m->Send(id, 0,
+  d.Angle(), c)` gives `mov ebp,[ebx]` before `call Angle` and `mov edx,[ebp+12]` after it, in every form: the
+  member spelled out, pointer and argument locals, inline senders of either object by value, by reference and
+  forced, getters (16 sender forms x 6 argument forms in a scratch file). The read moves behind the call only when
+  the argument's call comes from an inline expansion (`float B() { return A(); }`), which VC8 hoists in front of
+  the whole call with a stored float temporary. An image that pushes the last argument, calls, and only then
+  reads `mov eax,[ebx]; mov eax,[eax+0xc]` (Commandos 0x430200 and four twins, the only such sites in the image)
+  is still **open**: do not spend sender spellings on it. A float held across a call as `fstp DWORD; call; fsubr
+  DWORD` is likewise not a plain spill (VC8 spills x87 intermediates as QWORD): it is a by-value float parameter
+  of an inline, whose arguments are evaluated first to last with the last one substituted (0x5b4c50, order of the
+  two calls not reproduced). A load through a pointer that the image replaces by a register copy (`mov eax,edi`
+  for a second `*pp`) and ours reloads: look for stores into an address-taken local between the two reads; they
+  kill the reuse (0x447cf0, open). **record**.
 
 ## 7. Register allocation: the measured model
 
