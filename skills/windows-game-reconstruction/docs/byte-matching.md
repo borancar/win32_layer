@@ -4640,3 +4640,15 @@ mostly header-less, so the lever is what else is defined in the unit.
   overrides, and keep a stub for real interfaces. Vtables named `??_7X@@6B@`
   are redirected to the image's copy by the loader's name rules; with multiple
   inheritance they are `??_7X@@6B<Base>@@@` and need their own lines.
+- `[vc8]` **Before lifting a placeholder deleting destructor, look for the real
+  one the objects already emit.** The compiler writes `??_GX` wherever X's
+  vtable is; a symbols file generated from RTTI often names only `??_EX` (and
+  sometimes at the wrong slot), so the real copy is never compared and the
+  stub carries the match. List every object's `??_G` names without a line,
+  give each its vtable's destructor slot (thunks followed), keep the ones one
+  object matches, then drop the stub as a duplicate. **Held** *(160 names
+  this way, no source edit)*. For a native build, removing the duplicate stub
+  is safe only if a native object defines the real name (no vtable in the
+  file, no `??_G`), no file sees the class abstract (trap), and it calls no
+  destructor that has neither source nor address (a declared-only `~X();`):
+  a strong stub hides all three until it goes.
