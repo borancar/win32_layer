@@ -4332,3 +4332,51 @@ mostly header-less, so the lever is what else is defined in the unit.
   local often raises the score while the bytes get worse, and can change
   behaviour (`n--; if (!n)` for `old = n; n--; if (!old)`). Reset the port and
   solve it by hand.
+- `[vc8]` **A matched function is a search key.** Class families built from
+  one template (particle systems, list classes) are compiled once per class
+  and decompiled one by one into ports that differ from each other. When one
+  matches, search the image's code for its most specific instruction run
+  (bytes without addresses) and list the owning symbols: seven copies of one
+  350-byte function matched at the first build each, two more of a paint
+  routine by copying an already matched sibling's text. **Held** *(match)*.
+- `[vc8]` **An expression spelled at every use is not a local.** `sin(g * k)`
+  and `cos(g * k)` with the product written at both calls (VC8 computes it
+  once) against `double r = g * k;`: same instructions for the angle, but the
+  parameter stays in use up to the second call, so the home slots of dead
+  parameters are handed out differently (in the order the parameters die in
+  the source), and the operand order of later x87 products changes
+  (`fld st(0); fmul [m]` for `fld [m]; fmul st(0),st(1)`). A function with the
+  right instructions and float locals in the wrong argument slots wants this
+  before any reordering of declarations, which does nothing. **Held**
+  *(match)*.
+- `[vc8]` **Literals for named constants in x87 code, per use.** A named
+  `extern const` float or double is a variable to the compiler: loaded at each
+  use (`fld [K]; fcompp` for `fcomp [K]`), not kept on the x87 stack across the
+  function, and its load is not moved in front of a store. Where a port is
+  off by exactly that, write the literal and say why in a comment. **Held**
+  *(match)*.
+- `[vc8]` **The equal arm of a two-float test laid behind the body** is an
+  inline `bool operator!=` of a pair type in the condition; written out as
+  `a.x != b.x || a.y != b.y` the short else arm is moved in front. Behind the
+  operator the compiler duplicates the join's first statements into both inner
+  arms: write them once. **Held** *(match)*.
+- `[vc8]` **Stores through an `int *` local end the reuse of members.** A
+  member read again from memory, or a difference computed a second time,
+  behind two `add [this+N],reg`: the adds were written through a pointer
+  (`int *r = &rect.x; r[1] += dy; r[0] += dx;`). Spelled as members the
+  compiler keeps the earlier values in registers. **Held** *(match)*.
+- `[vc8]` **x87 compares keep the written operand order** (the left operand
+  is loaded first) while products and sums do not. A compare with the right
+  relation and the loads exchanged is fixed by exchanging the operands and the
+  relation in the source. `if (a < m) a = m;` loads `m` once and stores it from
+  the stack; `if (m > a)` reloads. **Held** *(match)*.
+- `[vc8]` **`<math.h>` in front changes `fabs` of a float**: the header's
+  inline `float fabs(float)` adds a second rounding store behind the port's own
+  cast (`fabs; fstp; fld; fstp; fld`). A file that only declares
+  `double fabs(double)` gets one. Check the includes before the expression.
+  **Held** *(match)*.
+- `[vc8]` **A rectangle assigned from a constructor temporary over two pair
+  temporaries** converts all four values first (the second pair first, each
+  pair left to right) and stores x, y, width, height in order with the
+  subtractions between; an inline setter with the same body stores the sizes
+  first. **Held** *(match)*.
