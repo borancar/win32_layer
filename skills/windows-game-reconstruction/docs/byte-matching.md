@@ -3328,3 +3328,33 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` `sete cl; mov eax,ecx` at the end against `test eax,eax; je one; xor eax,eax`:
   `if (r != 0) return 0;` falling into the function's final `return 1`, not
   `if (r == 0) return 1; return 0;`.
+- `[vc8]` A serialiser that writes many values is one text buffer and one named object per
+  value: `sprintf(t, "%ld", n); { Block b(t); r.Put("NUM", b); }`. A port's helper
+  returning the object from its own buffer has the wrong frame and calls. Read the buffer
+  sizes off the frame last; two buffers can hide behind one frame size.
+- `[vc8]` Scratch registers for the pushes of consecutive calls rotate `eax, ecx, edx`.
+  A value that goes through a named local or an inline function's parameter reuses the
+  register of the previous allocation instead of taking the next. When ours is one step
+  out of phase from a call on, add (or remove) a local or an inline wrapper for that
+  call's argument; an inline `Fmt(t, n)` around `sprintf` shifts the phase the same way.
+- `[vc8]` `lea ecx,[obj+N]` in front of a call to a function matched as `__stdcall`: it is
+  a member that ignores `this`. Give the callers a member prototype under an alias.
+- `[vc8]` `mul; seto cl; neg ecx; or ecx,eax; call operator new[]` then
+  `push ctor; push n; push size; push p; call ??_H`: `new T[n]` with a constructor. The
+  "init" member the port looped over is the constructor.
+- `[vc8]` Locals of a force-inlined helper are packed among themselves, not with the
+  caller's statement temporaries: a frame one object larger than ours, with named values
+  and small buffers in one slot and temporaries in another, means the readers were
+  inline helpers. Plain `inline` helpers holding a destructible local may not be
+  expanded; `__forceinline` reproduces it. A helper that stores through a reference
+  parameter stores before the local's destructor, one that returns the value after it.
+- `[vc8]` Inline `fnstcw/fldcw/fistp qword` next to `_ftol2_sse` calls: that one
+  conversion is to `unsigned`.
+- `[vc8]` `test eax,eax; je far; lea ecx,[x]; call` (ours: `lea` hoisted over the `je`):
+  nest the rest in the `if` instead of returning early; a cold path placed after the
+  body is the `else`.
+- `[vc8]` `imul r,i,size; add r,[base]` after a strength-reduced loop: the counter is
+  declared outside the loop and reused after it.
+- `[vc8]` Two callee-saved registers exchanged over a whole function written as a
+  `__fastcall f(self, int, ...)` stand-in: make it a real member (a file-local derived
+  class and a renamed symbol do).
