@@ -3457,3 +3457,23 @@ mostly header-less, so the lever is what else is defined in the unit.
   not take end-of-file as the marker for a function that is not the last: the functions
   behind it vanish, and vanished functions lower the identical count without a DIFF.
   After every full match compare the count with the base plus the lines you claim.
+- `[vc8]` Serialisers, round 107A: a saver whose image has its serialiser's saving half
+  written out is defined **in the serialiser's file, behind it**; with a constant mode
+  argument VC8 inlines the call by itself and still emits the serialiser. No
+  `__forceinline`, no copied body. **held** *(match)*
+- `[vc8]` A list walk the port wrote with an index (`for (i = 0; d[i] != -1 && i < n; i++)`)
+  where the image has `mov eax,p; sub eax,ini; sar eax,2; cmp eax,[l+0xc]` is an iterator
+  object. Search the image for the walk's bytes and list every port that has it: one
+  idiom, dozens of functions. The step with a named index (`unsigned i = p - ini; if (i <
+  n) return 1;`) and the `&&` form differ by one step of the scratch-register rotation in
+  the loop body; an increment in front of the body's destructors is the body's last
+  statement. **held** *(match)*
+- `[vc8]` A by-value class argument built in place on the stack (`sub esp,N; mov [slot],esp`)
+  needs a user-declared copy constructor on the class; declare it under the compiler's
+  own `#ifndef` when a second toolchain builds the same source (its ABI passes such a
+  class by hidden reference). A temporary destroyed at the function's end that leaves the
+  statement temporaries their shared slot is bound to a non-const reference (`T &v = (T
+  &)(f())`); a named local and a `const T &` both cost a slot. The second toolchain needs
+  a plain local there (the reference dangles). **held** *(frame)*
+- A native check that prints frame counts after a failed compile ran the old binary: grep
+  the build output for `error:` before reading the counts.
