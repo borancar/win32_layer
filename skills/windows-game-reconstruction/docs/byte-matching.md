@@ -3644,3 +3644,35 @@ mostly header-less, so the lever is what else is defined in the unit.
   function). A deleted unmatched port does not lower the identical count, so diff
   every edited file against its base before committing. Drop the base copies
   after each commit or the next three-way merge conflicts with your own commit.
+- Uninitialised reads the original has (round 109A): when a matched function reads a
+  slot the image never set (an iterator's cursor words on a null-list path), keep the
+  VC8 text and give the other compiler a deterministic value through one macro that
+  is empty under VC8 (`ITER_NULO(p, ini)` at the head of every iterator constructor:
+  `p = 0; ini = 0;` under `__clang__`). One definition in one header; the match count
+  must be equal before and after.
+- `[vc8]` A frame the size of an iterator that is never stored (`sub esp,0xc`, the
+  cursor words only read on the null path) comes from the three-word walk struct with
+  its fields set under `if (this)`; two bare pointers set the same way get no slot. A
+  by-value struct parameter in the same function takes the slot away again (VC8 gives
+  the never-written struct the parameter's own offset): open.
+- `[vc8]` Two callee-saved registers exchanged between a parameter and the list in a
+  recursive walk: put the element into a local in front of the recursive call
+  (`T *c = *it.cur; r = c->F(e, n);`). The sibling with one argument fewer matches
+  with the element spelled in the call.
+- A port that is a thin member wrapper round a static helper taking the object first
+  is usually the member itself: move the body in, read the return type off both
+  exits, and keep the old mangled name as an alias line for callers that declared the
+  old type.
+- `[vc8]` A cursor object whose address goes to a non-inline member (`lea ecx,[it];
+  call Borrar`) while its cursor stays in a register over that call and is only
+  stored back: the cursor is a separate pointer beside the object (`p++; it.cur =
+  p;`); with the member alone VC8 reloads it after the call. An element read twice
+  (`cmp [p],-1` in the step, `mov r,[p]` in the body) is an inline getter of the
+  object in the body (`*it`): spelled as `*p` the two loads merge and take the
+  register the list needs. The list register reloaded at the foot of the loop
+  instead of the top is the list read back through the object right after it was
+  stored there (`it.lista = m; p = it.lista->datos;`), not a local.
+- A workspace object can be older than the source another agent's commit just
+  brought in (same-second sync and build): a DIFF on a function you did not touch
+  that the main tree does not show is a stale object. Touch the source and rebuild
+  before reporting a regression.
