@@ -1228,6 +1228,33 @@ an item says otherwise.
   inline `bool` function returning `r != 0` of an `int r = (a & b) != 0`, used in an int sum (0x586df0).
   **held** *(match)*.
 
+- **A `__stdcall` helper called with an object in `ecx` is a `thiscall` member.** `[vc8]`
+  **held (7 matches on this alone).** A member that never reads `this` has the
+  same bytes as a `__stdcall` free function, so the callee matches either way;
+  the *caller* does not. Signs in the caller: `this` stays in `ecx` up to the
+  call where ours copies it away and reuses `ecx`, a global goes into `edx`
+  while `ecx` is free, or `mov ecx,[m]` sits right in front of the call (the
+  helper belongs to that member's class; a port that calls it as a free
+  function passes no object, a real bug outside the original compiler). A
+  "free" function that never touches `ecx` is a member itself. List every
+  `__stdcall` name whose address (or thunk target) also has a `thiscall` name
+  in the symbol table, then the ports that call one.
+- **Two memory read-modify-writes on one flag word (`or [m],1; and [m],~2`).**
+  `[vc8]` Bitfields and masks merge through a register; inline helpers taking
+  the word's *address* (`Pon(unsigned *p, unsigned m) { *p |= m; }`) keep the
+  two. Inline members of the record merge again.
+- **Block locals of equal size in different `switch` cases share a slot and let
+  the cases' tails merge.** `[vc8]` When the image keeps the tails apart (each
+  case loads the callee's object before `push N`, one shared call sequence),
+  give the buffers the sizes that are actually passed (0xe, 0x12), not the
+  frame's rounded ones: same frame, no merge.
+- **Count and destination of a string copy set up in front of a `switch`.**
+  `[vc8]` Every case copies its own literal (`strcpy(buf, "...")` per case);
+  VC8 merges the copies and hoists the setup. One pointer chosen in the switch
+  and a single copy sets up behind it.
+- **`cdq; mov ecx,K; idiv ecx` for `/K` and `%K`.** `[vc8]` The divisor is a
+  local (`int n = 20; q / n; q % n`); the literal gives two magic multiplies.
+
 ### Folded `[vc8]`
 
 Folded from the project record, duplicates merged: **held** *(record)* unless
