@@ -664,6 +664,19 @@ an item says otherwise.
   (`Radio4364e0::Radio` 0x4364e0, 0x4ea6a0, 0x4803b0). A plain `float` local
   gives the round trip in other functions *(record)*, so try that first.
 
+- `[vc8]` **An answer slot handed to a callee is a local of its own, not the parameter assigned again.** A port
+  that zeroes an incoming parameter and passes its address (`s = 0; f(&pt, &s);`) has a frame one word smaller
+  than the image; a local (`T *answer = 0; f(&pt, &answer);`) matched at once (Commandos 0x4e7170, 372 bytes;
+  0x55d920). Both directions are a regex (`paramlocal` below). **held** *(2 matches)*.
+- `[vc8]` **Where a zero register first appears is where its variable is declared.** `xor esi,esi` behind the
+  second of three `operator new` calls was a result variable declared between the second and third `new`
+  (`int ok = 0;`, set to 1 in the success block, one `return ok;`). Declared at the top the zero loads in front of
+  the first call; with two `return`s two unrelated pointers exchange callee-saved registers, which read as
+  "register allocation" for eight rounds (0x49ebe0). **held** *(match)*.
+- `[vc8]` **A result variable declared first is `mov eax,1`; declared last it is `lea eax,[zero+1]`.** With the
+  refusals as `r = 0; goto fin;` and an element copied as a struct (`v[i] = *x;`: the first word through the indexed
+  address, then one `lea` for the rest; member assignments take the `lea` first) (0x50e230). **held** *(match)*.
+
 ### Folded `[vc8]`
 
 Folded from the project record, duplicates merged: **held** *(record)* unless
@@ -1166,6 +1179,18 @@ an item says otherwise.
   their own unit; merging two units changed a destructor (inlining). Where the
   image has a function both inline and out of line, keep it in the header
   behind an opt-out macro.
+
+- `[vc8]` **An inline helper's arguments are loaded left to right.** `Volumen(script, channel)` loads the script
+  first, `Volumen(channel, script)` the channel; the parameter order of an invented inline helper is read off the
+  load order in the image (0x58e6e0, 3 bytes). **held** *(match)*.
+- `[vc8]` **Equal code, still different: the RTTI of a constructed class.** A comparison that follows relocations
+  into `??_R0`/`??_R3` fails on an invented class name once the code is equal. Read the type descriptor's name at
+  the reported address and declare the real class with its real bases (0x49ebe0: an invented link class was
+  `NodoEjecucion : NodoListaEnlazada<...>`). **held** *(match)*.
+- `[vc8]` **Folding a duplicate.** A member that never reads `this` compiles to the bytes of the `__stdcall` free
+  function with the same arguments, and a virtual called from its own class's constructor is a direct call: a
+  matched twin's body can go under the port's member name and the twin's name be dropped (0x63e8f0, 0x4c6350).
+  **held**.
 
 ### Folded `[vc8]`
 
@@ -1760,6 +1785,20 @@ once the binary matches.
   changes the calls and the frame around it (0x4261e0).
 - **`/GL` as an explanation for scratch-register families.** `[vc8]` **no
   effect.** It explains register arguments and nothing else (section 13).
+
+- `[vc8]` **New regex transforms over every port still pay** (Commandos round 109C, 1550 ports, seven identical
+  at once, 176 closer): `retgoto` (every early `return X;` becomes `{ r = X; goto fin; }` in front of one `return
+  r;`, all at once and one at a time, with a new result variable or the one the last `return` names: 4 matches),
+  `inlvar` (a local initialised from a call-free expression and never assigned again, spelled out at every use: 1
+  match, a function earlier filed as unreachable), `paramlocal` (an assigned parameter becomes a local of its own,
+  and the reverse: 2 matches). `vretgoto` (`return;` to `goto fin;`), `retbreak` and `decltop` (declarations
+  lifted to the top) matched nothing. Apply only exact matches: `inlvar` can change behaviour, and equal bytes
+  are the check. Read the nearest non-exact results by hand afterwards: three more matches came from one more
+  change on top of a sweep step. **held.**
+- **Helper traps.** A replace-by-address helper that picks "the first file with a `// ADDR` comment" lands in a
+  stub comment of another file; one that ends a function at "`}` followed by a blank line" swallows what follows
+  a port with an inline helper in front; a helper that copies stdin to a scratch file must not be fed that file.
+  Diff the own copy against its base after every helper call.
 
 ## 11. Declarations and headers move code
 
