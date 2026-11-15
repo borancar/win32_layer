@@ -3712,3 +3712,34 @@ mostly header-less, so the lever is what else is defined in the unit.
   leaves through the one `return r;` (`r = h | flag; break;` at each, or a
   `goto`). A single `return expr;` inside the block folds the zero to immediates;
   the copied tails in the image are VC8's own.
+- `[vc8]` Serialisers (one function for save and load, a mode flag and a stream):
+  when the image takes `lea r,[this+N]` once and addresses what follows from `r`
+  (`lea eax,[r+4]`, `add r,8` on a dead register, a loop pointer with negative
+  offsets), each sub-object and array element has its own inline serialise
+  member, called by the owner. A port that spells every transfer on
+  `this + offset` has the same calls with `this` and the flag in each other's
+  registers; nothing local repairs it. Write the members first: several such
+  ports matched on the first build.
+- `[vc8]` A pointer member transferred and then tested through the same register
+  (`lea r,[this+N]; push r; ...; cmp [r],0`) is a block-scoped pointer to the
+  member (`{ T **q = &m; xfer(q, 4); if (*q) ... }`). Whether the body then
+  spells the member or `*q` reads off the addressing mode of the store behind
+  `new`.
+- `[vc8]` A local can live in the home slot of a parameter that is dead by then
+  (the listing shows the local at a positive offset). A port that reuses the
+  parameter by assignment gets an extra register copy; declare a plain local.
+- `[vc8]` An inline member that the image calls out of line at one site (a call
+  to the COMDAT copy, every other use inlined) cannot be asked for: declare a
+  non-inline stand-in and alias it to that copy. Registers behind the call often
+  fall into place with it.
+- `[vc8]` A serialiser of a neighbouring file written out inside a saver and a
+  loader, each with its constant mode: define it in-class in the caller's file
+  and let VC8 inline it; do not copy the halves by hand. If saver and loader
+  cannot both match from one statement, give the read arm its own locals.
+- A DIFF line that says `0 bytes differ` carries a hard note: usually a body
+  defined inline in the file (a constructor pushed by address for the vector
+  constructor iterator) compared against the thunk the image references.
+  Declare it only.
+- A variant runner that prints "identical" when no DIFF line comes back also
+  prints it for the wrong symbol or a build that did not run. When every variant
+  gives the same number, the symbol or the build is wrong, not the idea.
