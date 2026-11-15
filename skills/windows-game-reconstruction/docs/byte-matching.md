@@ -1680,13 +1680,49 @@ an item says otherwise.
   parameter and a by-value struct local do the same, the member spelled out, a pointer local and a reference
   parameter do not. Only for a base that arrived in a register (`this`, a `__fastcall` argument): for a base
   loaded from a global (`mov eax,[g]; mov eax,[eax+8]; push eax`) 29 inline, getter and local forms all give two
-  registers, **open** (Commandos 0x581d70, 0x5944c0, 0x5cf530, 0x512640, 0x4e3930). The inverse case, ours
+  registers; that chain is the next entry (a one-word class by value). The inverse case, ours
   `mov ecx,[g]; mov ecx,[ecx+N]` against the image's `mov eax,[g]; ...; mov ecx,[eax+N]`, is an inline getter of
   the global's class (`g->Names()->Index(n)`, 0x4dbb40). **held** *(match)*.
 - `[vc8]` **A pointer member loaded in front of the argument to its right** (`mov eax,[this+4]; mov ecx,[a]`
   where ours loads and pushes `a` first): the by-value struct argument is read through an inline getter that
   returns a reference, `Point &Pos() { return obj->pos; }`, `Line(Pos(), a, o->pos, ...)` (0x5b8530). A getter
   of the object pointer, a pointer local and a reference local give other orders. **held** *(match)*.
+- `[vc8]` **A member loaded into its base's register, the base read from a global (`mov eax,[g]; mov
+  eax,[eax+N]; push eax`, or the same chain in front of a compare), ours `mov ecx,[eax+N]`:** the value is a
+  one-word class passed or copied by value. Either the callee's parameter is the class and the caller builds a
+  constructor temporary (`struct H { int v; H(int a) { v = a; } }; void Log(const char *, H); Log("X",
+  H(g->c4));`) or a POD struct local is copied from the member first (`H a = g->h; kind = a.v != n->res ? 2 :
+  0;`). Seventeen measured forms: an `int`, pointer, reference, `bool`/`char`/`short` argument, the struct member
+  passed directly and an implicit conversion (built in place through `esp`) all take a fresh register. Same
+  stack bytes as an `int` argument, so the callee and its other callers do not change; when five small ports
+  with the same "register only" note all call one function, read that function's parameter as a class
+  (Commandos 0x5944c0, 0x581d70, 0x5cf530, 0x512640, 0x4e3930, 0x556330). **held** *(match)*.
+- `[vc8]` **Two values where the SECOND is computed first and held across the first (`call ftol; mov edi,eax;
+  call ftol; mov [m0],eax; mov [m1],edi`; for floats the second goes to a temporary):** a pair filled by an
+  inline member *setter*, `p.Set((int)(x * 256.0), (int)(y * 256.0))`. A setter's arguments are evaluated right
+  to left, the inline constructor's (above) left to right, so the held value says which. Members stored in front
+  of the setter are reloaded from memory behind it. Read both conversions off the x87 stack before trusting the
+  port's expressions: here the port had `y*256*x` and `y` where the image has `x*256` and `y*256` (Commandos
+  0x47d4a0). **held** *(match)*.
+- `[vc8]` **The member of a call's result loaded straight into `ecx` for the next call (`call f; mov
+  ecx,[eax+N]`), ours `mov eax,[eax+N] ... mov ecx,eax`:** the call's result is a named local and the member is
+  read off it in the call expression (`W *w = g->Window(); w->view->Go(&p, a, b);`). A local for the member, the
+  whole chain in one expression, a getter and inline wrappers keep `eax` (0x5e6a50, 0x5f4cc0). **held**
+  *(match)*.
+- `[vc8]` **A by-value float struct copied with `fld/fstp` and one more float stored through `esp` in front of
+  `mov ecx,esp` (`sub esp,0x10; fstp [esp+0xc]; mov ecx,esp`):** two arguments, a struct with a user-defined
+  member-wise copy constructor (floats go through the FPU; the implicit copy uses integer registers) and a
+  scalar float whose `push ecx` VC8 merged into the struct's `sub esp`. A port that passes one larger struct has
+  the same stack bytes and a different store order. A frame larger by two unused floats is a three-float struct
+  local of which only one member is not forwarded (0x487ff0). **held** *(match)*.
+- `[vc8]` **`mov eax,[esp+4]` in a `ret 4` member that then stores through `eax` and never reloads it:** the
+  function returns a struct by value (the hidden pointer stays in `eax`), often an inline `operator-`/`operator+`
+  of two vectors; a port with an out-parameter and no return value has the same `ret N` but leaves another
+  pointer in `eax` (0x456860). **held** *(match)*.
+- `[vc8]` **A named `extern const double` in place of a literal moves the load:** the literal's `__real@`
+  constant is scheduled as a constant, the named one as a memory read (one `fld` on the other side of a byte
+  store, 0x47d4a0). When a data-naming pass has replaced literals, try the literal first on a port that differs
+  by the position of a constant load. **held** *(match)*.
 - `[vc8]` **A float local with a slot of its own (`push ecx` at the top) where ours reuses a dead float
   parameter's slot:** the floats are one struct passed by value; VC8 reuses a dead scalar parameter's home and
   never a by-value aggregate's (0x428b40; the result was a struct returned by value there: same pushes and
