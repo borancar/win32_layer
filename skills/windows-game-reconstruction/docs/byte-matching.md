@@ -1831,6 +1831,34 @@ once the binary matches.
   lifted to the top) matched nothing. Apply only exact matches: `inlvar` can change behaviour, and equal bytes
   are the check. Read the nearest non-exact results by hand afterwards: three more matches came from one more
   change on top of a sweep step. **held.**
+- `[vc8]` **Twenty-two more transforms, three runs, eight exact and nine by hand** (Commandos round 111C, 1514
+  ports). What matched: `declmove` (a constant-initialised local moved down, statement by statement, to its
+  first use: 3), `inlone` (a cached value spelled out again at ONE use, the local kept for the rest: 2),
+  `elseret` (a tail `if/else` as an early return, and the reverse: 1), `initelse` (`T v = K; if (c) v = x;` as
+  `T v; if (c) ... else v = K;`: 2 as a step), `unnest` (a trailing `if (c) { body }` as `if (!c) return;`: 1 as
+  a step). What only pointed: `voidint` (a void function returning a constant, the symbol renamed for the
+  trial), `noret` (the last `return K;` dropped), `uns` (`int` local as `unsigned`), `declmove2` (any
+  declaration moved past simple statements), `sumtmp` (a call term of a sum in a local in front). What matched
+  nothing: operand exchange of `+` and `*`, `float`/`double` locals, casts dropped, literal suffixes,
+  `char`/`int` locals, block scopes, ternary/if, chained assignments, an inline helper's parameters exchanged.
+  A result can score closer for the wrong reason (reading an uninitialised local, returning a value the image
+  does not): read it, then find what the image really does there. **held.**
+- `[vc8]` **A loop's strength-reduced pointers are created in the order of their uses' count, so a cached
+  element spelled out once more flips two `lea`s** (`o = l->v[i]; ... f(l->v[i])`), and the same lever makes
+  VC8 recompute a difference instead of spilling it. **held** (three functions).
+- `[vc8]` **A result that is reloaded from the stack behind every call, in a frame one word larger, is a member
+  of a local struct whose other member's address goes to a callee.** `volatile` and a pointer to the result
+  give other code. **held.**
+- `[vc8]` **`fld [p+K+4]; add p,K`: read the float through the sub-object's pointer** (`d = p + K; q = d[1]`).
+  VC8 folds the read to the old base and advances the dead base in place; reading `p + K + 4` directly keeps
+  both pointers live in two registers. **held** (three constructors).
+- `[vc8]` **A non-void function none of whose exits sets `eax`**: no `return` at all needs
+  `#pragma warning(disable: 4716)` (C4716 is an error by default); with one real `return` elsewhere it is only
+  C4715. An uninitialised `int r; return r;` gets a slot and a load instead. **held.**
+- `[vc8]` **Refusal as the fall-through and the call as the taken arm behind a compare chain**: the chain sets a
+  flag that is tested once (an inline predicate), `if (!c) return 0; return f();`. **held.**
+- `[vc8]` **A sum whose call term is added last**: that term is a local of its own in front; no order of the
+  one expression gives it. **held.**
 - **Helper traps.** A replace-by-address helper that picks "the first file with a `// ADDR` comment" lands in a
   stub comment of another file; one that ends a function at "`}` followed by a blank line" swallows what follows
   a port with an inline helper in front; a helper that copies stdin to a scratch file must not be fed that file.
