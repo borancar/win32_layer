@@ -1191,6 +1191,42 @@ an item says otherwise.
   function with the same arguments, and a virtual called from its own class's constructor is a direct call: a
   matched twin's body can go under the port's member name and the twin's name be dropped (0x63e8f0, 0x4c6350).
   **held**.
+- `[vc8]` **A two-word pair assigned as a struct.** Both words loaded in front of the stores (`mov ecx,[p+4];
+  mov eax,[p]; mov [o+0x1c],ecx; mov [o+0x2c],ecx; mov [o+0x18],eax; mov [o+0x28],eax`) is a struct assignment,
+  never member-wise code: inline setters with by-value ints, a by-value pair, a reference and a pointer to the
+  local all forward the local's words to their uses, one at a time. The order tells the form: a chained
+  `B = A = par` loads the high word first and stores `A.y, B.y, A.x, B.x`; `par = Par(a, b)` (a constructor's
+  temporary into a local) loads `b` first and stores `y, x`, finished before the next statement begins;
+  `*(Par *)&m = Par(a, b)` through pointers loads `a` first and stores in member order. The second word loaded
+  in front of the first test's jump, and a member read back from memory behind the stores, is a constructor's
+  temporary made in front of the test (`Par t(par.x, par.y); if (t.x > 0 && t.y > 0) { B = A = t; ... }`)
+  (Commandos 0x5ce8a0, 0x565f00, 0x56b9e0). **held** *(match)*.
+- `[vc8]` **A by-value struct built in the argument's slot** (`sub esp,N; mov esi,esp; ...strncpy into esi...`
+  and no local of that size in the frame) is the struct's converting constructor called by the argument
+  (`t->Buscar(texto)` with `Nombre(const char *)`); a named local is built in the frame and copied with
+  `rep movs`. A name struct of ints (`int w[8]`) takes no security cookie, one of chars does (0x5ce8a0,
+  0x565f00). **held** *(match)*.
+- `[vc8]` **Frame slots follow scopes.** Function-level locals take their slots by first use, whatever the
+  declaration order; block-scoped locals come behind them, siblings sharing. A local whose slot lies between two
+  function-level ones in ours and behind them in the image is declared in each arm instead of once at the top
+  (0x5ce5e0: `float a` in both arms of the mode test). **held** *(match)*.
+- `[vc8]` **A library stream object on the stack** whose destruction is written out at the end (`call ~base;
+  mov [f+N],vtable; call ios_base dtor`) under an EH frame and with no cookie is a stand-in class of ints with
+  an inline destructor doing exactly that; a `char[]` stand-in with the calls at the end of a block has the
+  cookie and no EH state (0x5cdaa0, 0x5cdbf0). **held** *(match)*.
+- `[vc8]` **Case blocks lie in source order**, and each block's single-use loads take the next scratch register
+  in text order: `case 2`, `case 1`, `case 0` behind a `sub eax,1` chain is how the source lists them
+  (0x5ecbd0). An object loaded first and its member last around the argument pushes (`mov eax,[this+0x74]; lea;
+  push; lea; push; mov ecx,[eax]`) is an inline forwarding member of the object; a repeated register
+  (`mov eax,[g]; mov eax,[eax+8]`) an inline getter; a table loaded in front of a by-value argument's copy a
+  getter's return value. **held** *(match)*.
+- `[vc8]` **Rewriting a callee can change a matched caller.** A function made smaller (an inline constructor, a
+  `switch`) started to be inlined into a matched function of the same file; it belongs in the file of its
+  address neighbours. Run the whole comparison after rewriting anything another function of the file calls
+  (0x5cd8d0). **held**.
+- `[vc8]` `neg cl; sbb ecx,ecx; neg ecx; ...; xor edx,edx; test ecx,ecx; setne dl` (a flag made twice) is an
+  inline `bool` function returning `r != 0` of an `int r = (a & b) != 0`, used in an int sum (0x586df0).
+  **held** *(match)*.
 
 ### Folded `[vc8]`
 
