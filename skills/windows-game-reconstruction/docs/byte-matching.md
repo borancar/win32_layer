@@ -4679,3 +4679,13 @@ mostly header-less, so the lever is what else is defined in the unit.
   a memory read the scheduler cannot move; replacing each function's names by
   the values read from the image is a cheap batch (two matches in 53 ports
   here).
+- `[vc8]` **Scan the frame sizes.** List every differing function whose
+  first `sub esp,N` differs from the image's. With a cookie, read the arrays'
+  sizes off the image's displacements; 4 extra bytes in ours are often a
+  local pointer to a sub-object (`T *p = (T *)((char *)this + off)`) that the
+  compiler keeps in a slot across calls, where the original recomputes the
+  address at each use. **Held** *(two matches from the first look at the
+  list)*.
+- `[vc8]` **An argument loaded before the callee's vtable is a local**
+  (`int j = r->field; r->Virtual(j);`); written inline, the vtable load comes
+  first. **Held**.
