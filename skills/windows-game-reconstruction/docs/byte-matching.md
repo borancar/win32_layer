@@ -3518,3 +3518,36 @@ mostly header-less, so the lever is what else is defined in the unit.
   id registers from the prologue on.
 - Markers in source comments go stale: check every "not matched" marker against the
   symbol list and a full compare before trusting a candidate list built from them.
+- `[vc8]` Sweep one recovered shape over every function whose image bytes show it
+  (round 108A): a bytes regex for the shape's signature instructions gave 55 ports of
+  the list walk; rewritten with the one iterator object, 13 of the first 20 opened
+  were identical, most at the first build. What is left after the rewrite is small
+  and local: a variable zeroed behind the iterator's construction, the element read
+  again through the cursor, the walk inside an explicit null test.
+- `[vc8]` A null test that jumps into the shared epilogue (behind the register pops)
+  where the rebuild copies the tail: the test leaves a `do { if (!o) break; ... }
+  while (0)` (or a `goto`); `if (o) { ... }` and an early `return r` both copy it.
+- `[vc8]` An argument loaded into a callee-saved register in front of a loop and
+  copied to a scratch register for an inline `strcmp`: the comparison is an inline
+  predicate with by-value parameters; written in the loop the argument is reloaded.
+- `[vc8]` `sub esp,16; fstp [esp+12]; mov eax,esp; <three copies>`: a struct by value
+  with a copy constructor followed by a float, two arguments, not a four-float
+  struct. An argument computed before a sibling argument's call and pushed after
+  it, with the object reloaded, means every argument is an inline getter.
+- `[vc8]` The "output pointer" in `eax` at every exit of a `ret 8` member is the
+  hidden return pointer: the function returns the struct by value. A "register
+  choice" note on a tiny copy routine is worth one try at this.
+- `[vc8]` Two functions with identical bytes over two types: one `__forceinline`
+  function template; a `static` template is called, not inlined.
+- `[vc8]` One flag assigned in several arms and tested once: VC8 threads every
+  assignment that reaches the test directly and keeps the one followed by another
+  condition (`mov edi,1` in a single arm). Write one flag, not nested conditions.
+- `[vc8]` VC8 folds a load into a compare only if no other load stands between
+  them; `m = n; cmp(*i, m)` keeps two registers, the reverse order folds. Open: the
+  image's index-then-count order with both in registers.
+- Tooling traps (round 108A): a helper that finds a function's file by its "not
+  matched" marker re-copied the pristine file over an edited one once the marker
+  was stripped; a compare log cut to its last N lines hid the DIFF line in large
+  files and a variant runner reported matches; a build directory reached through
+  a symlink was cleaned in another round's tree. Keep a base copy per edited file
+  and merge three-way before committing when several agents commit to one tree.
