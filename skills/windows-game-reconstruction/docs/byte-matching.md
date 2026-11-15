@@ -577,6 +577,19 @@ an item says otherwise.
   constants do not; a port's `!(a <= b)` for `a > b` shows as `jnp`/`jp` against `jne` and differs for a NaN.
   A flag set by `cmp [m],0; jne set` whose set path stores 1 is one expression (`m = m || a > x || b > y;`), not
   `if (!m) m = ...`. **held** *(match)*.
+- `[vc8]` **One copy of a store that two paths need, out of line behind a return and ending in a backwards
+  `jmp` into another arm's tail, with the success block last**: the outcomes are an `else if` chain and the
+  common tail (an error code) is *written in two arms*: `if (own != id && id) { err = E; } else if (!id)
+  { c->n = b; err = E; } else { c->ok = 1; return 1; }` and the function's `return 0`. VC8 merges the two
+  error tails and threads the second test; every form with the error written once (success tested first, a
+  flag, a result variable, `goto`) puts the success first or duplicates the store (0x49cc40, 137 -> 42 -> 0
+  bytes over about forty-five arrangements). When a merged tail appears in the image, try duplicating it in
+  the source rather than factoring it. **held** *(match)*.
+- `[vc8]` **A null exit with its own `xor eax,eax` while the other arm still ends in `test eax,eax; setne`**:
+  the pointer comes from `new T(args)` with an inline constructor. The new-expression's null test plus the
+  source's `if (p) {...}` and one `return p != 0;`: VC8 threads the null arm to the return (folded to 0) and
+  leaves the test where the pointer is a join. Constructor stores written inside the port's own `if (p)` give
+  one test and one return path (0x4a8ad0). **held** *(match)*.
 
 
 
@@ -1092,6 +1105,16 @@ an item says otherwise.
   layout into a real base class, not a cast. A callee taking `const T *const
   &` that is handed the address of the caller's own parameter means that
   parameter is by value.
+- `[vc8]` **A frame larger than ours by less than a slot's rounding, every instruction equal, is an array
+  size.** Subtract the cookie and the known locals from `sub esp`: 0x271c minus 4 and an 8-byte point is
+  10000, two `char [5000]`; the distances between the `lea`s had given 5016 and 4980, which only bound the
+  first (0x58a760). A frame smaller by whole slots with scalars stored and read back in a dead parameter's
+  slot and in slots that are taken again is something else and stayed open (0x4582e0: twenty-five forms of
+  three float differences copied into a vector). **held** *(match)* / **open**.
+- `[vc8]` **`fcomp DWORD PTR [k]` against `fld g; fcompp` with the test's mask changed**: the constant is a
+  literal in the source; a port that declared the `.rdata` float as an `extern float` gets it loaded and the
+  compare turned round. `fld1; fcomp [x]; test ah,5; jp` is `x > 1.0f` (not `!(x <= 1.0f)`, not `1.0f < x`).
+  **held.**
 
 ## 6. Calls, inlines and C++
 
@@ -1937,6 +1960,24 @@ once the binary matches.
   flag that is tested once (an inline predicate), `if (!c) return 0; return f();`. **held.**
 - `[vc8]` **A sum whose call term is added last**: that term is a local of its own in front; no order of the
   one expression gives it. **held.**
+- `[vc8]` **The result variable as a mechanical transform** (`rvar`): parse the body into statements, turn
+  every `return K;` into `r = K;`, move what follows a returning `if` into its `else`, bail out on a return
+  inside a loop or a `switch` and on code that would be duplicated; emit the result uninitialised and
+  initialised to each constant returned (dropping those assignments), the constant assignment last or first
+  in its arm, guards as written and negated: sixteen spellings. Four exact results over 1396 ports and part
+  of 89 closer ones, where the `goto` form of the same idea had given none. With it: adjacent declarations
+  exchanged, a member or dereferenced argument named in front of its call (one exact), the last
+  `if/return/return` inverted, a pointer local replaced by the advanced parameter. A greedy run that mixes
+  these with literal, compare and flag transforms found nothing the single transforms had not; of the round's
+  six matches two were exact sweep results and one a sweep lead walked by hand. **held.**
+- `[vc8]` **Scan the ports for hand-written string loops** (`while (*p) p++`, `do { c = *s++; *d++ = c; }
+  while (c)`): each is `strlen` or `strcpy` (section 6). Twelve ports had them after 114 rounds; two matched
+  at once with the intrinsic (one needed the buffer sizes, one the result variable), three had their
+  differences elsewhere. The inline `strcpy` increments by whatever register holds a 1 (`add ecx,eax` with
+  the result variable's 1). **held.**
+- **A merge into another agent's dirty working file must go through a temporary copy.** `git merge-file` on
+  the working file itself writes conflict markers into it when the other agent's uncommitted edit touches the
+  same line (a rename of a symbol the change removes): merge into a copy, stop on conflict, resolve by hand.
 - **Helper traps.** A replace-by-address helper that picks "the first file with a `// ADDR` comment" lands in a
   stub comment of another file; one that ends a function at "`}` followed by a blank line" swallows what follows
   a port with an inline helper in front; a helper that copies stdin to a scratch file must not be fed that file.
