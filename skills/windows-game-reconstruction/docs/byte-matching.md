@@ -4078,3 +4078,40 @@ mostly header-less, so the lever is what else is defined in the unit.
   follows the call. A pair copied from a pointer into the slots of an array
   used earlier (frame smaller by the pair): the array and its uses are in a
   block of their own and the pair is a struct local behind it.
+- `[vc8]` Script readers, more of the token-temporary recipe: tokens of token
+  temporaries bind the same way (`m[i] = ReadPair(TK(v.Token(i), 0),
+  TK(v.Token(i), 1));`, the outer temporaries built twice); a count test on
+  a temporary that shows as `setae [b]; ...destructor...; cmp [b],0` is a
+  `bool` local. Read each value block's scope off the EH states: a state that
+  falls back right behind the use is a block in braces, one that falls back
+  at the function's end is at function scope, and one function mixes both.
+  A scan for `call Token; mov callee-saved,eax` must use the incremental-link
+  thunk addresses, not the functions'.
+- `[vc8]` `xor ecx,ecx; cmp eax,ecx; jle; mov [m],ecx` (the zero loaded in
+  front of the compare and reused by the stores) where ours has `test
+  eax,eax`: the compared value is a named local (`int n = (int)f(); if (n >
+  0) { a = 0; b = 0; }`), not the call in the condition.
+- `[vc8]` Three call results stored straight into a struct temporary and then
+  copied as three `mov` pairs: an inline that fills its result member by
+  member (`V3 r; r.x = f(x); r.y = f(y); r.z = f(z); return r;`, no
+  constructor). `return V3(f(x), f(y), f(z))` copies each float once more.
+- `[vc8]` A frame larger than ours by one buffer with every instruction
+  equal: the buffer is declared at function scope. In the braces of its only
+  use it shares the slot of the temporaries of the other scopes.
+- `[vc8]` `this` and a counter exchanged between `esi` and `edi`, nothing
+  else: try a wrapper's member spelled directly where the port goes through
+  its inline getter (`list.p[i]` against `list.Data()[i]`), and the reverse.
+  A store through an inline setter of a pointed object (`p->Set(v)`) moves
+  the scratch rotation back for what follows, like a getter.
+- `[vc8]` `lea r,[o+k]; ...; mov [slot],r; mov [r],4` (the spill in front of
+  the first store) where ours stores first: the store is spelled on the
+  owner (`o->kind = 4;`) while the sub-object's pointer is a local kept for a
+  later call.
+- `[vc8]` A port declared `__fastcall (self, int, arg)` for a member whose
+  callers load no `edx`: call it as a member through a stand-in struct plus
+  an alias symbol line under the original compiler, and keep the fastcall
+  call under clang.
+- `[vc8]` Open: a field of `p[i]` addressed `[offset+pointer*1+d]` (the
+  strength-reduced offset as SIB base) where ours has the pointer as base.
+  No spelling of the index expression changes it; a local copy of the pointer
+  gives the image's order but keeps the pointer in a register.
