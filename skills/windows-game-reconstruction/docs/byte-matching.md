@@ -3899,3 +3899,35 @@ mostly header-less, so the lever is what else is defined in the unit.
 - A variant runner that prints "identical" when no DIFF line comes back also
   prints it for the wrong symbol or a build that did not run. When every variant
   gives the same number, the symbol or the build is wrong, not the idea.
+- `[vc8]` Temporaries kept by the pointer their maker returns (`call Token; mov
+  edi,eax` several times, the objects built last to first and then used first
+  to last) are temporaries bound to the reference parameters of an inline
+  helper (`Put(&dst, T(tok(0)), T(tok(1)), T(tok(2)))` with `Put(R *, B &, B &,
+  B &)`). Named locals are addressed by `lea` instead. Arguments are evaluated
+  right to left, so the destination's address is formed behind the last
+  temporary. Scan the image for `call maker; mov callee-saved,eax` to list the
+  ports that want the helper.
+- `[vc8]` Values read again from two scalar slots behind a member call on the
+  struct built from them: the struct must be reloaded after the call, so the
+  operands are other objects, the caller's own locals filled by reference by
+  the inline that also returns the struct. The order of the reference
+  parameters decides the slots; a `const` local changes nothing.
+- `[vc8]` A load of `o->p` that stays behind a store to `o->v.y` (ours hoists
+  it in front): the store went through a pointer, the vector's own inline
+  member (`o->v.Polar(a)` writing `x` and `y`). The folded address is the same
+  `[o+N]`, the alias decision was made before folding.
+- `[vc8]` `fstp t; fld t; call __CIsqrt; fstp t; fld t; fstp m` is the float
+  overload `sqrt(float)` of `<math.h>`; no spelling of `(float)sqrt(double)`
+  rounds twice.
+- `[vc8]` A callee that takes `this` in a callee-saved register (a
+  link-time-optimised static): when the caller already holds `this` there, a
+  `__cdecl` stand-in aliased to the callee's address gives the image's call
+  (no `mov ecx`, caller pops). Keep the real member call for the other
+  compiler behind an `#ifdef`.
+- `[vc8]` A user copy constructor added for a by-value argument changes the
+  other compiler's calling convention for that type (hidden reference); when
+  other files declare the callee with a plain struct, declare the constructor
+  for VC8 only.
+- A stale `// ADDR ~` marker in another file sends marker-driven tools to the
+  wrong source (`lines N 0`, every variant the same number). An edit script
+  that cuts a function at the first `// ADDR` may hit a declaration's comment.
