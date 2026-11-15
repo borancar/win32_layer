@@ -3384,3 +3384,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   objects (every file is stamped with the commit time, which may be older than objects
   built before the commit). Sync by checksum without times, or build clean, before
   claiming two frame logs agree; cross-run the binaries when a count looks off.
+- `[vc8]` The scratch-register model (round 106B): a single-use expression temporary
+  takes the next of `eax, ecx, edx` round-robin, and the pointer runs on across
+  statements, branches and calls (a forced register, `this` in `ecx` or a result in
+  `eax`, does not move it). A value that goes through an inline function's parameter or
+  return, or is used twice, takes the lowest free register and leaves the pointer alone.
+  Write the image's single-use loads as a cycle: where a register repeats or is skipped,
+  that statement (or one before it) goes through an inline setter, getter or accessor
+  (`o.Pon(v)`, `inline T *Avisos() { return g->avisos; }`, a null-safe getter called
+  through a second inline member). One setter alone can move the phase the wrong way:
+  fix the cycle from its first break and re-read.
+- `[vc8]` An iterator loop whose body has the right loads in the other registers: the
+  element is read through `operator*` returning it by value, not `*it.p` at each use.
+- `[vc8]` A value kept in a callee-saved register exchanged with a parameter's: the
+  expression is written at each use (the compiler's own common subexpression is
+  numbered after the parameters), not kept in a local.
+- `[vc8]` `[ptr+idx*1+N]` with the pointer as base where ours has the index first: the
+  byte offset is a named local (`int o = i * 0x74; p[o + N]`).
+- A family written from one macro (message handlers: a handled flag, one `if (!flag &&
+  id == X) { flag = 1; ... }` per message, the base called at the end under the flag,
+  one result variable) has no early `return`. A port with a `return` inside a handler
+  shows `this`, the id, the flag and the result permuted among the callee-saved
+  registers from the prologue on, or the base call's block twice. Match one member of
+  the family, then list the others by shape (count of `return`, of handlers) and rewrite
+  the deviants first. The declaration order of the flag and the result decides which
+  zero register is made first.
+- A DIFF byte count jumps by a hundred when one instruction changes length (a short
+  jump's reach); rank variants by aligned mismatching lines.
