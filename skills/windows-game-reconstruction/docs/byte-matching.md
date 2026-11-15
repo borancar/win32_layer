@@ -1491,6 +1491,30 @@ an item says otherwise.
   esp` afterwards is a `__thiscall` member (`ret N`), not a register-argument static. **held** *(match)*.
 
 
+- **`[vc8]` An argument loaded between `cmp [obj+N],0` and its `je`: the guarded virtual send is an inline member of
+  the object.** `cmp [actor+0x208],0; mov edx,[this+0x20]; je; mov ecx,[actor+0x208]` with the vtable in `eax` and
+  the id in `edx` is `void Motor(int a, int b, float c, int d) { if (motor) motor->Mensaje(a, b, c, d); }` called on
+  the actor: the inline's parameters are evaluated in front of its test. Ports that write `if (p->m) p->m->F(...)`
+  get the same pair with the registers exchanged, and their notes say "register roles". Three shapes tell the source
+  apart by where the first argument loads: between compare and branch (the inline alone), behind the branch and in
+  front of the member's load (the test written out with the inline inside it), behind the member's load (the member
+  spelled twice). One byte pattern over the image lists every candidate; twelve ports matched in one sweep.
+  **held** *(match)*.
+- **`[vc8]` `mov r,[p]; lea ecx,[r+N]; call F` where ours has `mov ecx,[p]; add ecx,N`: the sub-object's method is
+  called through an inline member of its owner** (`float Angulo() { return orientacion.Angulo(); }`). The inline's
+  `this` is a temporary in the scratch cycle. Writing `p->sub.F()` out, a getter returning the sub-object's address
+  and one returning a reference all give the `add`. The same rule with `N = 0` is `mov eax,[m]; ...; mov ecx,eax`
+  for a callee wrapped by an inline member of the pointed object. **held** *(match)*.
+- **`[vc8]` Identical tails merged differently from the image hide from an aligned listing.** Three `F(); break;`
+  tails, two merged: when ours merges another pair the instructions line up one to one and only short against near
+  jump encodings differ. Compare jump targets by instruction index. A label and a `goto` reproduce a given merge
+  when no structure does. **held** *(match, one function)*.
+- **`[vc8]` Small x87 and constant-register tells.** `fadd st,st; fstp [t]; fld [t]` is `(float)(v * 2.0)`; a
+  default kept on the x87 stack through a compare (`fld K; fcom st(1); fstp st(1)`) is one ternary initialiser, not
+  a default followed by an `if`; a constant in a callee-saved register shared by a member store, a guard mask and
+  the EH state comes from the store written in each arm instead of once behind the `if`/`else`; `and r,1` behind a
+  `sete` in a loop is `res &= cond`. **held** *(match)*.
+
 ## 7. Register allocation: the measured model
 
 `[vc6]` Full detail, with the experiment behind each rule and the traces of the
