@@ -564,7 +564,9 @@ BOOL WINAPI PeekMessageA(LPMSG msg, HWND hwnd, UINT lo, UINT hi, UINT remove)
     w32l_time_trace("peek", remove, __builtin_return_address(0));
     (void)hwnd; (void)lo; (void)hi;
     w32l_host_pump();
-    return w32l_queue_take(msg, (remove & PM_REMOVE) != 0);
+    BOOL r = w32l_queue_take(msg, (remove & PM_REMOVE) != 0);
+    if (r) w32l_time_trace("msg", msg->message, (void *)(uintptr_t)msg->wParam);
+    return r;
 }
 
 BOOL WINAPI GetMessageA(LPMSG msg, HWND hwnd, UINT lo, UINT hi)
