@@ -4652,3 +4652,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   file, no `??_G`), no file sees the class abstract (trap), and it calls no
   destructor that has neither source nor address (a declared-only `~X();`):
   a strong stub hides all three until it goes.
+- `[vc8]` **A skipped EH state number between two function-scope statics is
+  an inlined function with its own static** whose call was folded away (a
+  "mark changed" setter called inline with `notify = 0`, the static under
+  `if (on && notify)`). Writing the plain store instead renumbers every later
+  static one lower. **Held** *(two 708-byte message handlers)*.
+- `[vc8]` **The frame size and the cookie offset give a function's array
+  sizes.** Two `char[0x400]` that the image lays out as `0x100` and `1000`
+  bytes differ in every displacement; read the slots off the image's `lea`s.
+  **Held**.
+- `[vc8]` **A conditional value pushed after the later arguments is two
+  merged calls** (`if (c) f(0.0f); else f(K);`) or a macro that repeats the
+  expression (`MAX(e, 0)` inside the argument list): the ternary through a
+  local, or a clamped local, is evaluated before the pushes. **Held**.
+- `[vc8]` **A nested Win32 call whose own pushes come first is a local**:
+  `h = GetDlgItem(...); SendMessageA(h, ...)`; written nested, VC8 pushes the
+  outer call's constants before calling the inner one. **Held**.
+- `[vc8]` **`strcat`/`strcpy` expansions scan in whichever register holds
+  the source**: a source that arrives as a call result (`strcat(A(), B())`)
+  is scanned in place; a named local is copied to `ecx` first. **Held**.
+- `[vc8]` **Every reload of `global + offset` in `eax` where ours rotates
+  `ecx`/`edx`**: the address comes from an inline function returning
+  `global + off`. **Held** *(a 559-byte function with eleven calls)*.
+- `[vc8]` **Sweep the named float constants back to literals**: a naming
+  pass that turned `0.75` into `extern const double K_0_75` makes every load
+  a memory read the scheduler cannot move; replacing each function's names by
+  the values read from the image is a cheap batch (two matches in 53 ports
+  here).
