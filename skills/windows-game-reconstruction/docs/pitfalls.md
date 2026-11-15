@@ -114,3 +114,16 @@ templates. The layer (`README.md`, "Dialogs") runs them; what to do in a port:
 - **Command handlers are vtable slots.** In the native build the first click can end in `no native code for
   0x408bbb thunk to 0x...`: the dialog's own `WM_COMMAND` handler (a slot of the editor class) has no native code
   yet. The dialog itself, its controls and the constructor do not need it.
+
+## The original's libm is not glibc's (Commandos, 2026-11)
+
+A 1990s msvcrt's `sin`, `cos`, `tan`, `atan`, `asin`, `acos`, `pow` and `log10` are Intel table-driven SSE2 routines (an entry
+tests a CPU-feature byte and jumps to them); `atan2` is x87 `fpatan`. glibc's results differ in the last bit for 0.1 to 0.6
+percent of inputs (atan2: one in 4,500 calls with x < 0), and a game whose positions or headings follow them diverges from the
+original in a lockstep comparison after a few hundred frames. `sqrt`, `floor`, `ceil` and `fmod` are exact. What to do: find the
+CRT entries by their float-library shape, measure the rate with a random-input differential test (call the original address in
+the hybrid, the port in the native build, compare the returned bits), then carry the original's routines over: generate their
+instruction streams from the exe at build time (tables from its `.rdata`), send the error and out-of-range paths to glibc, and
+write the x87 ones as a stand-in (`fpatan`, `pi - r` in extended precision, round to double at the end). A float conversion
+hides most differences, so measure with double consumers. Without the original at build time glibc is the fallback and the build
+is no longer bit-exact. Details and the measured rates: Commandos `docs/14-libm.md`.
