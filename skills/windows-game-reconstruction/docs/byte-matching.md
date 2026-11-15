@@ -4219,3 +4219,40 @@ mostly header-less, so the lever is what else is defined in the unit.
   not inlined at all.
 - `[vc8]` Matrix runs: the differing-byte count is misleading while the
   frame size is wrong; rank by it, then read the listing of the best few.
+- `[vc8]` A byte count measured over *your* object's length makes a port
+  that is shorter than the original's function look near. List the ports
+  whose original function (to the next symbol, padding stripped) has
+  another length, and read the original past your last instruction: an
+  arm may be missing (a real bug behind a "register choice" note), a call
+  the original repeats per case may be shared in yours, or yours may call
+  a helper for a body the original has in line.
+- `[vc8]` A parameter kept in its callee-saved register and stored from it
+  in both arms, where yours stores a constant in the arm that knows the
+  value: the store stands once behind the `if`/`else`; the compiler
+  duplicates the tail after constant propagation.
+- `[vc8]` A `switch` whose cases each hold the same call with a different
+  scratch register: every case is written out complete with its own
+  `break`, in ascending order; fall-through into a common call shares it.
+- `[vc8]` The type of a pushed local takes part in load scheduling: a
+  `%s` argument held in a `const char *` local is loaded early, the same
+  value in an `unsigned` local late.
+- `[vc8]` Constants stored into a box in front of a pending halving, the
+  half then subtracted from two values side by side: the pair is shrunk
+  in place (`p.x -= t / 2; p.y -= t / 2;`) and then passed to the box's
+  constructor; differences as constructor arguments compute the half first.
+- `[vc8]` Value loaded before the pointer, pointer loaded again for the
+  next store: inline setters of the pointed object. A template over a
+  pointer to member (`PonM(o, &T::m, v)` with `o->*m = v`) gives the same
+  code without editing the class, so a sweep can try it; a template over
+  a reference to the field does not.
+- `[vc8]` A value computed twice with every member read again behind the
+  first store: an inline member of the *sub-object* called twice. Reads
+  through the sub-object's `this` are not shared across a store through
+  the owner's; the same expression spelled on the owner is.
+- `[vc8]` Copies of one body that differ in a member's offset: a
+  `__forceinline` member of a class template over the offset
+  (`char pad[D - k]` in front of the member), not a free helper taking
+  `(char *, int offset)`: x87 operand order ranks a pointer loaded from a
+  member of `this` differently from one loaded through a parameter.
+  Differences that stay on the x87 stack across several products are
+  `double` locals.
