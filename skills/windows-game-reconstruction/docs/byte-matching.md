@@ -4699,3 +4699,26 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **An argument loaded before the callee's vtable is a local**
   (`int j = r->field; r->Virtual(j);`); written inline, the vtable load comes
   first. **Held**.
+- `[vc8]` **Group the image's functions by body before matching.** Hash every
+  function's instructions with absolute addresses masked: two unmatched ports
+  with the same body are one source (a header-inline function emitted in two
+  places, or a copied file), and one text matches both. **Held** *(two
+  addresses from one 148-byte function)*.
+- `[vc8]` **x87 zero tests: the block order and the kept zero.**
+  `if (!(x == 0.0f)) { ... } tail` puts the `x == 0` code after the epilogue
+  and keeps the first `fldz` for a later compare against memory; `x > 0.0f`
+  (constant on the right) gives `fldz; fcomp [x]; test ah,5; jp` and is
+  hoisted when both arms of a branch test it. **Held**.
+- `[vc8]` **Inline-function arguments are evaluated left to right** into
+  DWORD temporaries when the parameters are `float`; a direct call pushes
+  right to left. Useful to order two calls; it did not reproduce an image
+  that spills a float call result as a DWORD across the next call (VC8
+  re-spills as a QWORD). **Open**.
+- `[vc8]` **Stub declarations emit vtables too.** A file that declares a
+  class only to define its destructor (`class X : Base { virtual ~X(); }`)
+  emits `??_7X` with the destructor in slot 0; a vtable check that takes the
+  worst object makes that class differ even when the real header is right.
+  Declare the real base (with its virtuals in slot order; a `typedef` keeps
+  the placeholder name) and the overrides; code bytes do not change, and a
+  slot whose function only has a non-virtual name needs a virtual alias in
+  the symbol map. **Held** *(15 classes)*.
