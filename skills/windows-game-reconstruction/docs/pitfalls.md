@@ -127,3 +127,13 @@ instruction streams from the exe at build time (tables from its `.rdata`), send 
 write the x87 ones as a stand-in (`fpatan`, `pi - r` in extended precision, round to double at the end). A float conversion
 hides most differences, so measure with double consumers. Without the original at build time glibc is the fallback and the build
 is no longer bit-exact. Details and the measured rates: Commandos `docs/14-libm.md`.
+
+## A name with no address and no definition links, then aborts when the code runs
+
+A native build that stubs unresolved names (a trampoline that aborts when called) hides every missing destructor: the compiler's
+scalar deleting destructor (`??_G`) calls `??1Class` by name, the image's own function is the body behind `??_G` (or is inlined into
+it), and nothing in the source or the symbol table ties the two. It shows up at exit or at the first `delete`. Make an unresolved
+game name a build error (exempt only import entries and an allowlist file whose lines say why the name is never called), and resolve
+each one from the image: alias the name to the function `??_G` calls, define the body where the image inlines it, or fix a declaration
+that invented a virtual destructor (read slot 0 of the vtable from the exe; it is often a message handler or an accessor). Do not
+exempt `??1` and `??_` names to quiet the list.
