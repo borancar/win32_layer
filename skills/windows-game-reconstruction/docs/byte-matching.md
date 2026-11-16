@@ -5028,3 +5028,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   just-tested call result left holding the same constant** (`cmp [eax],2` vs
   `cmp [ecx],eax`): read the pointer through an inline accessor; it loads into
   `eax` and the known value is no longer propagated. **held** *(match)*.
+- `[vc8]` **Gotos into shared tails give another block order (and several
+  copies of a failure call) than the image**: set a selector variable in every
+  arm (`cual = 1/2/0`) and put one `if (cual == 1) {...} else if (cual == 2)
+  {...} else fail();` behind it. VC8 threads each assignment to its arm; the
+  order of the chain's tests and of the arms' assignments decides which tail
+  is fallen into. The same with a result: `if (ok) r = 1; else r = 0;` behind
+  arms that set `ok`. **held** *(match)*.
+- `[vc8]` **A callee the image inlines once behind two tails, while it lives
+  in another file of the reconstruction**: clone it as an inline member of a
+  derived overlay and call it once after the chain (the failing arm returns);
+  called in both arms it is expanded twice. **held** *(match)*.
+- `[vc8]` **Two variables loaded from one dead parameter slot on an edge
+  block**: they are uninitialised on that path in the original; leave them
+  unset (give the other compiler a deterministic value under an `#ifdef`).
+  **held** *(match)*.
+- `[vc8]` **Exit blocks (each its own epilogue copy) in each other's place**:
+  the blocks follow the source order of the labels, also of labels that only
+  forward (`goto fin; found: goto fin; empty: fin: return r;`). **held**
+  *(match)*.
+- `[vc8]` **A value just copied by a struct assignment reloaded from memory**:
+  read it back from the source of the copy, not the destination; the register
+  is forwarded. A four-word plain struct copies as three loads, a store, a
+  load, three stores. **held** *(match)*.
+- `[vc8]` **`mov [m],0; xor eax,eax` at two exits against `xor eax,eax; mov
+  [m],eax`**: the early exit was a copy of the function's tail; write it as a
+  jump into the one tail and the compiler duplicates the tail after constant
+  placement. **held** *(closer)*.
