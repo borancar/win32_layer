@@ -4886,3 +4886,42 @@ mostly header-less, so the lever is what else is defined in the unit.
   (base `PonerTamanyo(ushort...)`, override matched as `Volcar(int...)`): name
   the slot after the override in the vtable-emitting declarations and give
   the base's body an alias line; no code changes. **Held**.
+- `[vc8]` **Both loads of a field pair before both stores** (`mov edx,[p+4c];
+  mov ecx,[p+48]; mov [t+20],edx; mov [t+24],ecx`): an aggregate local
+  initialised from the fields and copied out (`struct P { int w, h; } v = {
+  p->a, p->b }; x = v.w; y = v.h;`). Named `int` locals load first but in the
+  other registers. **held** *(match)*.
+- `[vc8]` **A derived class's inline default constructor emits its vtable in
+  the caller's file**: if the vtable checker then reports a hierarchy with one
+  base too many, the header has an invented intermediate base. Derive as the
+  RTTI says and redeclare the intermediate's methods on the class with alias
+  lines at the same addresses. **held** *(match)*.
+- `[vc8]` **`fcom st(1)` keeping both operands and one `fstp [slot]` after the
+  two arms**: the ternary's value assigned to a new local (`float m = v < t ? t
+  : v;`); assigned back to `v`, the `v = v` arm vanishes. **held**.
+- `[vc8]` **One base load and two dword moves per element** is an 8-byte
+  struct assignment (`a[k] = *p`); two `int` stores reload the base each time.
+  **held**.
+- `[vc8]` **A source pointer loaded before a loop's entry test and stepped by
+  the element size** is a pointer local stepped in the `for` header (`for (k =
+  0; k < n; k++, src++) dst[k].F(src);`). **held**.
+- `[vc8]` **`push eax` of a call's hidden return pointer straight into a
+  pointer parameter** is the call chained into the argument
+  (`x.Leer(&tmp(b.Valor("K")))`); a named block per lookup gives `lea; push`.
+  **held** (839 -> 28 bytes).
+- `[vc8]` **A constructor inlined at a `new` site that also exists out of
+  line**: declare it inline (empty body) in the caller's file; the other file
+  keeps the out-of-line definition. **held** *(match)*.
+- `[vc8]` **Two by-value structs with equal constant fields** are two locals;
+  one local passed twice reuses its registers. The one built from fresh zero
+  registers is the one pushed first. **held** *(match)*.
+- `[vc8]` **A zeroed `char[3]` stored from the last byte down** is three
+  stores written in that order; the `= {0}` initializer stores upward.
+  **held** *(match)*.
+- `[vc8]` **A jump table whose entry for one value is the shared exit**: an
+  explicit `case K: return v;` (an empty `case K: break;` is dropped, and three
+  cases become a compare chain). **held** *(match)*.
+- `[vc8]` **Open**: a spilled scalar packed into the slot of an 8-byte struct
+  whose life starts after the scalar's last use (VC8 does it; the image keeps
+  both, declaration order and scope do not move it); two spilled flags whose
+  slots stay put whatever their order, names or declarators.
