@@ -1696,6 +1696,34 @@ an item says otherwise.
   per case, arrays per block or at function scope tried); **a register reusing a just-compared constant**
   (`cmp eax,2; jne; ... cmp [ecx],eax` in ours, `cmp [eax],2` in the image); **a strength-reduced index**
   (`pos = (i - k) * size` becomes `add pos,size` in ours where the image recomputes with `imul`). *(open)*.
+- `[vc8]` **A `sub eax,K; je` chain on one value is a `switch`, and the case bodies are in source order.** An
+  `if/else if` chain on the value gives `cmp; jne` per test; a ternary choosing an argument gives `mov; jne; mov;
+  push`, where a `switch` (or `if/else`) with one call per arm gives `je; push [a]; jmp; push [b]; call` (the
+  calls merged behind the arms). The static-guard bits and EH states number the cases in source order even when
+  the compare chain tests them in another. **held** *(match, eight functions)*.
+- `[vc8]` **Per-case temporaries that never share a slot are temporaries, not named locals.** Three float triples
+  at three distinct stack slots, each built while the arguments are pushed (`fld; fstp [t]; lea; push; fld;
+  ...`), are `Vec(a, b, c)` temporaries passed by address (`f(Vec(p[0], p[1], p[2]).Dir())`, `Dir()` an inline
+  `return this`, legal C++ for the native build where `&Vec(...)` is not); named arrays per case share one slot.
+  A struct with all fields zeroed in an odd order is a constructor storing in that order. **held** *(match)*.
+- `[vc8]` **Members cleared with the call's vtable load after the stores** (`mov [esi+0xc],ebp ... mov
+  [esi+0x24],ebp; mov eax,[esi]`): the stores go through a pointer the compiler cannot separate from the vptr
+  (`for (int i = 0; i < 7; i++) (&campo0c)[i] = 0;`, or `memset`); named member stores let VC8 hoist the vtable
+  load above them. **held** *(match)*.
+- `[vc8]` **A loop that re-reads `*p` for each test is an indexed loop.** `cmp byte [eax],0; ... cmp byte
+  [eax],0x20` with `eax` incremented is `for (i = 0; s[i] && r == 2; i++) if (s[i] > ' ') r = 1;`; the pointer
+  form keeps the byte in `al` across the tests. **held** *(match)*.
+- `[vc8]` **Small source shapes that moved whole functions**: a member read into a local before its compare
+  (`int m = modo; if (m == 1) return;`: `mov eax,[m]` before the constant load); a field read once for two tests
+  (`if (n && plazas) {...} if (n) return 0x11;`); the compare's operand order (`libres > plazas` gives `cmp
+  [libres],eax; jbe`); `char texto[0x20] = "";` (first byte stored apart, the rest zeroed) against `memset`; a
+  lone `otro[0] = 0;` store; `*(Pto3 *)(b + 8) = p;` (integer moves) against three float stores; a result variable
+  declared after the function's statics changes the register order; `new T(...)` with no EH state store has a
+  `throw()` constructor; a callee called without `this` is a static member. **held** *(match)*.
+- `[native]` **An address comment binds the function names on its line, in order**: an inline constructor added to
+  a one-line struct that carries `// 0xTHUNK (0xTARGET)` for a member binds the constructor to that address in the
+  native build (`grep dup native/build/report.txt` shows it). Keep added inline members on lines without an
+  address comment. **held**.
 - `[vc8]` **A temporary passed by `lea; push` instead of the constructor's `eax`: a named local in its own block.**
   `call T::T; lea ecx,[tmp]; push ecx` with the frame smaller than ours by the object's size is `{ T b(t);
   r.Poner("K", b); }`: the block scope lets `b` share the temporaries' slot. A function-scope `b` keeps its own
