@@ -4722,3 +4722,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   the placeholder name) and the overrides; code bytes do not change, and a
   slot whose function only has a non-virtual name needs a virtual alias in
   the symbol map. **Held** *(15 classes)*.
+- `[vc8]` **One slot list per class family, generated from the image.** When
+  a base and its subclasses are redeclared in many files (each with its own
+  field layout), put the base's virtuals in a macro and each subclass's
+  overrides in another (`#define X05_OVERRIDES void v01(int, int); ...`),
+  computed by comparing every subclass vtable with the base's in the image
+  (thunks followed); each new override name gets an alias line at the image's
+  slot target. Missing overrides, a member wrongly attributed to a sibling
+  class, and a wrong `??_E` line at another slot's address all show up at
+  once. **Held** *(45 classes)*.
+- `[vc8]` **Bases listed without `public` are private, and RTTI shows it**:
+  base class descriptor attributes 0x4d (77) on the private base, 0x49/0x4b
+  below it, against 0x40. `class D : public A, B, C` reproduces the image's
+  descriptors; the compiler accepted every existing use. **Held**.
+- `[vc8]` **A non-virtual member with a base virtual's name and signature
+  silently overrides it** (and a misdeclared base slot hides real overrides):
+  check both directions when a slot holds the wrong function; renaming the
+  member to its address name (or giving the base slot its true signature)
+  fixes the vtable without touching code bytes. **Held**.
+- `[vc8]` **A scalar deleting destructor that stores the base vtable inline
+  needs `virtual ~X() {}` in that file**; declared out of line it calls the
+  destructor instead. Check the subclasses' destructors in the same file:
+  if they call it out of line, the header must keep it out of line. **Held**.
+- `[vc8]` **Multiple-inheritance vtable names follow the base names**
+  (`??_7X@@6BBase@@@`): replacing placeholder bases renames every such
+  vtable, so add the lines under the real base names with the same
+  addresses; adjustor deleting destructors are `??_GX@@W<disp>AEPAXI@Z`.
+  **Held**.
