@@ -4749,3 +4749,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   vtable, so add the lines under the real base names with the same
   addresses; adjustor deleting destructors are `??_GX@@W<disp>AEPAXI@Z`.
   **Held**.
+- `[vc8]` **A base whose layout ends early can still carry the real name**:
+  when a file lays the subclasses' fields from the end of a shorter base
+  (the image's base is 0x78 bytes, the shared header's is 0x80), give that
+  file its own declaration of the real class (same name, same slot macro,
+  its own fields) instead of a placeholder name; the RTTI and slots then
+  match while the field offsets stay. Split the file if it also needs the
+  shared header. **Held** *(ClassControl, the windows' constructors)*.
+- `[vc8]` **Two identical image bodies of one destructor**: only one of them
+  has callers; give the class's name to that one and keep the other matched
+  as a plain function (vptr store and tail call), so the subclasses'
+  destructors resolve their base call. **Held**.
+- `[vc8]` **Audit the native build's own names against the image's slots**:
+  a name the native build binds to an image address (only-native symbol
+  list) can sit on another class's override; it hides as long as the
+  native build uses the image's vtables, and fixing it can unmask base
+  classes whose overrides were never declared (their vtables only passed
+  through the wrong address). **Held**.
+- `[vc8]` **A pure virtual destructor shows as `__purecall` in the slot**:
+  `virtual ~I() = 0;` with an `inline I::~I() {}` definition. **Held**.
