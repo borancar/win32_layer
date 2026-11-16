@@ -5130,3 +5130,45 @@ mostly header-less, so the lever is what else is defined in the unit.
   value gave nothing that held over 950 functions; moving a statement across
   three or four gave many lower byte counts and no match (it mostly moves a
   store across a call, which is wrong). **negative**.
+- `[vc8]` **A strength-reduced loop pointer over an array of structs anchored
+  on another field than the original's (`lea edi,[this+0x12c]` with the
+  later store at `[edi+0x10]`, yours `[edi-16]`), often with one more saved
+  register**: the pointer is anchored on the last place the loop body names
+  in source order. A store that follows a call is written through a
+  reference taken before the call (`unsigned &f = a[i].flags;
+  a[i].p->Call(); f |= 0xc;`): named first, stored last. A statement swap
+  that gives the right bytes but for the store's position is this lead.
+  **held** *(match, 231 bytes)*.
+- `[vc8]` **A store scheduled one statement early or late against the
+  original**: declare a reference to its place one to three statements up
+  (`int &px = a->px; p.y += oy; px = p.x;`). As a sweep mutant: every `place
+  op= value;` with a reference of each plain type; a wrong type does not
+  compile. **held** *(3 matches)*.
+- `[vc8]` **The operand order of a commutative x87 operation (`fld [m]; fmul
+  [v]` against `fld [v]; fmul [m]`) follows the number of initialised locals
+  declared before the expression, not the way the product is written**:
+  dead `int s1 = 0, s2 = 0, ...;` at the top of the body turn it round
+  (measured: 5 to 7 match, 1 to 4 and 8 do not; names and types do not
+  matter; uninitialised or later declarations do not count). The original
+  had that many more variables or inline temporaries; when they cannot be
+  recovered, keep the dead locals. As a sweep mutant: 1 to 12 at the top,
+  1 to 8 before each top-level statement. Try it on every two-to-five byte
+  x87 leftover before anything else. **held** *(3 matches)*.
+- `[vc8]` **`lea eax,[this+i*S+base]` and the field at `[eax+k]` in both arms
+  of a test, yours folded to `[eax+base+k]` or with the load hoisted out of
+  the arms**: the element pointer is a local taken first and the store in
+  front of the test goes through a reference or an inline setter.
+  **held** *(match)*.
+- `[vc8]` **`or ecx,-1` on a search loop's exhausted path, then an unsigned
+  compare with the count**: an inline search returning the index or -1.
+  **held**.
+- `[method]` **Two scans worth running once over every port**: the `cmp` in
+  front of each indirect table jump, original against yours (a switch range
+  or count that differs: cases the port lacks, loops written out per case),
+  and the `lea` displacements (a loop pointer or element address anchored
+  elsewhere). **held**.
+- `[method]` **Sweep mutants that did not pay**: the identity by `const T &`,
+  `*Id(&x)`, the identity around whole arguments and conditions, `x > 0`
+  against `x >= 1`: lower byte counts that were wrong when read against the
+  original, one match that was the dead-local effect in disguise.
+  **negative**.
