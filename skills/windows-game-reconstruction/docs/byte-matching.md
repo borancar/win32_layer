@@ -4776,3 +4776,32 @@ mostly header-less, so the lever is what else is defined in the unit.
   a wrong declaration elsewhere**: adding the explicit line can turn another
   object's identical function into a difference. Check every user of the
   name before mapping it. **Held**.
+- `[vc8]` **A "learned" callee hides a misassigned deleting destructor**: a
+  `??_G` line put on the neighbouring class's body (one byte pattern, a
+  different callee) matched only because the callee was unmapped. Order the
+  `??_G` bodies by their adjustor thunks and their callees before mapping the
+  destructor they call. **Held**.
+- `[vc8]` **A derived class may redeclare a base virtual as pure**: the
+  image's `__purecall` in a middle class's slot is `virtual void f() = 0;`
+  there, even when the root defines it. **Held**.
+- `[vc8]` **Inline virtual destructor in a placeholder header, out-of-line
+  copy in the image**: the root's `~X() { Free(); }` is inlined into every
+  derived destructor, and its own out-of-line copy is emitted by a TU that
+  defines it out of line; the derived destructors belong in the TU of their
+  class (their `??_G` inlines them only there). **Held**.
+- `[vc8]` **`throw()` on a member's or callee's declaration decides the EH
+  frame**: an extra `mov BYTE [state], 0` before a member destructor, or a
+  whole frame in a copy constructor, disappears when the callee is declared
+  `throw()` as in the original. **Held**.
+- `[vc8]` **A whole base family can move from placeholder to real name with a
+  fieldless stand-in**: one header with the root's slot macro and a
+  `class Root { ctor; SLOTS };` stand-in, plus per-class override macros
+  generated from the image's vtables (the slot whose target differs from the
+  root's), changes no code bytes. Watch members that silently become
+  overrides (same name and signature as a now-declared base virtual): they
+  change mangling (`QAE` -> `UAE`) and turn the class's own unqualified calls
+  into virtual calls. Mark generated alias names `~` when the body at that
+  address is known not to match. **Held**.
+- `[vc8]` **`struct` vs `class` is part of the RTTI name and the mangling**:
+  turning a `struct` into `class` changes `.?AU` to `.?AV` and every mangled
+  name that takes or returns the type (`U` -> `V`, `AAU0@` -> `AAV0@`). **Held**.
