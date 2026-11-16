@@ -5055,3 +5055,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   [m],eax`**: the early exit was a copy of the function's tail; write it as a
   jump into the one tail and the compiler duplicates the tail after constant
   placement. **held** *(closer)*.
+- `[vc8]` **Register roles exchanged through a small loop, every instruction
+  otherwise identical**: try the other spellings of a doubling (`x += x`,
+  `x <<= 1`, `x *= 2`): all emit `add reg,reg` but number the variables
+  differently. `mov reg,1` against `lea reg,[zero+1]`: declare the `1` before
+  the `0`. **held** *(match, three functions)*.
+- `[vc8]` **A store to a global placed behind the compare that reads memory**:
+  write the store in both arms of the test (`if (c <= m[i]) { g = c; ... }
+  else g = c;`); the two are merged into the compare's block, behind it.
+  **held** *(match)*.
+- `[vc8]` **`fstp t; fld t; fstp v` for a float `?:`**: the result
+  initialises a `double` local that is then narrowed. **held** *(match)*.
+- `[vc8]` **A search loop whose exhausted exit returns directly while the
+  found exit tests the index against -1**: start the index at -1 and set it
+  where the loop breaks; testing the loop variable after the loop keeps both
+  tests. **held** *(match)*.
+- `[vc8]` **`fadd DWORD` (2^32 as float) behind `fild` of an unsigned**: the
+  unsigned is cast to `float`, not promoted to `double`. Keep the `double`
+  form for a compiler that would round. **held** *(match)*.
+- `[method]` **A mechanical mutant sweep over the near-misses pays once the
+  hand-found idioms dry up**: when one file compiles and compares in well
+  under a second, build every single mutant (adjacent statements exchanged,
+  commutative and comparison operands exchanged, `if`/`else` arms, signedness
+  and float/double of locals, spellings of a doubling, a single-use local
+  substituted) and every pair for small functions, in parallel copies of the
+  sources. Rank by differing bytes but read each lead against the image: a
+  mutant that changes the meaning can score lower, and a pure register
+  exchange scores worse than a wrong body. **held** *(six matches in a round
+  where forty hand variants per function gave none)*.
