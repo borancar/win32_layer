@@ -4958,3 +4958,33 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **The load order of a sum of squares** follows a by-value struct
   parameter of an inline (`M2(V2 v) { return v.y * v.y + v.x * v.x; }`); every
   spelling of the plain expression is canonicalised to one order. **held**.
+- `[vc8]` **Three `fst` of one `fldz` into a member, last component first,
+  right after the vptr stores**: the member has a constructor `x = y = z =
+  0.0f` (the chained assignment stores z first). When the member's type is
+  shared, a tag constructor (`enum Cero { CERO }; V3(Cero) { x = y = z = 0; }`,
+  `meta(CERO)` in the initializer list) keeps every other use unchanged; a
+  derived zeroed type with an `operator=` from the base changes the copies
+  elsewhere. **held** *(match)*.
+- `[vc8]` **A member triple assigned through a stack triple copied with
+  integer moves**: a by-value temporary (`(V &)m = V(0, 0, 0)`); a negated
+  value used by two temporaries is written `-v` at each use (VC8 CSEs it into
+  one rounded slot), not as a named local. **held** *(match)*.
+- `[vc8]` **`mov eax,ecx` at the top and `eax` never written again in a
+  `void`-looking function**: it returns `this`. **held** *(match)*.
+- `[vc8]` **A source pointer chosen between a field and a zero triple built
+  only in the null arm**: `const V *p = o ? &o->pos : V(0, 0, 0).Dir();` with
+  `Dir()` an inline returning `this` (`&V(...)` is VC8-only). **held**
+  *(match)*.
+- `[vc8]` **x87 adds with the field loaded first (`fld [esi+x]; fadd
+  [esp+d]`) where ours loads the local first**: both operands through pointers
+  (`float *pp = &x; float *q = d; pp[0] += q[0];`); any direct spelling keeps
+  one element in the other order. **held** *(match)*.
+- `[vc8]` **The three integer loads of a triple before its three stores**: the
+  copy straight into the destination member as a three-int struct; through a
+  local pointer to the destination the copy goes word by word. **held**
+  *(match)*.
+- `[vc8]` **`fld x; fadd st,st` for a doubling**: `2.0f * x` (also `x * 2`);
+  `x + x` loads the value once and keeps it. **held**.
+- `[vc8]` **A branch placed after the function's return**: a value set by an
+  `if (fail) v = ...; else switch (...)` instead of a `goto` into the shared
+  tail; VC8 lays the `else`-less form inline. **held** *(match)*.
