@@ -4992,3 +4992,28 @@ mostly header-less, so the lever is what else is defined in the unit.
   later fields addressed from it**: the sub-object as a typed pointer local
   and the fields written through it (`T *s = (T *)(this + K); s->f(); ((int
   *)s)[n] = 0;`). **held** *(match)*.
+- `[vc8]` **A struct copy whose pointer advance (`add eax,K`) lands after the
+  first word in the image and after the second in ours, with identical
+  source**: a later `for` loop of clears in the same function changes the
+  schedule of the block in front of it; the clears written out as single
+  stores give the image's (a sibling that matched had them written out).
+  **held** *(match)*.
+- `[vc8]` **Integer clears and a by-value temporary's copy interleaved
+  differently** (one word of the temporary stored late): the order of the
+  source statements decides it, not the members' order; move the clears in
+  front of the temporary. **held** *(match)*.
+- `[vc8]` **`fld K; fcomp [param]` for a literal compare against a float
+  parameter**: `!(r < 2.0f)` or `r >= 2.0f`; `2.0f <= r` loads the parameter
+  and compares a double constant, an `extern float` constant gives `fld; fld;
+  fcompp`. **held**.
+- `[vc8]` **A local's frame slot lower than the image's** where the local is
+  reassigned later (`v = k * v`): the new value as a new local (`float n = k *
+  v`) puts both in the image's slots. **held** *(frame)*.
+- `[vc8]` **A doubling `fld [p+K]; fadd st,st` with the base pointer advanced
+  in between (`add edi,K'`)**: one pointer to the record kept for a later use
+  (`float *v = (float *)(o + K'); x = v[1] + v[1]; ... f(v)`), the other stores
+  after the doubling. **held** *(match)*.
+- **No header dependencies in a reconstruction Makefile hide broken users**:
+  after retyping a member, delete every object (or all that include the
+  header) before trusting the match count; a stale object kept matching while
+  its source no longer compiled, and only the native build failed. **held**.
