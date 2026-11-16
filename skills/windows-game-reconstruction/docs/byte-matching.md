@@ -1724,6 +1724,12 @@ an item says otherwise.
   a one-line struct that carries `// 0xTHUNK (0xTARGET)` for a member binds the constructor to that address in the
   native build (`grep dup native/build/report.txt` shows it). Keep added inline members on lines without an
   address comment. **held**.
+- `[vc8]` **A port's static helper that the image has inline, with member reloads**: when the image's calls after the first
+  re-read a pointer from its member (`mov ecx,[esi+0x54]`) where the helper passes a local, write the calls in place through a
+  reference to the member (`T *&m = *(T **)(base + off); m->f(); m->g();`); a store through the pointer between the calls
+  (`m->flag = 0`) makes the first call reload it as well. An init call on `operator new` memory where the image has the EH
+  state store of a `new T(args)`: declare a constructor at the init method's thunk (address comment and a `~` symbols line).
+  **held** *(match, five constructors and slots)*.
 - `[vc8]` **A temporary passed by `lea; push` instead of the constructor's `eax`: a named local in its own block.**
   `call T::T; lea ecx,[tmp]; push ecx` with the frame smaller than ours by the object's size is `{ T b(t);
   r.Poner("K", b); }`: the block scope lets `b` share the temporaries' slot. A function-scope `b` keeps its own
