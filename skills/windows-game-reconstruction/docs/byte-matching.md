@@ -4925,3 +4925,14 @@ mostly header-less, so the lever is what else is defined in the unit.
   whose life starts after the scalar's last use (VC8 does it; the image keeps
   both, declaration order and scope do not move it); two spilled flags whose
   slots stay put whatever their order, names or declarators.
+- `[vc8]` **Float-heavy functions: fix the float code first, and read `eax`
+  with suspicion.** Every x87 compare takes `eax` (`fnstsw ax; test ah,K`), so
+  the integer registers around it follow the compare form; an `eax` sequence
+  in the image may be an inline helper the port writes as a call. Order:
+  frame slots and float temporaries (named float = `fstp`/`fld`, bare
+  expression stays on the stack, float vs double literals, by-value struct
+  temporaries), then compare forms (`a < b`, `b > a`, `!(b <= a)`, member
+  left), then `math.h` float overloads, then the integer residue. Example:
+  `fld [K]; fld d; fcom st(1); fstp st(1); test ah,1; jne` and one `fstp [d]`
+  after both arms is `d = d >= K ? d - 360.0 : d;` (`!(d < K)` gives `test
+  ah,5; jnp`). **held**.
