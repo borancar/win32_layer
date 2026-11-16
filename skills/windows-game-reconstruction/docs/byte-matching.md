@@ -5083,3 +5083,50 @@ mostly header-less, so the lever is what else is defined in the unit.
   mutant that changes the meaning can score lower, and a pure register
   exchange scores worse than a wrong body. **held** *(six matches in a round
   where forty hand variants per function gave none)*.
+- `[method]` **The accessor idiom can be searched mechanically: wrap each value
+  read in an inline identity**. Add `template <class T> static inline T
+  Same(T x) { return x; }` to the file and build one mutant per read
+  (`Same(o->state)`, each prefix of a `->` chain, each plain identifier,
+  indexed and dotted places), plus "every read of one expression at once" and
+  "all but one". To the optimiser the inlined identity is an inline accessor
+  on the object: the value passes through the inline's temporaries and the
+  registers are numbered as in the original (`eax` for a member-pointer chain,
+  a compare with a literal instead of a register holding it, the object's vptr
+  loaded before the arguments). Write each hit as a real accessor afterwards;
+  the bytes stay. Cheap (one build per read) and worth running over every
+  unmatched function, large ones included. **held** *(seventeen matches in one
+  round, 63 to 1666 bytes, where the kinds of the first sweep had run dry)*.
+- `[vc8]` **Two reads of one member must both go through the accessor**: either
+  alone changes nothing, both exchange two callee-saved registers through the
+  whole function. **held** *(match)*.
+- `[vc8]` **An assignment whose object pointer is loaded before the value
+  (`mov ecx,[this+a]; mov eax,[this+v]; mov [ecx+K],eax`)**: an inline setter
+  (`a->SetK(v)`); in the sweep, the identity on both the object and the value.
+  **held** *(match)*.
+- `[vc8]` **`if (p->m) p->m->Call(args)` with an argument loaded before the
+  test**: an inline member of `p` doing the test (`void M(args) { if (m)
+  m->Call(args); }`); arguments are evaluated before the inlined body.
+  **held** *(match)*.
+- `[vc8]` **The vptr loaded and the slot address formed before the argument's
+  call**: the object goes through an inline (an accessor, or a member
+  returning `this`). **held** *(closer)*.
+- `[vc8]` **A jump table with more index bytes than the port's cases, some
+  pointing at a second entry that holds the default's address**: those cases
+  were written with their own copy of the default's body; the bodies merge,
+  the table entry and the range stay. Bare `case` labels in front of
+  `default:` are dropped. Dump the image's tables for every switch port.
+  **held** *(match, 339 bytes)*.
+- `[vc8]` **A temporary's address pushed straight from the call that made it,
+  the temporary destroyed before the next statement**: pass it through
+  `template <class T> static inline T *AddrOf(const T &x) { return (T *)&x;
+  }` (portable; `&f()` is not). A named local dies after the following
+  statements. **held** *(match)*.
+- `[vc8]` **Two `ftol` results kept in call order and used in store order**:
+  the results go into a two-int struct local; as two `int` locals the second
+  is evaluated first. **held** *(closer)*.
+- `[method]` **What the wider sweep did not find**: loop forms, stores in both
+  arms, early return against a wrapped body, chained assignments, float
+  against double literals, negated comparisons, a new local for a reassigned
+  value gave nothing that held over 950 functions; moving a statement across
+  three or four gave many lower byte counts and no match (it mostly moves a
+  store across a call, which is wrong). **negative**.
