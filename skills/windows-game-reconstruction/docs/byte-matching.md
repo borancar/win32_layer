@@ -4988,3 +4988,7 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **A branch placed after the function's return**: a value set by an
   `if (fail) v = ...; else switch (...)` instead of a `goto` into the shared
   tail; VC8 lays the `else`-less form inline. **held** *(match)*.
+- `[vc8]` **`add esi,K` replacing `this` after a call on a sub-object, the
+  later fields addressed from it**: the sub-object as a typed pointer local
+  and the fields written through it (`T *s = (T *)(this + K); s->f(); ((int
+  *)s)[n] = 0;`). **held** *(match)*.
