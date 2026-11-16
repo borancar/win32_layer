@@ -5172,3 +5172,46 @@ mostly header-less, so the lever is what else is defined in the unit.
   against `x >= 1`: lower byte counts that were wrong when read against the
   original, one match that was the dead-local effect in disguise.
   **negative**.
+- `[vc8]` **The original re-tests a condition it has just decided (a loop's
+  zero-trip exit jumps to the test behind the loop instead of past it) and
+  loads a parameter inside the loop, yours threads the jump and keeps the
+  parameter and a zero in callee-saved registers**: the loop's bound and the
+  later test name different things that hold the same value (`for (i = 0; i
+  < m_count; i++) ...; if (i < n)` with `n = m_count` taken at the top).
+  VC8 threads on names, not values. One spelling changed 250 bytes.
+  **held** *(match)*.
+- `[vc8]` **`mov ecx,edi` at the top of every pass of a loop over records,
+  then the store through `ecx`, and the pointer's `lea` behind the zero-trip
+  test**: a post-increment walk whose old value is the object of an inline
+  member, in a `do` loop inside the counter's own test: `unsigned j = 0; if
+  (j < n) { Rec *p = recs; do { (p++)->Mark(v); j++; } while (j < n); }`.
+  Without the inline member the copy folds away; a `for` with the pointer in
+  front moves the `lea` and exchanges the registers; no indexed form gives
+  the copy. **held** *(match, two more loops)*.
+- `[vc8]` **`fld [K]; fcomp [x]` where yours loads both and uses `fcompp`,
+  or a constant loaded once where yours loads it twice (or the reverse)**:
+  check whether `K` lives in read-only data. A float constant that an
+  earlier naming pass turned into `extern float g_xxx` is a variable to the
+  compiler; the literal folds into the compare and is a different symbol for
+  the x87 stack. Scan: every named float/double whose address is in
+  `.rdata`, used in an unmatched function, spelled as its literal (all uses,
+  and each alone). **held** *(ten leads, 78 -> 17, 143 -> 76)*.
+- `[vc8]` **A statement the original runs in front of a block's destructor
+  call** belongs inside that block. **held**.
+- `[method]` **Typed mutants without `auto`: read the type off a deliberate
+  compile error** (`struct T {}; T &r = place;` prints `cannot convert from
+  'unsigned int' to 'T &'`). One extra build per place gives references and
+  element pointers of struct and pointer type for a mechanical sweep.
+  **held**.
+- `[vc8]` **Dead initialised locals as a general lever (allowed by the owner
+  as a matching tool)**: swept as 1 to 8 at the top, in front of every
+  top-level and every nested statement, as `int`, `float`, `double`, `char`,
+  pointer, with 0, 1 and -1. Outside x87 operand order the effect is rare:
+  in 300 small functions three byte counts moved (frame slot order) and none
+  matched; type and initial value never mattered beyond the count; no
+  register choice, store schedule or frame size moved in functions opened
+  by hand. Worth a sweep, not worth hand time. **mostly negative**.
+- `[method]` **A byte count that gets worse can be the right direction**: a
+  structural fix shifts everything behind it (218 -> 293 -> 40 -> 0 on one
+  function). Rank hand variants by reading the listing, not by the count.
+  **held**.
