@@ -4805,3 +4805,15 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **`struct` vs `class` is part of the RTTI name and the mangling**:
   turning a `struct` into `class` changes `.?AU` to `.?AV` and every mangled
   name that takes or returns the type (`U` -> `V`, `AAU0@` -> `AAV0@`). **Held**.
+- `[vc8]` **A scalar deleting destructor that inlines an out-of-line
+  destructor comes from the TU that defines the destructor**, and in that TU
+  the subclasses' destructors inline it too. When the subclasses' destructors
+  call it (matched) but the base's `??_G` inlines it, give the base's
+  destructor a file of its own. **Held**.
+- `[vc8]` **A vtable checker that reads every object must take the worst
+  verdict**: one stand-in copy of a class with fewer slots in some other file
+  keeps the class "shorter". Fix every object that emits the vtable. **Held**.
+- `[vc8]` **A slot overridden under another name in the matched sources**
+  (base `PonerTamanyo(ushort...)`, override matched as `Volcar(int...)`): name
+  the slot after the override in the vtable-emitting declarations and give
+  the base's body an alias line; no code changes. **Held**.
