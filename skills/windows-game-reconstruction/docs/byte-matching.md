@@ -5017,3 +5017,14 @@ mostly header-less, so the lever is what else is defined in the unit.
   after retyping a member, delete every object (or all that include the
   header) before trusting the match count; a stale object kept matching while
   its source no longer compiled, and only the native build failed. **held**.
+- `[vc8]` **A member constructor's `lea ecx,[this+K]` in front of its argument
+  pushes** (ours after them): give the member a small derived type whose inline
+  constructor passes the arguments on (`struct R : Base { R() : Base(0, 0.75f)
+  {} ~R(); };`, nothing for it in the owner's initializer list). Declare the
+  derived destructor and bind its name to the base destructor's address, or VC8
+  emits an implicit one out of line and the owner's destructor calls that.
+  **held** *(match)*.
+- `[vc8]` **A literal compare in the image where ours reuses a register a
+  just-tested call result left holding the same constant** (`cmp [eax],2` vs
+  `cmp [ecx],eax`): read the pointer through an inline accessor; it loads into
+  `eax` and the known value is no longer propagated. **held** *(match)*.
