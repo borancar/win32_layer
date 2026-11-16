@@ -4768,3 +4768,11 @@ mostly header-less, so the lever is what else is defined in the unit.
   through the wrong address). **Held**.
 - `[vc8]` **A pure virtual destructor shows as `__purecall` in the slot**:
   `virtual ~I() = 0;` with an `inline I::~I() {}` definition. **Held**.
+- `[vc8]` **A placeholder slot 0 whose image function is a scalar deleting
+  destructor is the class's virtual destructor**: replace `s00()` by
+  `virtual ~X() {}`, and point the `??1` line at the destructor's body, not at
+  an incremental-link thunk. **Held**.
+- `[vc8]` **A callee name the matcher "learns" from the first object can hide
+  a wrong declaration elsewhere**: adding the explicit line can turn another
+  object's identical function into a difference. Check every user of the
+  name before mapping it. **Held**.
