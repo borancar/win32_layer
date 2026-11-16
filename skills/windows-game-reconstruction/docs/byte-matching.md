@@ -4936,3 +4936,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   `fld [K]; fld d; fcom st(1); fstp st(1); test ah,1; jne` and one `fstp [d]`
   after both arms is `d = d >= K ? d - 360.0 : d;` (`!(d < K)` gives `test
   ah,5; jnp`). **held**.
+- `[vc8]` **A down-counter whose registers differ from the image's explicit
+  down-count**: the source counted up with a stepped pointer (`for (i = 0; i <
+  n; i++, p++)`); VC8 turns that into the down-counter with its own register
+  choice. **held** *(match)*.
+- `[vc8]` **A member-pointer chain re-read for a second call with the
+  argument in `edx` and the outer pointer in `eax`**: the chain goes through an
+  inline accessor on the middle object (`a->Figura()->Parte(i)`). **held**
+  *(match)*.
+- `[vc8]` **Temporaries placed below a named object with a destructor**: the
+  body is inside `if (ok) { ... }`, not behind `if (!ok) return;`; the early
+  return changes how every later destructible local is packed. **held**
+  *(match)*.
+- `[vc8]` **x87 statements kept in order with every store, where the port's
+  version merges stores and moves intrinsic `cos`/`sin` calls**: the
+  intermediate is a by-value struct written to memory (`V t; t.x = ...; t.y =
+  ...; d.x = d.x + t.x; ...`), which also gives the image's slots. **held**.
+- `[vc8]` **`mov eax,[this+m]; lea ecx,[eax+K]` before a call on a
+  sub-object**: the pointed object as a typed pointer local; char arithmetic
+  on the member gives `mov ecx; add ecx,K`. **held**.
+- `[vc8]` **The load order of a sum of squares** follows a by-value struct
+  parameter of an inline (`M2(V2 v) { return v.y * v.y + v.x * v.x; }`); every
+  spelling of the plain expression is canonicalised to one order. **held**.
