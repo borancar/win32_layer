@@ -1661,6 +1661,22 @@ an item says otherwise.
   by-value argument are an assignment to a declared local (`P p; p = *src; f(p, ...)`) of a class whose copy
   constructor copies floats. **held** *(match)*.
 
+- `[vc8]` **Map every local onto the image's slots before changing code.** Through the aligned instructions
+  (same pushes on both sides), each listing name `x$[esp+N]` gives the image's offset below the frame top as
+  `N + (image frame - our frame) - image displacement`. Two of our locals on one image slot, or an object on an
+  array's slot, name the scope structure: a buffer shared by two uses is one array; an object sharing a later
+  block's slot was in a block. Frames hundreds of bytes too large in script-block readers are chained
+  temporaries (`b.Token(i).Valor("K").CopiarA(...)`, three slots for all lookups), not named locals; three
+  floats side by side are a struct (a by-value argument built from it shows `sub esp,0xc; mov eax,esp; ...;
+  mov [esp+N],esp`). **held** *(match)*.
+- `[vc8]` **A function-scope object with a destructor stops the earlier blocks' objects from sharing a slot.**
+  `{ T a = ...; } { T e = ...; } T v = ...;` gives `a` and `e` two slots; with `v` in a block too they share
+  one. Names, declaration order and nesting depth do not matter. A pair of objects that die at the very end
+  but share the loop temporaries' slots: a block from their declaration to the end of the function.
+  **held** *(match)*.
+- `[vc8]` **A down-counter loop (`test n,n; je`, `sub n,1` early in the body, the index in another register) is
+  `while (n) { n--; ...(i); i++; }`**; `for (i = 0; n; i++) { n--; ... }` when the index steps after the body's
+  destructors. `for (i = 0; i < n; i++)` gives `cmp; jb` whatever the types. **held** *(match)*.
 - `[vc8]` **A temporary passed by `lea; push` instead of the constructor's `eax`: a named local in its own block.**
   `call T::T; lea ecx,[tmp]; push ecx` with the frame smaller than ours by the object's size is `{ T b(t);
   r.Poner("K", b); }`: the block scope lets `b` share the temporaries' slot. A function-scope `b` keeps its own
