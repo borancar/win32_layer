@@ -1677,6 +1677,25 @@ an item says otherwise.
 - `[vc8]` **A down-counter loop (`test n,n; je`, `sub n,1` early in the body, the index in another register) is
   `while (n) { n--; ...(i); i++; }`**; `for (i = 0; n; i++) { n--; ... }` when the index steps after the body's
   destructors. `for (i = 0; i < n; i++)` gives `cmp; jb` whatever the types. **held** *(match)*.
+- `[vc8]` **An unreferenced 4-byte slot in the image's frame can be the tail of an 8-byte temporary.** Two
+  fields stored through a stack temporary (`mov [t+2],ax; mov [t],0xff; mov ecx,[t]; mov [obj+N],ecx`) and a
+  third with an immediate are one 6-byte class temporary with a constructor (`*(Three *)&f = Three(a, b, c)`;
+  the third field folds to the constant, the frame keeps 8 bytes). A two-field class gives the same code and a
+  frame one slot short, every `esp` displacement off. **held** *(1316 -> 73 bytes on one constructor)*.
+- `[vc8]` **A member initialised from a constructor argument in the mem-initializer list** loads the argument
+  right after the base constructor and stores it after the vptr stores; assigned in the body, the load comes
+  later. **held** *(closer)*.
+- `[vc8]` **A cleanup call at the end of a function on a local holder is the holder's destructor** when the
+  image's EH states give the holder a state and an unwind entry: declare the destructor at the cleanup's
+  address (a second name for it) and, for the native build, define it as the forwarding call. **held** *(closer)*.
+- `[vc8]` **`do { x = next(x); if (!x) continue; ... } while (x);`** pushes the loop variable for the first call
+  (`xor edi,edi; push edi`), where `for (;;) { x = next(x); if (!x) break; ... }` lets the zero constant be
+  pushed; an EH state store between `operator new` and the following call means `new T(args)` with a
+  constructor, not an init method. **held** *(closer)*.
+- `[vc8]` **Not reproduced: an object sharing a char array's slot in the `/GS` buffer region** (blocks, braces
+  per case, arrays per block or at function scope tried); **a register reusing a just-compared constant**
+  (`cmp eax,2; jne; ... cmp [ecx],eax` in ours, `cmp [eax],2` in the image); **a strength-reduced index**
+  (`pos = (i - k) * size` becomes `add pos,size` in ours where the image recomputes with `imul`). *(open)*.
 - `[vc8]` **A temporary passed by `lea; push` instead of the constructor's `eax`: a named local in its own block.**
   `call T::T; lea ecx,[tmp]; push ecx` with the frame smaller than ours by the object's size is `{ T b(t);
   r.Poner("K", b); }`: the block scope lets `b` share the temporaries' slot. A function-scope `b` keeps its own
