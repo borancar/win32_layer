@@ -5215,3 +5215,32 @@ mostly header-less, so the lever is what else is defined in the unit.
   structural fix shifts everything behind it (218 -> 293 -> 40 -> 0 on one
   function). Rank hand variants by reading the listing, not by the count.
   **held**.
+- `[vc8]` **One tail repeated with different scratch registers behind a
+  `switch`**: the call is written at the end of every case with its arguments
+  spelled out; the compiler merged the copies that came out identical. One
+  call behind the switch gives one tail. **held**.
+- `[vc8]` **Float and integer stores of one run are scheduled alternately,
+  whatever the source order.** Where the original has two float stores in a
+  row once, a reference to the float member stored just before, declared in
+  front of the run, delays the integer stores by one. For two integer fields
+  of a record local, the second through a reference declared first exchanges
+  the two stores. Sweep it: split lines of several statements first, then
+  try a reference for every store's place. **held**.
+- `[vc8]` **`fcomp QWORD PTR [K]` where yours has `fldz; fcom`**: the zero
+  (or one) is a named constant used as a variable. Only 0.0 and 1.0 show the
+  difference, because every other literal is a memory operand either way.
+  The inverse case (a literal where the port has an extern) also exists.
+  **held**.
+- `[vc8]` **Two pushes in yours, `sub esp,8; mov eax,esp; mov [eax],..; mov
+  [eax+4],..` plus an EH state store in the original**: the argument is a
+  record by value with an inline constructor and a user copy constructor.
+  **held**.
+- `[vc8]` **A float result in a dead parameter's home slot, stored and
+  reloaded between steps**: a local assigned in statements (`d = sqrt(m); d
+  = d - r; if (d < 0) d = 0; return d;`), not one conditional expression.
+  A branch that recomputes values the loop already has on the x87 stack has
+  its own locals; that also explains a larger frame. **held**.
+- `[method]` **A sweep lead is a pointer to a function worth reading, not a
+  fix**: three matches of one round came from functions whose mechanical lead
+  was noise (a mutant that deleted code, a wildcard symbol), read against the
+  listing from the top. **held**.
