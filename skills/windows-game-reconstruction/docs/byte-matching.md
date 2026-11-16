@@ -5244,3 +5244,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   fix**: three matches of one round came from functions whose mechanical lead
   was noise (a mutant that deleted code, a wildcard symbol), read against the
   listing from the top. **held**.
+- `[method]` **Scan the original for a constant's address instead of
+  sweeping mutants**: list the unmatched functions whose body holds the
+  address of a named constant the source does not name. A mutant sweep with
+  a wildcard symbol scores length coincidences (a function whose only
+  difference is a shift "improves" under any mutant of the right length).
+  **held**.
+- `[vc8]` **A first pointer parameter that receives three stores at the top
+  and a loads-first 12-byte copy behind each call is a hidden return
+  pointer**: the function and its callees return a small class by value.
+  Assigning through a cast of a pointer parameter interleaves the copy.
+  **held**.
+- `[vc8]` **Exit blocks are laid out in label order**: where two early exits
+  differ in their pops, a `goto fin` for the first test and a nested `if`
+  for the second gives the exit without the pop first; early `return`s and
+  nesting give other orders. **held**.
+- `[vc8]` **A frame slot nobody touches**: an array or vector local with an
+  element that is never written; dead scalar locals do not add it.
+  **held**.
+- `[vc8]` **Commutative x87 operand order answers to inline getters** on
+  the member reads, when exchanging operands, locals and casts do not.
+  Bodies shared through a forced-inline helper are invisible to a sweep
+  over the ports: open them by hand. **held**.
