@@ -6395,3 +6395,43 @@ mostly header-less, so the lever is what else is defined in the unit.
   the other compiler's own constructor already stores that address.
   Check by counting the stores of the constant in the native
   disassembly before and after removing the guard.
+- `[vc8]` **Call arguments loaded before the first push, or member
+  loads sitting in front of an inlined callee's `test; je`**, are NAMED
+  LOCALS at the call site, declared in the original's load order (`int
+  b = g_b; int a = g_a; int v = vista; obj.f(&z, v, table, a, b);`).
+  Expressions written in the argument list, or a wrapper inline, sink
+  the loads behind the branch. Naming one call's arguments can also
+  fix the instruction order of a later, unrelated call.
+- `[vc8]` **A 64-bit difference stored through `eax`/`ecx`** is named
+  before the store (`__int64 d = b - a; *p = d;`); stored straight
+  from the expression the pair is `edx`/`eax`.
+- `[vc8]` **`mov ecx,parent; <loads [ecx+field]>; add ecx,OFF; call`**
+  is an inline member of the SUB-OBJECT at OFF whose fields are the
+  sub-object's own; an inline of the parent, or locals, take another
+  register for the parent and `lea ecx`.
+- `[vc8]` **By-value record arguments built in the argument area**
+  (`sub esp,N; mov eax,esp; mov [slot],esp`) have declared copy
+  constructors; a record result of a member call lands there directly.
+  Without them the compiler makes frame temporaries, which also moves
+  the frame's slot groups.
+- `[vc8]` **Read the frame layout from the compiler's listing** (the
+  `name = offset ; size` lines in front of `PROC`: named locals, `$T`
+  temporaries, `tv` spills) before touching a float-heavy function:
+  locals with disjoint lifetimes share a group sized by its largest
+  member; two 4-byte values adjacent in ONE group are an 8-byte record
+  (a pair copied whole, a float pair); a named address-taken record
+  has a slot of its own, a temporary joins a scalar group.
+- `[vc8]` **Virtual calls on a local object** are devirtualised; the
+  original's `mov edx,[obj]; call [edx+N]` goes through a pointer to
+  the local. `shr r,4; not r; test rl,1` is `~(f >> 4) & 1`.
+- `[vc8]` **A local built into the register that held a parameter**
+  (`lea edi,[local]` where `edi` was the argument) is the parameter
+  reassigned (`if (!c) dc = &a;`), not a second pointer variable.
+- **A vtable check regresses when a stand-in class emits the real
+  vtable**: a stand-in with its own vtable line at the real address
+  compares as different (slots and type name). Use the real class name
+  with its overrides declared, and give a new class's deleting
+  destructor slot its own address line. The redundancy of
+  compiler-conditional vtable stores holds for multiple inheritance
+  too, once every `??_7X@@6B<base>@@@` symbol has its address; a class
+  named differently from its vtable's class keeps the guard.
