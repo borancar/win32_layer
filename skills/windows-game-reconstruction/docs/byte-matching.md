@@ -6119,3 +6119,49 @@ mostly header-less, so the lever is what else is defined in the unit.
   or the step chosen by `?:` first changes the whole shape.
 - `[vc8]` **Two arms with the same tail that the image does not merge:**
   one arm ends in its own `return f();`, the other in `break`.
+- `[vc8]` **One result variable, every arm ending in `break`** (state-step
+  functions: a `switch` on the phase whose arms return 0 or the base
+  class's step). Signs: a callee-saved register zeroed right behind the
+  load of the switch value, `mov eax,reg` at the exits, and the base's
+  step followed by its OWN copy of the epilogue in each arm that ends in
+  it. Source: `int r = 0; switch (s) { case A: ...; r = Base::Step();
+  break; ... default: r = Base::Step(); break; } return r;`. `return
+  Base::Step();` in each arm merges the tails behind a `jmp`; `return 0;`
+  gives `xor eax,eax` at each exit. Scan for it: more `ret`s or more `mov
+  eax,<callee-saved>` in the image than in ours.
+- `[vc8]` **An arm that ends in the default's code is `goto label;` into
+  `default:`** (`je <default code>` from the middle of an arm, or from an
+  inner `switch`). Writing the call again puts a second copy in line.
+- `[vc8]` **The jump table's size names the source's case labels.** An
+  entry that points at the return is `case N: break;`; an entry that
+  points at the default's code is `case N: goto label;` (`case N:
+  default:` together is dropped and the table turns into a `sub`/`je`
+  chain). For a `sub`/`je` chain the source order of the cases does not
+  change the bytes.
+- `[vc8]` **`fld d; fcomp [k]; test ah,0x41; jp far`** is the positive
+  test with the near body inside (`if (f(x) <= k) { near } far`), the
+  value not named. `if (!(d <= k)) goto` and `if (d > k)` both load the
+  constant first.
+- `[vc8]` **A record argument built straight into the argument area**
+  (`sub esp,N; mov eax,esp; fstp [eax]; ...`) is a temporary of a record
+  with a DECLARED copy constructor passed by value (`f(Pt(x, y, z), ...)`);
+  without the declaration the temporary is built in the frame and copied
+  with integer moves. Declare it for the original compiler only; it is
+  never called and the mangled name is the same.
+- `[vc8]` **Both pointers loaded in front of the pushes of a member call**
+  (`mov eax,[a]; mov ecx,[b]; add eax,8; push eax; ...; add ecx,8`) is an
+  inline taking both as parameters; `this` chains and first arguments read
+  in front of float pushes are inline getters in the argument list.
+- `[vc8]` **/GS copies every pointer parameter into the frame**, so a
+  parameter copied in the prologue is a pointer whatever the port's type
+  says; the dead copies' slots are reused by float temporaries.
+- `[vc8]` **Conversions written inside a loop are hoisted, but in
+  statement order:** `fild; fstp t; fld t` for the second table entry
+  BEHIND the first element's store means `(float)X[k] + d[2 * j]` was
+  written in the loop body, not two float locals in front of it.
+- `[vc8]` **A second absolute value with one round trip less** than the
+  first is written inside the comparison (`fabs(y1 - y2) + ax < k`) while
+  the first is a named float local.
+- **Tool trap: a diff that masks jump targets hides a `case` wired to the
+  wrong block.** After a control-flow rewrite that does not reach a full
+  match, compare the raw bytes outside relocations or read the targets.
