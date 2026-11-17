@@ -5733,3 +5733,39 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A variant script that `exec`s another variant file must not share
   its option variable**: the inner assignment wins and every variant
   builds the same source. *(tool trap)*
+- `[vc8]` **A constructor whose first stores sit in front of the body's
+  has members with inline constructors.** VC8 stores the vtable
+  pointer, runs the member constructors, then the body; fields
+  cleared in the body (or in an initialiser list of plain fields, or
+  through an inline helper) are scheduled freely, so the port shows
+  a body store in front of the vtable store, or the zeros behind the
+  pushes of the base call. `struct Par { int a, b; Par() { b = 0;
+  a = 0; } } par;` as a member pins them. Try the layouts on a mock
+  class of the same layout in the port's own file before touching
+  the header. *(match)*
+- `[vc8]` **A pair assigned from a temporary takes one register per
+  word** (`xor edx,edx ... mov [a],ecx; mov [b],edx`, `mov
+  ecx,K; mov edx,ecx`): `*(Par *)p = Par(K, K);`; the order of the
+  constructor's two stores decides which word gets the register
+  that is already live. *(match)*
+- `[vc8]` **The arm's first instruction in front of the conditional
+  jump (`test eax,eax; mov ecx,esi; jne`) is the else call written
+  twice**: `if (n) { if (!f()) T(); else N(); } else N();`. The `&&`
+  form, early returns, a flag, goto and the ternary keep the jump
+  first. *(match)*
+- `[vc8]` **A run of equal stores with a load or constant in the
+  middle is a counted loop** the compiler unrolled (`for (i = 0; i <
+  32; i++) g[1 + i] = 0;`); the same stores written by hand hoist
+  the load and keep one zero register across earlier calls.
+  *(match)*
+- `[vc8]` **An inline helper is a boundary for hoisted argument
+  loads**: blocks of stores done through a small inline keep a
+  later stack-argument load behind the first block. *(match)*
+- `[vc8]` **A second constant register loaded next to the first
+  (`xor eax,eax; or ecx,-1`) with its stores behind the first's**:
+  the second constant's statements are written BETWEEN the first's
+  (the first is still live; the scheduler sinks the stores). Written
+  after them the register is reused. *(match)*
+- **Compare positionally when a function repeats a block** (two
+  inlined `memcmp`s): a text diff misaligns and reports the whole
+  function. *(tool trap)*
