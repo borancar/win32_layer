@@ -5658,3 +5658,36 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **When a shared block (a macro, a header) matches in one function,
   apply it to its siblings before reading them**: one function that had
   resisted several rounds matched at the first build. *(match)*
+- **Turn a proven idiom into a diff scan.** Once a spelling is known
+  (here: the one-word record read, `mov r,[r+N]` in the image where
+  ours has `mov r2,[r+N]`), grep every unmatched port's diff for its
+  signature and open the hits smallest first: two ports matched at the
+  first build. Filter by hand: a vptr read reuses its register in any
+  virtual call, and a list walk `p = p->next` is itself. *(match, 2
+  functions)*
+- `[vc8]` **A pointer chain read twice is spelled per site**: `mov
+  eax,g; mov eax,[eax+A]; mov eax,[eax+B]` (every link a record by
+  value) at one use and `mov edx,[g]; mov eax,[edx+A]; mov eax,[eax+B]`
+  (a plain first link, the last a record) at the next. Using the
+  all-record accessor at both sites exchanged two callee-saved
+  registers across the whole function; the mixed pair matched.
+  *(match)*
+- `[vc8]` **A named record plus a temporary in one constructor call
+  stores the named one first** (`Box box; ...; T obj(&box, &Colour(255,
+  0, 0), ...)`), two temporaries store the last argument's first. A
+  named record built by a constructor that takes a pair *by value*
+  (`BoxP c(x, y, *(Pair *)&m->w)`) loads both words in front of the
+  stores. *(match, 3 functions)*
+- `[vc8]` **`mov [esp+N],esp` in front of a call with a record built in
+  the argument area** is a by-value parameter whose class declares a
+  copy constructor. Declare it for the original compiler only: a
+  non-trivial copy changes how other ABIs pass the argument. *(match)*
+- **A port's helper with no address of its own, in line in the image,
+  may need `__forceinline`**: in a function with an EH frame a plain
+  in-class definition stayed a call. *(closer: 62 lines to 12)*
+- **Check the virtual slot number of every stand-in class against the
+  image when the diff is down to one line**: a `[eax]` against
+  `[eax+4]` was a port bug (one virtual too few), not a codegen
+  difference. *(match, behaviour fix)*
+- **Variant scripts must rebuild after restoring the source**, or the
+  next diff reads the last variant's object. *(tool trap)*
