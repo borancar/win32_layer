@@ -5453,3 +5453,9 @@ mostly header-less, so the lever is what else is defined in the unit.
   arguments** (a reach by `const float &`, kinds and sounds as `int`s, a
   differing tail under `if (kind == K)`) keep the bytes of each: diff the
   siblings' image text first to find the constants. *(match)*
+- `[vc8]` **Address-taken locals share a dead parameter's stack slot only
+  when their lives end at a block.** Sign: the image writes an out-value
+  into a parameter's home slot (`lea ecx,[esp+param2]; push ecx`) and a
+  second out-value later into the same slot; one variable reused, or two in
+  function scope, get slots of their own (`sub esp` 4 or 8 larger). Put
+  each in its own `{ }` with the code that reads it. *(match)*
