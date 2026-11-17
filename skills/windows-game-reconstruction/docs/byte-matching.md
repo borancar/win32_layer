@@ -6010,3 +6010,42 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[tool]` **A disassembly diff that masks addresses does not compare
   constants** (`0.1` against the double of `0.1f` showed no
   difference): confirm with the byte comparison. *(near miss)*
+- `[tool]` **List the direct referrers of an address** (`E8`/`E9`
+  rel32 hits plus absolute dwords, with the containing function): a
+  function with direct callers only is a static, and its callers name
+  the functions of the original file. Rebuild that file whole, in
+  address order; several ports match by the move alone. *(match, four)*
+- `[vc8]` **`mov eax,f; and al,2; neg al; sbb eax,eax; neg eax; add
+  eax,1` is `(f & 2) ? 2 : 1`**; `((f & 2) != 0) + 1` gives `shr; and;
+  add`. `sbb; and eax,K; add eax,L` is the same `?:` with two
+  constants. *(match, two)*
+- `[vc8]` **A dead `jmp top` plus padding right behind an early `ret`
+  is `do { r = f(); if (r == LOST) g(); } while (r == LOST);`**: the
+  recovery inside the body, the test written twice. `for (;;)` with a
+  `break` and `while ((r = f()) == LOST) g();` both duplicate the
+  call. *(match)*
+- `[vc8]` **Locals set to the same constant are permuted as a set**:
+  the first declared gets the stack slot, the last the register the
+  early compare borrows; declare them behind the early return. Six
+  orders, one loop. *(match)*
+- `[vc8]` **Zero stores in a scrambled order (0, 3, 1, 2, tail) are an
+  inline `memset` of a record**, followed by member stores in the
+  record's own order; the `/GS` cookie of such a function may come
+  from a `char[8]` inside the record (a GUID). *(match)*
+- `[vc8]` **A running value kept in a stack slot across calls is a
+  small class with inline members** (a checksum: constructor, `Add`,
+  `Value`); a table word named in a temporary inside the member gives
+  `mov; shr; xor reg,reg`, the single expression folds the table into
+  the `xor`. *(match)*
+- `[vc8]` **The register parameter of a static need not be the first
+  in the list**: when the stack parameter is loaded in front of the
+  register copy, move the register parameter behind it. *(match)*
+- `[vc8]` **`test al,al; je F; mov al,1; jmp end` at several exits
+  with one shared `F: xor al,al` is `if (f()) return true;` in every
+  arm of an `if`/`else if` chain with ONE `return false;` behind the
+  chain**; `test al,al; setne al` is `if (f()) return true; return
+  false;` together. `return f() != 0;` on a `char` callee gives `neg
+  al; sbb; neg`, on a `bool` callee nothing. *(match)*
+- `[vc8]` **`mov r,[z+tab]; shl i,5; add i,r` is the record array
+  indexed at every use** (`z->tab[i].p[0] + z->tab[i].q[0]`); a named
+  element pointer folds the table load into the `add`. *(match)*
