@@ -5421,8 +5421,35 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **`x ? x->m ? x->m : x : x` compiled as `cmp; je L; mov r,[x+m];
   cmp; jne M; L: mov r,x`** is an inline with a local: `{ T *v; if (!b ||
   !(v = b->m)) v = b; return v; }`. *(match)*
-- `[vc8]` **Open (a family of ~14 functions):** the image stores a run of
-  ones (`mov eax,1; mov [m],eax ...`), then computes `flag == 0` in `eax`,
-  then loads the next constant into `eax`; ours computes the test in `ecx`
-  in front of the ones for every statement order, spelling, chained
-  assignment, helper or local tried. *(open)*
+- `[vc8]` **A `setcc`/`sbb` value between runs of constant stores in the
+  "wrong" register** (the image: `mov eax,1; stores; xor eax,eax; cmp
+  [flag],ebx; sete al; ...; mov [m],eax; mov eax,5`; ours computes the test
+  in `ecx` in front of the ones and loads the 5 early, for every statement
+  order, ternary, `m = flag == 0`, `bool`, helper): the value is a **local
+  assigned in both arms of an `if`**: `int k; if (flag) k = 0; else k = 1;
+  m = k;` (`k = 100; else k = 0;` for `neg; sbb; and`). The branch-free form
+  is made late, after the constants got their registers. One fix matched a
+  family of 17 functions. *(match)*
+- `[vc8]` **A callee defined in front of its caller in the same file tells
+  the compiler what it writes, without `/GL`.** Signs: members of an escaped
+  local stay in registers across the call (`mov esi,[d.a]; push esi; call f;
+  ... cmp esi,ebx`), a zero stored through the member's register (`xor
+  esi,esi; mov [d.a],esi`) with another zero register live. No local copy,
+  reference, inline or type reproduces it; moving the callee's body into the
+  file, in front of the caller (address order), does, with the plain source
+  (`f(d.q, d.a); ... d.a = 0; ... if (d.a)`). Put functions in the file of
+  their address neighbours before fighting register differences around
+  calls. *(match)*
+- `[vc8]` **The same inline written with `return` in both paths** (`{ T *v;
+  if (b == 0 || (v = b->m) == 0) return b; return v; }`) takes its register
+  after the other values loaded for the same call; with the result assigned
+  to the local (`v = b; return v;`) it takes the first free one. Try both
+  when an inlined select is one register off. *(match)*
+- `[vc8]` **`mov ecx,[g]; mov ecx,[ecx+off]` in front of the argument
+  pushes of a member call** is the object in a local (`M *m = g->mapa;
+  r = m->F(a, b);`); in the call expression it loads after the pushes and
+  moves the result's register. *(match)*
+- `[vc8]` **Sibling functions from one `__forceinline` body with constant
+  arguments** (a reach by `const float &`, kinds and sounds as `int`s, a
+  differing tail under `if (kind == K)`) keep the bytes of each: diff the
+  siblings' image text first to find the constants. *(match)*
