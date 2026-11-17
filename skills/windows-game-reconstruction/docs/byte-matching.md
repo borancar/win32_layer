@@ -5882,3 +5882,38 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Build trap:** when every object depends on every header, `make
   match` after a header edit rebuilds the tree serially; run `make -jN`
   first. *(tool trap)*
+- `[vc8]` **Stores that sit between the derived vptr store and the first
+  member-constructor call are member initialisers: those fields belong
+  to the DERIVED class.** Body statements can never come in front of a
+  member constructor. When a port's shared header puts the fields in
+  the base and the base constructor out of line, give the constructor a
+  file of its own with stand-in classes of the same names: a small base
+  with its constructor inside the class (the image has it in line),
+  the fields as members with default constructors and initialisers.
+  *(3 matches)*
+- **Stand-in classes for a constructor are safe with single inheritance
+  only.** A non-MSVC native build takes the vptr's address point from
+  the class as declared; with several bases the secondary address
+  points depend on the number of virtuals in front, so a shortened
+  stand-in stores wrong vptrs. Use the real header there. *(hazard)*
+- `[vc8]` **A float "global" in `.rdata` is a literal.** Read its value
+  from the image before declaring it `extern`: the same `fld` is
+  scheduled differently for a variable (two bytes in one constructor).
+  *(match)*
+- `[vc8]` **A small record at an odd slot (`[esp+0x1a]` for six bytes)
+  is a temporary in the argument list**; named locals sit at 4-byte
+  boundaries, and local arrays take a security cookie. Give the record
+  a constructor and a conversion operator for the pointer parameter.
+  *(2 matches)*
+- `[vc8]` **A virtual called on a local of known type is inlined**: the
+  image has the callee's test and call in place of the call. *(closer)*
+- `[vc8]` **`(float)(c - K) / 80.0` repeated ends in `fidivr`**; `(c -
+  K) / 80.0` gives `fild; fdivrp` for the last one. *(match)*
+- **Variant-tester trap:** a tester that restores the source with its
+  old timestamp must delete the object before BOTH builds, or a variant
+  written in the same second as the last build shows the previous
+  result; and filter compiler output on `error`, not ` error `. *(tool
+  trap)*
+- **The reverse inline scan:** list callees the image CALLS that ours
+  does not, defined in our same object: the helper is visible where it
+  must not be. *(scan)*
