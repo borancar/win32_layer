@@ -5319,3 +5319,41 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A matcher that reports a difference of zero bytes** is reporting a
   relocation target: a constant with another value (`0.0001` against
   `(double)0.0001f`), or another symbol.
+- `[vc8]` **A helper whose arguments arrive in registers no keyword
+  gives (a pointer in `ecx` with a plain `ret`, arguments in `esi`,
+  `edi`, `ebx`, the caller popping a float) is link-time code
+  generation, and it CAN be had**: copy the body as `static
+  __declspec(noinline)` into a file of its own, add two callers that
+  pass different arguments and are reached through `volatile` function
+  pointers from `main`, compile with `/GL`, link with `/ltcg`, compare
+  the linked code. Pointers go to registers, floats and by-value records
+  stay on the stack. A function "returning into `edi`" is a by-value
+  class return whose hidden pointer became a register argument. Keep the
+  plain port for the native build; list ports whose notes name a register
+  convention and try them all. *(three matches from the list's first
+  five)*
+- `[vc8]` **A comparer for linked `/GL` code must follow
+  incremental-linking thunks**: the original calls `jmp` stubs, the
+  symbol table names their targets.
+- `[vc8]` **Three floats copied with integer moves between float
+  stores** are a record assignment (`*(Pod *)&o->x = *(const Pod *)p;`),
+  written in front of the float assignments that surround it in the
+  code. *(match)*
+- `[vc8]` **`cmp eax,ebx` against a zero register behind a lookup**
+  (ours `test eax,eax`): the lookup's result and the object created when
+  it is null are one variable. **held**.
+- `[vc8]` **Two callee-saved registers exchanged over a whole function
+  follow the weight of the uses inside loops**: spell a loop's stores
+  through the object (`a->m.v[i]`) instead of a pointer local, or move a
+  loop into a helper, and the two swap. Dead locals add no weight.
+  **held** *(715 -> 58, open)*.
+- `[vc8]` **Frame slots that seem shared by live variables** are one
+  vector local reused as scratch (a point's copy, a count as float, a
+  sum, all in the slots of a vector that was dead in between); pass it
+  by reference to the inline that needs the scratch. Named floats keep a
+  later sum's operand order; constructor-argument temporaries are loaded
+  first. **held**.
+- `[vc8]` **A `{0}`-looking prologue of one dword, one byte and a
+  `memset` of n-1** in a function that returns a class by value on two
+  paths: the dword is the compiler's "result constructed" flag, the rest
+  is `char buf[n] = "";`. *(match)*
