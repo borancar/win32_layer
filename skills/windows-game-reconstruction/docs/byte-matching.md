@@ -6352,3 +6352,46 @@ mostly header-less, so the lever is what else is defined in the unit.
   preserves `ecx`. Only a `/GL` unit holding both reproduces it (take
   the leaf's address so it keeps its convention); no pointer cast in a
   plain build does. Check what else `/GL` moves before relying on it.
+- `[vc8]` **The xored cookie pushed in the prologue with NO check call
+  at the end is an EH frame, not a buffer** (every EH prologue of a
+  `/GS` build has `mov eax,cookie; xor eax,esp; push eax`). A port
+  without it wrote a `new T(args)` as allocation plus an init call, a
+  constructor as a member function, or destroys a local by hand. Scan
+  for it: the original starts with `6a ff 68`, the port does not.
+- `[vc8]` **A local object with its destructor**: declare the real
+  class (the RTTI name, so the vtable symbol is the original's) with
+  its constructor, and either an INLINE destructor whose body is what
+  the function's tail does (the vtable store and the last EH state are
+  its) or none at all (the normal path then calls the base's
+  destructor directly while the unwind funclet uses the class's own
+  implicit `??1`, a real one-jump function: give it its address, or the
+  matcher reports zero differing bytes).
+- `[vc8]` **Everything a constructor stores before its first
+  out-of-line member-constructor call is the initialiser list**; the
+  rest is the body. A matched sister class's source text gives the
+  member records (default constructors for the zero and one stores).
+- `[vc8]` **A static helper with a buffer, called from every arm**, is
+  in line in the original and the buffer (and its cookie) is the
+  caller's; with it goes one result variable and a single return.
+- `[vc8]` **`and esp,-8` with a frame pointer in the port only**: a
+  `char[8]` local (the compiler aligns it). The original's 8 bytes are
+  a smaller array rounded up (`char[5]`).
+- `[vc8]` **A zero the original does not thread past the test behind
+  an inlined call (`jmp; xor eax,eax; L: cmp eax,r`)** is a result
+  variable INSIDE the inline (`int r; if (c) { ...; r = f(); } else r
+  = 0; return r;`); `return` per arm, a ternary or a nested inline
+  thread it.
+- `[vc8]` **An inline that sets a member and the caller's local
+  through a reference parameter** keeps the value in one callee-saved
+  register on every path (the fail path's `xor r,r; mov [member],r`),
+  and later uses need no reload.
+- `[vc8]` **A record kept in memory in ascending order where the port
+  scalarises it backwards** is default-constructed and filled field by
+  field, not built by its constructor.
+- `[vc8]` **A table of words stored under a guard bit** is a function
+  static array of records with constructors, not a const table copied.
+- **Compiler-conditional vtable stores are usually redundant**: when
+  the native build maps a class's vtable symbol to the original's data,
+  the other compiler's own constructor already stores that address.
+  Check by counting the stores of the constant in the native
+  disassembly before and after removing the guard.
