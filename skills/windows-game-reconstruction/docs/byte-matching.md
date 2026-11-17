@@ -6538,3 +6538,8 @@ mostly header-less, so the lever is what else is defined in the unit.
   loop spelled `if (n <= 0) return; p = table; do { .. } while (..)`; a
   `for` hoists the load above the test. **`mov ecx,eax` on a returned
   temporary** is a chained call, a named temporary gives `lea`.
+- `[any]` **A value that stays in `eax` from entry to `ret` while all
+  scratch values use other registers is the function's return value.**
+  A `void` port keeps it elsewhere and differs by a register rotation
+  throughout. Make the function return it (rename the symbol, update
+  every declaration); callers that ignore the result are unchanged.
