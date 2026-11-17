@@ -6316,3 +6316,39 @@ mostly header-less, so the lever is what else is defined in the unit.
   only one way at a time (`__forceinline` without `throw()` plus a
   `throw()` `operator delete` for the first, `throw()` for the second):
   check both symbols before applying either. **open**
+- `[vc8]` **Scan for the `/GS` cookie in one build and not the other**
+  (references to `___security_cookie`): it names the type of ONE local.
+  Ours has it, the original not: a `short[3]`/`unsigned short[3]` colour
+  is a three-short record with a constructor (often a temporary in the
+  call), `char pad[N]` fillers of an API descriptor are `unsigned`
+  words (check the real size against `sub esp`), `unsigned char
+  desc[0x6c]` is a record of words. The original has it over an EMPTY
+  frame (`push ecx`, only the cookie stored): a dead array with its
+  address in a dead pointer (`char dead[16]; char *q = dead;`); the
+  array alone or a store into it does not give it. A `LARGE_INTEGER`
+  union gives the cookie, a two-field struct does not.
+- `[vc8]` **A local kept in a PARAMETER's slot** (`lea reg,[esp+N]`
+  above the return address, no frame slot): written through the
+  parameter's address (`int *dc = (int *)&surface;`, or a placement
+  `new (&p) Color(...)` over a by-value record once its fields are
+  read). Read the fields into locals FIRST, construct second, fill the
+  other record third: that order schedules the stores behind the
+  pushes as the original has them.
+- `[vc8]` **`cmp eax,<zero register>` after each of several HRESULT
+  calls is one result variable tested before each call**: `r = a();
+  if (r >= 0) r = b(); if (r >= 0) r = c(); if (r >= 0) return;`. The
+  `&&` chain and nested `if`s give `test eax,eax` and other registers.
+- `[vc8]` **Zero differing bytes but the matcher reports a difference:
+  a relocation names another function.** List the relocations against
+  the original's targets; here the port called the wrong sibling (a
+  full shutdown where the original only releases two objects).
+- `[vc8]` **A search with unsigned jumps, the value compared first and
+  no `i == n` re-test** is an inline: `unsigned n = s->n; for (unsigned
+  i = 0; i < n; i++) if (a == t[i].key) return (int)i; return -1;`. A
+  dead `lea eax,[element]` at the end is the `this` of the element's
+  inline setter; `t[j].flags |= 3` leaves a dead `lea` of the field.
+- `[vc8]` **A virtual call with no `mov ecx,this` right behind a call
+  of a small leaf** is whole-program (`/GL`) knowledge that the leaf
+  preserves `ecx`. Only a `/GL` unit holding both reproduces it (take
+  the leaf's address so it keeps its convention); no pointer cast in a
+  plain build does. Check what else `/GL` moves before relying on it.
