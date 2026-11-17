@@ -6543,3 +6543,37 @@ mostly header-less, so the lever is what else is defined in the unit.
   A `void` port keeps it elsewhere and differs by a register rotation
   throughout. Make the function return it (rename the symbol, update
   every declaration); callers that ignore the result are unchanged.
+- `[vc8]` **A table scan with three induction variables (index, record
+  pointer, byte offset compared `jb`) is an UNSIGNED index with the
+  record pointer taken in the body**: `unsigned i; for (i = 0; i < N;
+  i++) { E *e = &table[i]; .. goto found; } .. found: use(&table[i]);`.
+  The compiler turns the unsigned test into the scaled offset and makes
+  the pointer itself (`xor i; mov p,table; xor off`). Three explicit
+  variables give the same code with the offset's `xor` in front of the
+  table load, whatever their order. One idiom matched five functions.
+- `[vc8]` **Two loads then two stores of adjacent ints** is a two-int
+  record assigned from a constructor temporary (`*(Pair *)&r->w =
+  Pair(m->w, m->h);`); named ints and setters load the lower address
+  first. The same record copied twice from a local loads x in front of
+  the y stores.
+- `[vc8]` **A float member stored and reloaded from the member itself**
+  (`fstp [m]; fld [m]`) is written inside an inline operator of a vector
+  record (`pos += vel`, `vel *= k`); plain member statements round-trip
+  through a frame slot. A value assigned in both arms of an `if` merges
+  into one `fstp`; a float local for it brings the round trip back.
+- `[any]` **`mov r,1` between a compare and its jump** means the flag is
+  set in front of that test (`if (a) { done = 1; if (b) {..} }`), not
+  inside it: a behaviour difference in the port. Read where the jump
+  goes before trying forms. An extra call whose result is dropped
+  (`fstp st(0)`) is a statement the port lost.
+- `[vc8]` `sub eax,0; je; sub eax,1; je` is a `switch`; a chain of `cmp
+  eax,N; jne` in an odd order is an if / else-if chain. `movzx r,ax` is
+  `(unsigned short)w`, `and r,0xffff` is `w & 0xffff`.
+- `[any]` **A diff tool that masks jump targets reports 0 lines for two
+  functions that differ in which block a jump reaches.** List the raw
+  byte differences outside relocations before promoting a match; two
+  textually equal exits (`Close(); return 0;` twice) are not one label.
+- `[any]` **A stand-in with another calling convention for a member
+  whose `this` is still in `ecx`** (a `static __stdcall` under the
+  original compiler, the member under the native one) is not needed:
+  the plain member calls its sister without a `mov ecx` and matches.
