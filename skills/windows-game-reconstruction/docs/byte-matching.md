@@ -5521,3 +5521,42 @@ mostly header-less, so the lever is what else is defined in the unit.
   body**: the comparison follows the caller's relocation into the callee,
   and a logically equal spelling (`!((f >> 2) & 1)` for `~(f >> 2) & 1`)
   fails the caller with zero differing bytes.
+- `[vc8]` **Diff the image against itself before porting a sister.**
+  Strip the addresses from two listings and `diff` them: a helper often
+  exists two or three times with different conventions (a `static` with
+  register arguments, a `__cdecl` copy behind a thunk, a member that
+  never reads `this` and ends in `ret N`). One matched source then
+  matches the others for a build each; only a constant's type may differ
+  (`fcomp DWORD` against `fcomp QWORD` of `(double)0.0001f`). *(3 matches)*
+- `[vc8]` **`ret N` with the first argument read from the stack, and
+  `mov ecx,reg` at the call sites**: a member function that does not use
+  `this`, not `__stdcall`.
+- `[vc8]` **A dot product through an inline member of a small record**
+  (`V2 n(d.y, -d.x); c = n.Dot(p);`) loads the record's member in front
+  of the other operand and keeps the record's unused word in the frame;
+  written out, the other operand is loaded first and multiplied from
+  memory. *(3 matches)*
+- `[vc8]` **A result built member by member** (`r.x = ...; r.y = ...;
+  r.z = r.y * b + r.x * a + c; r.x -= ox; return r;`) shares one scratch
+  slot between the members and reloads `r.x` for the last statement;
+  float locals copied into the members stay on the x87 stack instead. A
+  by-value return (hidden pointer, `mov eax,ecx`) and an explicit out
+  pointer are different code. *(match)*
+- `[vc8]` **Address-taken locals: one variable per block.** When two
+  uses of "the same" out-parameter slot are far apart (a loop's
+  parameter, later a call's), declare one variable in the block of each
+  use; they then share a frame slot. One function-scope variable takes a
+  slot of its own whose position no declaration order changes.
+  *(match, 708 bytes, the last 32 lines)*
+- `[vc8]` **Nested `if`s order the failure tails**: `if (a && b) { if
+  (c) { ... } }` lays the inner failure tail first, `if (a && b && c)`
+  the outer one. *(match)*
+- `[vc8]` **A static called from several files can live in an include
+  file**: each includer gets its own static copy (same address in the
+  comparison); for a second compiler that needs one external
+  definition, guard the body so that one file defines it and the others
+  see a declaration. *(match, three callers)*
+- **Do not delete a register-convention wrapper before the wrapped body
+  is close.** The wrapper gives the callers the original's registers; a
+  far body as a real static gives its own, and near-matching callers
+  fall back by hundreds of lines. Body first, wrapper last.
