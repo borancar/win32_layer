@@ -5357,3 +5357,17 @@ mostly header-less, so the lever is what else is defined in the unit.
   `memset` of n-1** in a function that returns a class by value on two
   paths: the dword is the compiler's "result constructed" flag, the rest
   is `char buf[n] = "";`. *(match)*
+- `[vc8]` **A helper with arguments in `esi`/`edi`/`ebx` and a plain `ret`
+  is a `static` function of an ordinary `/O2` file, not `/GL`.** VC8
+  gives a static whose address is never taken its own convention (the
+  listing says `_p$ = edi`). Make the port's helper static with its
+  callers in the same file and compare it object by object. `/GL`
+  differs: a `double` on the callee's stack realigns every caller
+  (`and esp,-8`) and constant arguments are removed. *(match)*
+- `[vc8]` **A `/GS` cookie changes a static's register arguments**: no
+  cookie in the image means no `char` array in the frame, and the
+  register set follows. *(match)*
+- `[vc8]` **`sub esp,0xc; mov eax,esp; fld/fstp [eax]` for a point
+  argument** is a by-value class with a user copy constructor. *(match)*
+- `[vc8]` **`fcom st(1); test ah,0x41; jne; fxch; fstp min; fstp max`**
+  is `if (a < b) { min = a; max = b; } else { min = b; max = a; }`. *(match)*
