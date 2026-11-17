@@ -5842,3 +5842,43 @@ mostly header-less, so the lever is what else is defined in the unit.
   float &nx, const float &ny)`). *(match)*
 - `[vc8]` **`fld [p+8]; add eax,8; fld [eax+4]` is a pointer to the
   member** (`float *o = &a->x; *o, o[1]`). *(match)*
+- `[vc8]` **A port belongs in its callee's FILE when the image inlines
+  the callee.** Without `/GL`, VC8 only inlines what is defined earlier
+  in the same translation unit, so a port in a file of its own can only
+  CALL a matched callee the image has in line. Scan: for every unmatched
+  port, the game callees OUR object calls (relocations) that the image
+  function never calls (`E8` targets, thunks followed), with the file
+  that defines each. Moving the port behind the callee took three ports
+  from 60-130 diff lines to 0-30 at once, and regrouping one library
+  (a socket layer split over three files) matched eight. The reverse
+  holds too: a helper the image CALLS must not be visible, or it gets
+  inlined and a matched caller drops. *(match, scan)*
+- `[vc8]` **A temporary with a destructor that takes NO unwind state
+  (the image never bumps the state byte around it) sits across a callee
+  declared `throw()`**: `a.Assign(&Queue(-1))` with `Queue
+  &Assign(const Queue *) throw();`. The specification does not change
+  the mangled name. *(match)*
+- `[vc8]` **Two constructors can be told apart by the store order
+  alone** (the member default-constructed with `sock = -1` first, the
+  temporaries with the zeros first and the socket last); and **zero
+  stores in FRONT of a call whose result lands in the same object are a
+  constructor that makes the call in its body**, not a constructor
+  argument (argument: call first) and not an assignment behind a default
+  constructor (keeps the dead store). *(match)*
+- `[vc8]` **A scratch register one off for the rest of a function, or a
+  pointer kept in `eax` while its target goes to `ecx`, is an inline
+  accessor on the object** (`(*obj)->Radius()`, `q.Socket()` both as an
+  argument and in the `== -1` test). Return `const float &` from a float
+  accessor: a `float` return stores and reloads. *(match)*
+- `[vc8]` **A rotated `while (c) { }` has an UNPADDED loop top; `if (c)
+  do { } while (c);` gets the alignment padding** (`lea esp,[esp+0]`).
+  A diff that is one padding instruction is the loop's spelling.
+  *(match)*
+- `[vc8]` **`add ecx,eax` right behind `mov eax,1` is `r = 1; n += r;`**
+  (`n++; r = 1;` keeps the count in `eax`). *(closer)*
+- `[vc8]` **An inline `operator=` taking the temporary by reference uses
+  the constructor's return value** (`mov edi,eax; push edi`): `r =
+  Pair(0);`. *(match)*
+- **Build trap:** when every object depends on every header, `make
+  match` after a header edit rebuilds the tree serially; run `make -jN`
+  first. *(tool trap)*
