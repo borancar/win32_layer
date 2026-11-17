@@ -5777,3 +5777,26 @@ mostly header-less, so the lever is what else is defined in the unit.
   stores interleaved are one record copy among plain copies**
   (`*(Tres *)&a = *(Tres *)&pa;`); plain assignments load them in
   another order whatever the statement order. *(match)*
+- `[method]` **Classify every unmatched port by its FIRST differing
+  instruction pair** (image shape against ours, registers, memory and
+  constants normalised) and rank the pair types; cache all diffs once
+  so further scans cost a second. Cross the list with the notes: the
+  ports mentioned at most twice are the unopened ones. *(scan)*
+- `[vc8]` **A call that lacks `mov ecx,this` in ours is a callee that
+  is a member**: a member that never uses `this` matches as a free
+  function, and only its callers show it. *(match)*
+- `[method]` **Arguments that "stay on the stack as the rest of the
+  format" are a getter without arguments**: `sprintf(buf, fmt, Dir(),
+  a, b)` pushes `b`, `a`, calls `Dir`, pushes its result; do not port
+  it as `Dir(a, b)` with a variadic trick. Read the callee: `mov
+  eax,K; ret`. *(match)*
+- `[vc8]` **`add eax,N; lea edx,[eax+M]` is the parameter advanced in
+  place** (`e += 6; f(e, &e[4]);`); `&e[6]`, `&e[10]` both compute
+  from the old value and a new local exchanges the registers.
+  *(match)*
+- `[vc8]` **`xor r,r; cmp; jae; load` is `p = 0; if (c) p = x;`**; the
+  ternary puts the zero into the else arm behind a jump. *(match)*
+- `[vc8]` **A pair built from two reads where the SECOND is read into
+  a temporary first** is an inline constructor `P(float a, float b)`
+  (arguments right to left); member stores read in statement order.
+  *(match)*
