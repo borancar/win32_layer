@@ -6049,3 +6049,28 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **`mov r,[z+tab]; shl i,5; add i,r` is the record array
   indexed at every use** (`z->tab[i].p[0] + z->tab[i].q[0]`); a named
   element pointer folds the table load into the `add`. *(match)*
+- `[vc8]` **Original translation units as address intervals**: with
+  incremental linking every cross-file call goes through the jump
+  table, so a direct `call` joins two functions of ONE original file.
+  Union the direct calls, turn the components into address intervals
+  and list, per interval, which of your files hold its functions. Read
+  each split before merging: copies of a small static that the callers
+  CALL are tidiness only; a merge moves a diff where the image inlines
+  the neighbour or the neighbour has a register convention. *(scan)*
+- `[vc8]` **Unreferenced out-of-line helpers right in front of a big
+  function are the inlines it was written with**: rewrite the port
+  with them as `static inline` helpers instead of hand-expanded
+  statements (a best-first search went from 270 differing lines to
+  46). Whether the caller reads a value itself or takes the helper's
+  result decides the registers: try both. *(closer)*
+- `[vc8]` **`mov eax,1; mov edx,size; mul edx; seto cl; neg ecx; or
+  ecx,eax` in front of `new[]` with a literal count** is `new T[k]`
+  inside an inline whose `k` is a parameter; the literal at the use
+  folds to `push size`. *(closer)*
+- `[vc8]` **The custom convention of a static follows its body and its
+  callee, not the parameter order, once the body differs from the
+  image**: a parameter the image passes through untouched sits in the
+  register the callee takes it in. Settle such a family bottom-up; a
+  caller cannot match before its callee. Retire the naked wrappers
+  first (statics called direct) so the diffs show only what is left.
+  *(closer)*
