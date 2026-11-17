@@ -6074,3 +6074,48 @@ mostly header-less, so the lever is what else is defined in the unit.
   caller cannot match before its callee. Retire the naked wrappers
   first (statics called direct) so the diffs show only what is left.
   *(closer)*
+- `[vc8]` **Instruction distance as a scan.** Disassemble every port and
+  its image function at the image's full length and class them: first
+  differing instruction late (60% or more), differences only in the tail
+  or the head, same mnemonics with other numbers, same mnemonics with
+  other registers, only jump targets, the SAME instructions in another
+  order. Each class has its own lever (the last one: scheduling, see the
+  sub-object inline below); the classes are short lists, read them all.
+- `[vc8]` **Count the `fstp [t]; fld [t]` round trips per function, image
+  against yours, and read what stands in front of each.** Behind a
+  `call` returning float: the call sits in an INLINE ACCESSOR (`static
+  inline float Ang(B *b) { return b->orient.Angulo(); }`; written in the
+  argument list it also gives the image's evaluation order). Behind an
+  `fadd`/`fild` in front of a float store: the expression is CAST
+  (`p[2] = (float)(x + q[2]);`), and the pointers are read again for the
+  next statement. Behind a call returning `double`, with the
+  destination's base loaded AFTER the `fld`: a `double` local stored
+  through a cast (`double f = v.Numero(); a[i].vel = (float)f;`); a
+  float local loads the base between `fstp` and `fld`.
+- `[vc8]` **Stores kept in source order in front of a later load of the
+  same object (yours hoists the load above them): the load is an inline
+  member of a SUB-OBJECT.** `((Ref *)(p + 0x128))->Listo();` with `void
+  Listo() { if (h) h->listo = 1; }` keeps the three stores in front of
+  `mov eax,[esi+0x128]`; a local, a typed view of `this` and the test
+  written out all hoist it. For reads: a pointer local to the sub-object
+  with inline getters (`Tam *t = (Tam *)(p + 0xdc); t->Ancho() / 2`)
+  keeps each read behind the store in front of it.
+- `[vc8]` **`xor reg,reg` in front of the first call, `mov eax,reg` at
+  the early exits, `lea r,[reg+1]` for a 1**: a result variable zeroed at
+  the top (`int r = 0; ... if (a && b) r = 1; return r;`). `return 0;` at
+  each exit gives `xor eax,eax` there.
+- `[vc8]` **A float stored with `fstp [esp+0xc]` in front of `mov
+  eax,esp` and three float copies** is a by-value position followed by a
+  separate float argument, not a four-float record (whose constructor
+  stores through `eax`). Declare the callee under a second name with the
+  split signature and give the symbol table both names.
+- `[vc8]` **Range tests keep the tested value first** (`a > m - 5.0 && a
+  < m + 5.0`: the value is loaded right behind its round trip and stays
+  on the x87 stack); the bound written first loads it last. The operand
+  order of every x87 compare is the image's `fld` order.
+- `[vc8]` **One float variable stepped in place** (one slot for the value
+  read, stepped and compared at the end): `if (obj < v) { if (v > 1) v -=
+  a; else v -= b; if (v < obj) v = obj; } else {...}`; a second variable
+  or the step chosen by `?:` first changes the whole shape.
+- `[vc8]` **Two arms with the same tail that the image does not merge:**
+  one arm ends in its own `return f();`, the other in `break`.
