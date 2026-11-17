@@ -5917,3 +5917,41 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **The reverse inline scan:** list callees the image CALLS that ours
   does not, defined in our same object: the helper is visible where it
   must not be. *(scan)*
+- `[vc8]` **A tested member is spelled out at every use when the image
+  copies the tested register per case** (`mov ecx,esi`, `mov edx,esi;
+  pop esi`) and reloads it in front of stores: `if (!s->vector)
+  return;` then `s->vector->x`; a function-level cached pointer keeps
+  one register everywhere. *(match, three functions)*
+- `[vc8]` **A float local lives on the x87 stack**: `fld K; fcom
+  st(1); fnstsw; fstp st(1)` then `fcomp [m]` against the same register
+  is `float eps = K;` used twice; two literals load twice. *(match)*
+- `[vc8]` **The operand order of a product follows the numbering of
+  its leaves, and named temporaries in front shift it**: when `fld
+  st(i); fmul [m]` against `fld [m]; fmul st(i)` survives every
+  spelling of the product, fold the named float temporaries of the
+  statement in front into its expression (or split them out). *(match)*
+- `[vc8]` **A member defined behind its caller in the same file is
+  inlined too**: what the image calls must live in another file; what
+  it inlines must live in this one. *(closer)*
+- `[vc8]` **Scratch registers one off through a whole function** can
+  be one named local for the last word of a copied record: copy the
+  record in one assignment. *(match)*
+- `[vc8]` **An array of records indexed per use** (`T[i].a`, `T[i].b`)
+  gives the unbiased base `this + i * size` in one register with full
+  member offsets; a named element pointer gives the biased one.
+  *(closer)*
+- `[vc8]` **`fild [k]; mov [k],eax` is one int reused** (`k = i % n;
+  ... k = i / n + 1;`). *(match)*
+- `[vc8]` **Two conditional temporaries with destructors (a flag
+  register with bits 1 and 2) are one `&&` expression**; `return ok !=
+  0` on a `bool` gives `xor eax,eax; cmp [ok],al; setne al`; an inline
+  accessor on a returned temporary gives `mov eax,[eax+off]; cmp
+  eax,-1`. *(match)*
+- `[vc8]` **A performance counter read as one `long long`** has no
+  `xor; or` pairs; `(float)(unsigned)x` adds a float 2^32, `(double)`
+  a double one. *(closer)*
+- **The callee-set scan:** per unmatched function, the image's call
+  targets (through thunks) against the port's call relocations, both
+  ways. It finds forwarders the port skipped (the port called the
+  leaf), callees the port has in line from any file, and wrong
+  callees; a tail call (`jmp`) is a call. *(scan, three matches)*
