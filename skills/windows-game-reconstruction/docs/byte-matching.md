@@ -6227,3 +6227,33 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **A callee that ignores `this` is still called with `ecx`
   loaded:** declare it as a member under a second name for the same
   address rather than as a free function.
+- `[vc8]` **A commutative operand order that no spelling gives follows
+  the occurrences of the operands in the function, so move it from
+  outside the expression:** name one operand in a local in front
+  (`int w = d->w; int n = d->h * w;` loads `h` first where
+  `d->h * d->w` loads `w` first in either written order), name the
+  operands of neighbouring sums pairwise (`float y4 = p[4]; float x3 =
+  p[3];` used in the first sums only), or drop one occurrence by using
+  the copy the original keeps in a slot at ONE other use. It works for
+  integer `lea [a+b]`, `imul` and x87 sums and products alike. Search
+  per operand (named or not) and per use (the name or the expression);
+  a background grid of a few hundred builds is cheap.
+- `[vc8]` **Scan for ports whose difference is only an order:** same
+  instruction count and the same multiset of tokens as the original.
+  Operand-order rows go to the lever above; an integer move scheduled
+  between `fld` and `fstp`, or a store placed behind a call's pushes,
+  did not yield to any source form.
+- `[vc8]` **Two vector additions where one exchanges the middle
+  component's operands and the next does not** are both the loop
+  `operator+=` (`for (i < 3) a[i] += b[i]`); `fadd QWORD [0.0]` on the
+  third component is the addend's constant zero folded, not a global.
+- `[vc8]` **A re-test of an inlined callee's result that should have
+  folded is the callee's found flag** (`if (hit) { r = e; ok = 1; } if
+  (ok) break;`): the callee alone compiles the same with `break`, only
+  its caller shows which form the source had. Vary the callee.
+- `[tool]` **A diff that masks jump targets can show zero lines for a
+  function that still differs:** a loop guard jumping to the other
+  `return` is one byte. Read the guard's target first when a function
+  has two returns (here the original answered 0 for an empty count).
+- `[vc8]` **One bound compared from memory, the other loaded:** the
+  loaded one is a `const float` object, the other a literal.
