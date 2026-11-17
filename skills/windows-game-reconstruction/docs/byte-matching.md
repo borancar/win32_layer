@@ -6197,3 +6197,33 @@ mostly header-less, so the lever is what else is defined in the unit.
   calls:** the body's inlined destructor folded because the local's
   pointer field is known null; keep the destructor, the EH frame needs
   it.
+- `[vc8]` **A counted loop your build unrolls (four copies of the body)
+  and the original does not:** VC8 unrolls `for (i = 0; i < n; i++)` when
+  the bound is a local or a parameter. Written bound-first
+  (`for (i = 0; n > i; i++)`) or with the bound read from the member in
+  the condition (`i < t->n`, no local copy in front) it stays one body
+  with the guard (`test n,n; jbe`). Scan for ports whose instruction
+  count is a quarter above the original's: they are these loops.
+- `[vc8]` **A missing EH state restore (`mov [state],-1`) behind a
+  function static's initialiser means a callee is too visible:** the
+  compiler drops the store when nothing after it can throw, and it knows
+  that of a callee defined in the same file. The original calling it
+  through the incremental-link thunk says it lived in another file: move
+  the callee out.
+- `[vc8]` **`jmp; xor eax,eax` between a builder's call and the store of
+  the pointer** is `p ? p->Init(args) : 0` with the builder declared as
+  returning the object (a constructor in disguise); `mul; seto; neg; or`
+  in front of `operator new[]` is `new T[n]` of a record type,
+  `new char[n * K]` has no overflow check.
+- `[vc8]` **Declare the result variable in front of a function static**
+  (`int r = 0; static int id = Find(...);`): the zero register is set
+  ahead of the guard test and serves the state store.
+- `[vc8]` **Read the frame size before the body:** a buffer the original
+  neither clears nor sizes shows as a larger `sub esp` and missing
+  stores; keep the zero fill under the portable compiler only.
+- `[vc8]` **A clamp inside the cast** (`(uint8_t)(v > 0 ? v >> 2 : 0)`)
+  gives `xor reg,reg` / `sar` and one byte store; the cast inside the
+  ternary gives a `movzx`.
+- `[vc8]` **A callee that ignores `this` is still called with `ecx`
+  loaded:** declare it as a member under a second name for the same
+  address rather than as a free function.
