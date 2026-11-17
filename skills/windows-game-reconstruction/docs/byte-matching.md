@@ -5287,3 +5287,35 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **A byte count that does not move while the source changes**
   means a frame-size or length difference is shifting everything: read
   the differing rows, not the count.
+- `[vc8]` **`fild; jge; fadd DWORD PTR [2^32]` is `(float)unsigned`**; the
+  double conversion adds a QWORD constant. Decompilers render the three
+  instructions as a `long double` temporary plus a hand-written
+  `+= 4294967296.0`, and ports keep that: write `(float)u`. Scan the
+  image of the unmatched ports for the float constant's address behind
+  `d8 05`. *(eight matches from one scan)*
+- `[vc8]` **A `char x[2]` member in a local record brings the security
+  cookie** (frame four bytes larger, cookie check at every exit): pad
+  with separate `unsigned char` members. Stores into a local record come
+  out in source order; a chain `a = b = c = 0` stores right to left.
+  **held**.
+- `[vc8]` **A float result stored twice into one slot** (`fstp [t]; fld
+  [t]; fstp [t]; fld [t]` behind a call): an inline helper that assigns
+  to its parameter, `v = (float)sqrt(v); return v;`. Returning the cast
+  expression gives two slots. *(match)*
+- `[vc8]` **One reload of a member pointer behind a test and none between
+  two stores through it**: the test reads through a pointer local, the
+  stores spell the member. Two pointer locals are merged; the member
+  spelled in the test reloads but changes x87 operand order. *(match)*
+- `[vc8]` **A body shared by several functions through a `noinline`
+  helper in a port** shows as a handful of tiny "differing" functions:
+  write the body out in each. **held**.
+- `[vc8]` **A register convention noted as unreachable can be a port
+  mistake**: a value the port keeps alive across a call (and the image
+  does not) takes a callee-saved register and shifts every argument
+  register. Re-read what the image stores before blaming link-time
+  code generation. A constant kept in a caller-saved register ACROSS a
+  call, on the other hand, is link-time code generation and cannot be
+  had. *(match / held)*
+- **A matcher that reports a difference of zero bytes** is reporting a
+  relocation target: a constant with another value (`0.0001` against
+  `(double)0.0001f`), or another symbol.
