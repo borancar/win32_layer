@@ -5371,3 +5371,26 @@ mostly header-less, so the lever is what else is defined in the unit.
   argument** is a by-value class with a user copy constructor. *(match)*
 - `[vc8]` **`fcom st(1); test ah,0x41; jne; fxch; fstp min; fstp max`**
   is `if (a < b) { min = a; max = b; } else { min = b; max = a; }`. *(match)*
+- `[vc8]` **The parameter order of a `static` helper decides which
+  register each pointer gets** (and the caller's `mov` order in front of
+  the call). Try every order before blaming the body. *(match)*
+- `[vc8]` **A local in a static callee can move a register argument**
+  (`int k = o->k;` made `o` arrive in `eax` instead of `edi`); the caller
+  then matches by itself. *(match)*
+- `[vc8]` **Count a custom-convention helper's stack arguments from its
+  own `[esp+n]` reads** (one argument read at two push depths looks like
+  two). *(match)*
+- `[vc8]` **Differences spilled as `QWORD` and hoisted in front of a loop**
+  are common subexpressions of a formula written in full at each use, not
+  `double` locals. *(match)*
+- `[vc8]` **Commutative float sums are ordered by where their leaves were
+  defined, not by spelling**: `u.x = e.y; u.y = -e.x;` then scaling both
+  gives the y product first; reordering the sum does nothing. *(match)*
+- `[vc8]` **Two address-taken locals take their frame slots from the push
+  order of the last call that uses them** (swap the helper's parameter
+  order), not from declarations. *(match)*
+- `[vc8]` **A value loaded before a call and pushed after it, or an inner
+  call made before the outer pushes**, is a named local for that argument.
+  *(match)*
+- `[vc8]` **One `||` condition gives one shared `return 0` tail at the
+  end**; separate `if`s place the tail behind the first test. *(match)*
