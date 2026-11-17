@@ -5440,6 +5440,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   (`f(d.q, d.a); ... d.a = 0; ... if (d.a)`). Put functions in the file of
   their address neighbours before fighting register differences around
   calls. *(match)*
+- `[vc8]` **The callee's register use is known too: `ecx`/`edx` read after
+  a direct call means the callee was defined in front of the caller.** VC8
+  keeps, per function already compiled in the translation unit, which of
+  `eax`/`ecx`/`edx` it writes (and whether it writes memory), and later
+  callers use it without `/GL`: `this` is never saved (`call f; mov
+  eax,[ecx+0x400]`), or sits in `edx` (`mov edx,ecx` at the top), or a zero
+  lives in `edx` across the call. Proof by stub: `__declspec(noinline) int
+  C::f(int) { __asm xor eax,eax __asm xor edx,edx }` in front of the caller
+  gives the image's code, the same stub with `xor ecx,ecx` the usual
+  `mov esi,ecx`. Cure: the callee's real definition in the caller's file, in
+  front of it, `noinline` on its declaration when `/O2` would inline it.
+  Find every case from the image instead of from diffs: per unmatched
+  function, after each direct call, a read of `ecx`/`edx` before any write
+  where the callee's own body does not write that register (skip `push ecx`
+  in front of `fstp [esp]`, the slot idiom). A file that says "kept apart
+  because a visible definition changes the callers' register use" is this
+  lever applied backwards for one caller. Four ports matched from eleven
+  hits; an over-claiming stub (empty body) changes most callers and proves
+  nothing, use the image callee's exact set. *(match)*
 - `[vc8]` **The same inline written with `return` in both paths** (`{ T *v;
   if (b == 0 || (v = b->m) == 0) return b; return v; }`) takes its register
   after the other values loaded for the same call; with the result assigned
