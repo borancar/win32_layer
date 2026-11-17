@@ -6165,3 +6165,35 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Tool trap: a diff that masks jump targets hides a `case` wired to the
   wrong block.** After a control-flow rewrite that does not reach a full
   match, compare the raw bytes outside relocations or read the targets.
+- `[vc8]` **The result variable is everywhere, not only in state steps:**
+  window-message handlers (`int r = 0; switch (m) { ...; goto resto; ...
+  default: resto: r = Base::Msg(...); break; } return r;`), searches
+  (`T *r = 0; ... if (ok) r = a; return r;` gives the zeroed callee-saved
+  register, the null test against it and `mov eax,reg`), nested `if`s
+  with the base call in the last `else`. A `1` parked in a callee-saved
+  register in front of a call is `r = 1;` written before the call.
+- `[vc8]` **A float root compared value-first against a DWORD constant,
+  with a round trip on each side of the call,** is the root written
+  inside the condition through an inline (`if (Raiz(dx * dx + dy * dy) >
+  17.0f && ...)`); a named float local loads the constant first, and
+  `k < d` compares against a QWORD constant.
+- `[vc8]` **`shr eax,16; cmp eax,5` behind a 16-bit compare of the low
+  word** needs the high word cast (`(unsigned short)(c >> 16) == 5`);
+  without it the shift folds into `and eax,0xffff0000; cmp eax,0x50000`.
+- **Read a field's width from the compares before tuning anything
+  else:** one key typed `unsigned short` where the image compares a
+  dword kept three functions of a file apart; retyping it matched one at
+  once.
+- `[vc8]` **A nullable sub-object read twice:** pointer local + ternary
+  for the first and the owner's inline getter for the second gives
+  `mov eax,ecx; test eax,eax` (a copy); two getters re-read the member;
+  two ternaries on the local merge into one test.
+- `[vc8]` **A member tested in memory and loaded again for the call**
+  (`cmp [b+off],0; je; mov ecx,[b+off]`) is the member written twice
+  through a typed local of the owner; with a call among the arguments
+  the receiver is cached behind the test, which is an inline getter
+  behind the member test (`if (b->m) b->M()->f(..., g())`).
+- `[vc8]` **A local with a destructor that only the unwind funclet
+  calls:** the body's inlined destructor folded because the local's
+  pointer field is known null; keep the destructor, the EH frame needs
+  it.
