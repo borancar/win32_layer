@@ -5560,3 +5560,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   is close.** The wrapper gives the callers the original's registers; a
   far body as a real static gives its own, and near-matching callers
   fall back by hundreds of lines. Body first, wrapper last.
+- `[vc8]` **Rank every unmatched port against the MATCHED functions, not
+  only against exact twins.** Mask every number in both instruction
+  streams, prefilter by length and mnemonic histogram, take the `difflib`
+  ratio; at 0.9 and above the matched neighbour's source text with the
+  constants changed matches at the first build (a decompiler-shaped port
+  differs in everything the neighbour's author already solved: member
+  records with constructors, static arrays of constructor temporaries,
+  typed scratch records). Read the neighbour's source before the image.
+  *(5 matches in one round)*
+- `[vc8]` **Fields of `this` reached through a cast pointer change a
+  virtual call**: with a by-value record argument copied between the
+  vtable load and the call, `char *t = (char *)this` (or a shadow struct
+  pointer) gives `add ebx,4` ... `mov edx,[ebx]`; real members of the
+  class give `mov edx,[ebx+4]`. Declare a local class with the members
+  (only the mangled name matters). *(match)*
+- `[vc8]` **A two-word record with a copy constructor passed by value
+  from a named local** (`{ T p(a, b); f(p); }`): both words loaded, `sub
+  esp,8; mov ecx,esp`, both stored. The constructor temporary as the
+  argument loads the second word first. *(match)*
+- `[vc8]` **Inline accessors called through a cast in each statement are
+  not merged**: `y = ((A *)p)->Y(); x = ((A *)p)->X();` reloads the
+  member both accessors test; one typed local for both merges the loads.
+  *(match)*
+- **Tool trap**: `objdump -d -r` on a COFF object garbles functions with
+  static locals (`.byte` runs), and a diff count built on it is wrong in
+  both directions. Take the function's bytes from its section, fill the
+  relocated fields, and disassemble both sides as raw binary.
