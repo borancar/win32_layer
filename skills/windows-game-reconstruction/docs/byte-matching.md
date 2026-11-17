@@ -6467,3 +6467,44 @@ mostly header-less, so the lever is what else is defined in the unit.
   inlines taking `T &` all enregister it; a record whose address
   escapes gives the frame but reloads behind calls. The tell is a frame
   4 bytes larger than ours with one `push` fewer.
+- `[vc8]` **Pick the work list by how seldom a function was opened.**
+  Join the closer scan (diff lines per unmatched port) with the count
+  of mentions of each address in the round records; ports with zero to
+  two mentions and 15 to 45 diff lines match within a dozen forms far
+  more often than the 2-line closers with ten mentions each.
+- `[vc8]` **A box built from two pair temporaries.** Stores in the
+  order y, h, x, w, with the first-computed coordinate kept unfinished
+  in a register until its store, are `Box b(Pair(x, y), Pair(w, h))`
+  with the constructor taking both pairs BY VALUE. The four-int
+  constructor stores the first coordinate at once in any store order.
+  A record temporary inside a call sits at the END of its padded slot
+  (a 6-byte colour at +2 of 8), a named local at the start.
+- `[vc8]` **Filled, then adjusted in place.** `mov r2,r1; add r2,3`
+  and `sub r1,3` where `x + 3` / `x - 3` would give `lea` / `add -3`
+  are two records filled from the argument (`a.x = p[0]; b.x = p[0];`)
+  and then changed (`b.x += 3; a.x -= 3;`).
+- `[vc8]` **Re-reads name the source.** A global re-read behind a call
+  where the port used the local it stored there is a local read back
+  from the global at that point. A member table re-read behind every
+  call and indexed with `imul` per iteration is the member written at
+  every use (`for (i = 0; m[i].kind; i++)`), not a cached pointer. A
+  pointer copied (`mov eax,edx`) at the top of each `case` is the owner
+  chain written in the switch and in each case (`c->shape->v[0]`).
+- `[vc8]` **Inline getters and sub-object inlines.** `movzx eax,WORD
+  [m]; cmp ax,K` is a getter returning `unsigned short`; a pointer
+  argument loaded in front of a pushed scalar is a getter too; `lea
+  r,[this+OFF]` kept over three uses is an inline member of the
+  sub-object. A getter may be right for one twin and wrong for the
+  other: try twins apart. Float `fsub [p+8]; add p,8; fsub [p+4]` with
+  one difference stored and reloaded is a distance inline taking both
+  points by const reference with the root inside.
+- `[vc8]` **`test eax,eax; setne bl` across a destructor call** is a
+  `bool` local holding `f() != 0`. **A 2-D table** indexed `t[row][i]`
+  at every use gives `lea r,[row*64+base]` for the walks and `shl; add;
+  mov [base+r*4]` for the store; a named row index does not.
+- `[vc8]` **A local declared in front of an early return** puts its
+  store between that test's `cmp` and jump, and can keep a ternary's
+  constant arm from folding into the test.
+- `[any]` **Ours longer with whole calls among the added lines is a
+  port defect.** Read the image before trying forms: the port may make
+  calls the original never made (copied from a sister function).
