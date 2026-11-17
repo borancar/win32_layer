@@ -6435,3 +6435,35 @@ mostly header-less, so the lever is what else is defined in the unit.
   compiler-conditional vtable stores holds for multiple inheritance
   too, once every `??_7X@@6B<base>@@@` symbol has its address; a class
   named differently from its vtable's class keeps the guard.
+- **A marker line whose name no object defines is a port nobody
+  compares.** A stand-in struct that derives from the real base and
+  declares a member with a virtual slot's name and signature makes that
+  member virtual: the object says `@@UAE...`, the hand-written symbol
+  line `@@QAE...`. Every scan that walks object symbols skips it, the
+  byte comparison never sees it, and a native build that binds by name
+  leaves the port unbound (the slot keeps calling the original code
+  while the port counts as "has native code"). Scan the symbol table
+  for marker names absent from every object after each round; fix the
+  name, but treat the fix as a behaviour change (a port that never ran
+  goes live).
+- `[vc8]` **`mov r1,[p+OFF]; add p,OFF; mov r2,[p+4]`** (first word
+  through the owner, pointer adjusted, second word through it) is a
+  two-word record passed BY VALUE to an inline constructor
+  (`Caja(int a, int b, Tam o) { x = a; y = b; t = o; }` with
+  `*(Tam *)&tile->ancho`); a const reference reads both through the
+  owner.
+- `[vc8]` **A member loaded into a register for a plain zero test,
+  with `xor eax,eax` at the exit**, is `int v = m; if (!v) return v;`.
+  **A masked bit kept and tested twice** (`and ecx,8; je A; cmp [m],0;
+  jne S; A: test ecx,ecx; jne out`) is `((e & 8) && m) || (!(e & 8) &&
+  (e & 1))` with the mask written twice; a named mask threads the jump.
+  **A counter that is only counted** (`sub r,1; jne`) is `for (i = 0;
+  i < n; i++)`, not `for (; n > 0; n--)`. `mov eax,A; jne; mov eax,B`
+  is `x = A; if (!m) x = B;`, the ternary gives `neg; sbb; and; add`.
+- `[vc8]` **Open: a local kept in memory while a callee-saved register
+  stays unused** (a result variable at the frame's lowest slot, or a
+  pointer stored to a home slot at each assignment and reloaded later).
+  `volatile`, one-field records, arrays of one, unions, references and
+  inlines taking `T &` all enregister it; a record whose address
+  escapes gives the frame but reloads behind calls. The tell is a frame
+  4 bytes larger than ours with one `push` fewer.
