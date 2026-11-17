@@ -5266,3 +5266,24 @@ mostly header-less, so the lever is what else is defined in the unit.
   the member reads, when exchanging operands, locals and casts do not.
   Bodies shared through a forced-inline helper are invisible to a sweep
   over the ports: open them by hand. **held**.
+- `[vc8]` **`fadd QWORD PTR [0.0]` (or `fsub QWORD PTR [5.0]`) in a vector
+  sum is a propagated float constant**: an inline `operator+=` or an
+  inline mover with float parameters, called with a vector whose z was
+  stored as `0.0f` or with literal arguments. The constant comes out as a
+  double memory operand, a negative one as `fsub`. A literal `+ 0.0` in
+  a statement gives `fldz` forms. A named zero variable is the answer
+  only for comparisons. *(two matches)*
+- `[vc8]` **A by-value class argument copied float by float with no
+  `mov [$T],esp` in a function with an EH frame**: user copy constructor
+  AND the call made by an inlined forwarding member; `throw()` does not
+  remove the store. *(match)*
+- `[vc8]` **Two values derived from one member read, kept in two
+  callee-saved registers across a call**: two locals computed from the
+  member itself in front of the call; from a local copy the compiler
+  keeps the copy and recomputes. **held**.
+- `[vc8]` **Two epilogues behind a flag test where yours is
+  `neg; sbb; not; and`**: `if (m & 4) r = 0; return r;`, not
+  `if (m & 4) return 0; return r;`. **held**.
+- `[vc8]` **A byte count that does not move while the source changes**
+  means a frame-size or length difference is shifting everything: read
+  the differing rows, not the count.
