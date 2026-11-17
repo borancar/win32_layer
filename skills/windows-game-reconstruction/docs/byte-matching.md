@@ -5618,3 +5618,43 @@ mostly header-less, so the lever is what else is defined in the unit.
   as the EH state slot.** A `mov byte [esp+N],0` in front of a call in
   a loop was `buf[0] = 0` on a local buffer, eight bytes of pushes
   away; the port lacked the statement.
+- `[vc8]` **A load that reuses its base's register (`mov ecx,[g]; mov
+  ecx,[ecx+4]; push ecx`) is the field read as a one-word record by
+  value.** Every pointer spelling (member, local, pointer or reference
+  accessor, cast, wrapper, `/O1`..`/Ox`) gives `mov ecx,[g]; mov
+  edx,[ecx+4]`. Declare `struct Ref { T *p; }` and read the field as a
+  struct copy: a local `Ref t = g->field;` or an accessor `Ref F() {
+  return *(Ref *)&field; }`, with `.p` at the use; an accessor that
+  fills the record member by member does not do it. The same cures a
+  member reloaded through `this` into a fresh register (`mov
+  [ecx+8],edx; mov ecx,[ebp+8]; mov [ecx+0xc],eax`). The original's
+  members were small handle classes. Reproduce such a puzzle in a
+  ten-line scratch file first: forty variants cost one minute there.
+  *(match, 6 functions)*
+- `[vc8]` **An inline setter taking that record by value sinks the
+  store behind the pushes of the next call** and keeps the base's
+  register (`mov ecx,[g]; mov ecx,[ecx+N]; push ..; lea edx,[buf];
+  push ..; push edx; mov [eax+4],ecx; call`); the plain member store is
+  emitted at once and frees `eax`. *(match)*
+- `[vc8]` **Small records built inside a constructor call are
+  temporaries, not named locals**: `T obj(&Box(0, 0, 0, 0), &Colour(0,
+  0xff, 0), 3, 0, 2);`. Signs: their slots overlap other scoped locals,
+  their stores come behind the pushes (last argument's first), the
+  frame is smaller than with locals. A `short c[3]` or `char n[32]`
+  local brings a `/GS` cookie the image lacks: use records and `int
+  w[8]`. *(match)*
+- `[vc8]` **A pair set from another object has three spellings with
+  three register footprints**: a pair returned by value (`P p =
+  f->Tam();` filled second member first), a pair constructed in place
+  (`*(P *)&dst = P(a, b)`, first member loaded first), and a two-`int`
+  inline setter, which emits the first one's instructions but leaves
+  the object's register taken, so later loads and a four-word copy
+  (`ecx, edx, ecx, edx` against `edx, ecx, edx, eax`) shift. Read the
+  shift as "a register is still held", not as a type difference.
+  *(match)*
+- **A constructor argument stored right behind the vtable store and in
+  front of a later member's constructor is a member initialiser**; in
+  the body it sinks behind all member constructors. *(match)*
+- **When a shared block (a macro, a header) matches in one function,
+  apply it to its siblings before reading them**: one function that had
+  resisted several rounds matched at the first build. *(match)*
