@@ -5478,3 +5478,46 @@ mostly header-less, so the lever is what else is defined in the unit.
   second out-value later into the same slot; one variable reused, or two in
   function scope, get slots of their own (`sub esp` 4 or 8 larger). Put
   each in its own `{ }` with the code that reads it. *(match)*
+- `[vc8]` **Register-argument wrappers are a work list.** Where a port
+  answered "the image passes arguments in registers" with a naked wrapper
+  (`push edi; push ecx; call Port; ret`), the original is a `static`
+  function and every caller was in its file. List the wrappers, find the
+  callers with a rel32 scan of the image, and merge: the callee `static`
+  with its real body in front, the callers behind it in address order,
+  the wrapper deleted (a static called from `__asm` has its address taken
+  and keeps `__cdecl`, so the wrapper itself blocks the match). Callers
+  come within a few instructions even while the static is still a port,
+  provided its registers come out as the image's; when they do not (the
+  convention follows the callee's body, not the parameter order), the
+  callers wait. Helpers that only matched under `/GL` matched as plain
+  statics once their callers shared the file. *(18 matches in one round)*
+- `[vc8]` **A parameter fed with a temporary is a `const T &`.** `call
+  Make; mov edi,eax; call F; mov edi,eax; <destructor>; test edi,edi`: the
+  temporary dies at the end of the statement that calls `F`, before the
+  result is tested (`x = F(o, b->Make()); if (x) ...`). A named local is
+  destroyed after the use and its address formed with `lea`. *(match)*
+- `[vc8]` **Operand order of a commutative float expression: put the
+  operands through an inline.** A plane height written out
+  (`y * p->b + x * p->a + p->c`) takes one product first whatever the
+  spelling once x and y sit on the x87 stack; an inline member with
+  by-value floats (`float Alt(float x, float y) { return b * y + x * a +
+  c; }`) gives the other. Likewise a vector zeroed inside an inline
+  constructor (`V(float a) { x = y = z = a; }`) against the same chain
+  assignment in the function, and a point built by a two-argument inline
+  constructor against two member stores: same stores, other product order
+  later. Try these before permuting the expression. *(4 matches)*
+- `[vc8]` **A comparison loads its plain operand first when that operand
+  is written on the left.** `fld p[2]` in front of the computation, then
+  `fcomp st(n)` from the computed side, is `p[2] >= (float)(z - K)`; with
+  the plain operand on the right the computed value is stored, reloaded
+  and the plain operand loaded last. `hb > ha + r1 || hb < ha - r2`
+  likewise. *(match)*
+- `[vc8]` **`xor eax,eax; push eax` for a constant zero argument** is a
+  one-word POD record passed by value; an `int`, a pointer or an inline
+  returning 0 give `push 0`. Two `(int)` conversions whose second word is
+  stored before its `fild` and sits next to the first are a two-`int`
+  record, not two locals (the frame is 4 bytes larger). *(match)*
+- `[vc8]` **A file-local copy of a matched static must carry the matched
+  body**: the comparison follows the caller's relocation into the callee,
+  and a logically equal spelling (`!((f >> 2) & 1)` for `~(f >> 2) & 1`)
+  fails the caller with zero differing bytes.
