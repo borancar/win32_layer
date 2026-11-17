@@ -6508,3 +6508,33 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[any]` **Ours longer with whole calls among the added lines is a
   port defect.** Read the image before trying forms: the port may make
   calls the original never made (copied from a sister function).
+- `[any]` **`new T(args)` pushing more than the port's `sizeof(T)` means
+  the class is short**, not that the original called a raw `operator
+  new`. A port that writes `m = operator new(N); m ? new (m) T(..) : 0`
+  to get the size has an extra EH state. Find the missing member (the
+  constructors write it through a cast), add it to the class, and remove
+  the fillers derived classes carried at that offset; rebuild everything
+  and confirm no match is lost. The native build then stops allocating
+  too little for derived classes without members.
+- `[vc8]` **Under /GS a pointer parameter is copied to a frame slot in
+  the prologue** (`mov eax,[param]; mov [esp+L],eax`, frame 4 bytes
+  larger) and read back from the copy; an `int` parameter is not. A port
+  that takes a pointer as `int` lacks the copy: retype the parameter
+  (rename the symbol, update every declaration and caller), or, where
+  the signature is shared widely, keep a typed local copy at the top,
+  which takes the same slot. Scan unmatched ports for the copy in the
+  image's prologue.
+- `[vc8]` **A difference stored first-first and loaded last-first in a
+  12-byte slot** is a vector record local filled field by field inside
+  an inline taking both points by const reference (`V d; d.x = a.x -
+  b.x; d.y = a.y - b.y; atan2(d.y, d.x)`); two float locals compute the
+  second difference first.
+- `[vc8]` **A handle kept in memory and re-read at the loop top** is a
+  member of one local record together with the buffer whose address is
+  passed out (`struct { int h; Find d; } b;`): the record escapes whole.
+  A loop entered by a jump into its test is `do { if (..) break; ..; }
+  while (..)`.
+- `[vc8]` **A pointer loaded behind the loop's entry test** needs the
+  loop spelled `if (n <= 0) return; p = table; do { .. } while (..)`; a
+  `for` hoists the load above the test. **`mov ecx,eax` on a returned
+  temporary** is a chained call, a named temporary gives `lea`.
