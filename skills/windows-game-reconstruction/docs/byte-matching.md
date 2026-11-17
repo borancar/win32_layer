@@ -5691,3 +5691,45 @@ mostly header-less, so the lever is what else is defined in the unit.
   difference. *(match, behaviour fix)*
 - **Variant scripts must rebuild after restoring the source**, or the
   next diff reads the last variant's object. *(tool trap)*
+- `[vc8]` **A zero register that is also the return value is a result
+  variable**: `T *res = 0; if (...) { ...; res = p; } return res;`
+  gives `xor ebx,ebx` at the top with every zero of the function read
+  from it and `mov eax,ebx` at the failing exit; `return 0` on those
+  paths gives literal zeros and `xor eax,eax`. The cousin: a single
+  final `return 0;` behind nested `if`s shares one `xor eax,eax`
+  epilogue between all failing paths. *(match, 3 functions)*
+- `[vc8]` **A plain inline setter flips the first free register**: `p->m
+  = v;` took `edx` for `p`, `p->Set(v)` (`void Set(T *s) { m = s; }`)
+  took `ecx`, and the rest of the function's registers followed (57
+  diff lines to 9). Try the setter when a store's base register is the
+  only difference. *(match)*
+- `[vc8]` **Floats moved with integer `mov`s are a record copy; its
+  spelling places the loads.** Through an inline setter taking a
+  reference, with the source spelled as the *member* (`o->SetPos(*(P
+  *)m)`): destination base first, offset folded. Same source through a
+  pointer local: source word first. Written at the use (`*(P *)&o->x =
+  *(P *)r`): an unfolded `add eax,8`. All three loads in front of the
+  stores: the record *by value* (an inline `Set(P v) { *this = v; }`,
+  or a by-value record parameter where the port had three floats).
+  *(match, 4 functions)*
+- `[vc8]` **A member tested through an inline accessor puts the compare
+  in front of the previous statement's store**: `cmp [this+N],0; mov
+  [this+M],eax; jne` is `m = v; if (!Get()) ...` with `T *Get() {
+  return p; }`; the plain member test stores first. *(match)*
+- **A port's cached pointers and hand-written `p ? p->f : 0` locals are
+  often the class's inline accessors called at each use** (`int H() {
+  return r ? r->h : 0; }`, `void Pos(int x, int y) { if (r) { r->x = x;
+  r->y = y; } }`): repeated tests, a reload for the second store and a
+  late callee-saved push in one arm are what the inlines give. Two
+  ports matched at the first build. *(match)*
+- `[vc8]` **A value read into a local in front of a test** (`int c = m;
+  if (p->q) p->q->F(..., c);`) loads it between the test and the jump
+  and frees the registers of the calls behind it; as an argument it
+  loads behind the jump. *(match)*
+- **Leaving a loop with `break` against `return flag;` inside it, an
+  index against a walking pointer**: the first merges the exit (a
+  zero set in front of the call and returned through a register), the
+  second exchanged two callee-saved registers. *(match)*
+- **A variant script that `exec`s another variant file must not share
+  its option variable**: the inner assignment wins and every variant
+  builds the same source. *(tool trap)*
