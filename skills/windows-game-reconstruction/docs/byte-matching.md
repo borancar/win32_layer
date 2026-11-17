@@ -5587,3 +5587,34 @@ mostly header-less, so the lever is what else is defined in the unit.
   static locals (`.byte` runs), and a diff count built on it is wrong in
   both directions. Take the function's bytes from its section, fill the
   relocated fields, and disassemble both sides as raw binary.
+- `[vc8]` **A port that builds its object through a stand-in is the
+  real class's constructor.** `new (this) Base(...)` inside a member of
+  a placeholder struct, raw vtable stores, a `Construir` member: write
+  `X::X(...) : Base(...)` on the class the RTTI names, with the
+  virtuals its vtable overrides declared and the members that have
+  constructors or destructors as real members. Several such ports
+  matched at the first build. Give the deleting-destructor adjustor
+  thunks and any helper class's vtable their symbol lines, or the
+  comparison walks into them. *(match)*
+- `[vc8]` **The image's unwind map is the list of sub-objects with
+  destructors.** Dump it per function (state, parent state, funclet:
+  `this + offset`, destructor) and compare the state count with yours
+  across all open ports: each difference is a member, base or local
+  whose destructor the port lacks or has in excess. One state missing
+  in a constructor was a member with an empty out-of-line destructor;
+  declaring it renumbered every later state store. *(match)*
+- `[vc8]` **Clears between a member's constructor call and the EH state
+  store belong to that member's inline constructor.** The state is
+  stored when the member is complete: with the clears in the outer
+  constructor's body the store comes in front of them. Write `struct M
+  { M() : sub(1) { a = 0; ... } }` and leave the outer body with what
+  follows the state store. *(match)*
+- `[vc8]` **A member with a compiler-generated destructor is destroyed
+  in line on the normal path and out of line in the funclet.** The
+  funclet names the member's own offset, the normal path the offset of
+  the sub-member inside it. A port with the sub-member directly in the
+  class has identical code and a different unwind table. *(match)*
+- **Check a stack offset against the pending pushes before reading it
+  as the EH state slot.** A `mov byte [esp+N],0` in front of a call in
+  a loop was `buf[0] = 0` on a local buffer, eight bytes of pushes
+  away; the port lacked the statement.
