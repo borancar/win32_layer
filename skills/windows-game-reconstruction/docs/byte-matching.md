@@ -6257,3 +6257,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   has two returns (here the original answered 0 for an empty count).
 - `[vc8]` **One bound compared from memory, the other loaded:** the
   loaded one is a `const float` object, the other a literal.
+- `[vc8]` **An integer `add reg,[m]` scheduled behind the SECOND
+  float-to-int conversion is a two-int record filled first and adjusted
+  afterwards** (`P r; r.x = (int)a; r.y = (int)b; r.x += o[1]; r.y +=
+  o[2];`). Scalars add in front of the second conversion in any order.
+- `[method]` **Where the original is far longer than the port, port what
+  was left out even when it is unreachable** (a flag test that can never
+  hold): the dead branch's locals fix the frame, and the rest can then
+  be read off the frame offsets: member default constructors at the top
+  (store order names each), a temporary built by a constructor and
+  assigned with integer moves, an inline accessor returning a record by
+  value (`return p ? *p : V(0, 0, 0);` with a declared copy constructor),
+  an iterator whose constructor leaves fields unset for a null list
+  (slots read that nobody wrote), a member re-read behind a call that
+  got the record's address (the source compared the member, not a
+  local).
+- `[vc8]` **A record's size decides which shared slot zone it takes:**
+  with every instruction right and one local in the wrong shared slot,
+  try the record one field longer (a three-float point with two fields
+  set went to the zone the two-float one did not). Locals that share
+  slots with earlier statements' temporaries are declared in the inner
+  block.
+- `[vc8]` **A constant-initialised local is declared where it gives the
+  registers**: `int r = 1;` moved behind an inlined member call swapped
+  the two callee-saved registers back, though the store is scheduled
+  earlier.
+- `[vc8]` **A member reloaded for the return right behind stores that
+  made it known is the function's common `return m;` copied into the
+  arm**; a `return m;` written in the arm folds to the constant.
