@@ -5769,3 +5769,11 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Compare positionally when a function repeats a block** (two
   inlined `memcmp`s): a text diff misaligns and reports the whole
   function. *(tool trap)*
+- `[vc8]` **A statement behind an `if`/`else` that the port pulls
+  into both arms in front of their stores stays last when the
+  `if`/`else` is an inline function** (a list append as an inline
+  helper, then `count++`). *(match)*
+- `[vc8]` **Word copies whose loads run in address order with the
+  stores interleaved are one record copy among plain copies**
+  (`*(Tres *)&a = *(Tres *)&pa;`); plain assignments load them in
+  another order whatever the statement order. *(match)*
