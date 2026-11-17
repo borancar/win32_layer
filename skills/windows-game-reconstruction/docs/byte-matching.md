@@ -5800,3 +5800,45 @@ mostly header-less, so the lever is what else is defined in the unit.
   a temporary first** is an inline constructor `P(float a, float b)`
   (arguments right to left); member stores read in statement order.
   *(match)*
+- `[method]` **A diff tool that reads as many image bytes as OUR
+  function has hides the ports that call what the image inlines**:
+  compare each port's real length in the image (distance to the next
+  start, padding stripped) with ours and open the ones the image has
+  longer; write the port's helper in line (or as a forced inline) and
+  diff against the full image listing. *(scan)*
+- `[vc8]` **The first argument read in front of a record's stores is a
+  record TEMPORARY in the argument list**: `f(t->frame, &Box(x, y,
+  t->size), ...)` with a constructor; a named local stores everything
+  first. *(match)*
+- `[vc8]` **`mov esi,eax` behind a call returning an object and `mov
+  ecx,esi` for the next call are chained calls on temporaries in the
+  argument list** (`F((int)b.Token(0).Num(), (int)b.Token(1).Num())`):
+  both temporaries are built first; named locals take `lea ecx,[slot]`
+  and exchange the slots. *(match)*
+- `[vc8]` **`push eax; lea eax,[m]; push eax` (the address through the
+  register just pushed, every later scratch register one off) is a call
+  through an inline wrapper** (`inline int Peek(MSG *m, HWND h) { return
+  PeekMessageA(m, h, 0, 0, 1); }`). *(match)*
+- `[vc8]` **x87 comparisons: `st(0)` holds the RIGHT operand of the
+  source** (`d >= q.len` loads `d` first; `q.len <= d` gives the swapped
+  test), and **a float literal compares as `fld DWORD K; fcom x` only
+  when written on the right** (`p >= 180.0f`; `180.0f <= p` gives `fcom
+  QWORD K`); an `extern float` global loads both operands. A transform
+  that flips every literal-left comparison brought 19 files closer; the
+  regex must not take a literal behind an arithmetic operator (`a + 1.0
+  < t`) for the left operand. *(match, tool trap)*
+- `[vc8]` **A wrapped value stored on BOTH paths (`jne` over the `fsub`,
+  one `fstp` at the join) is a ternary assigned** (`p = p >= 180.0f ? p
+  - 360.0 : p;`); `if (c) p -= 360.0f;` stores inside the arm only.
+  *(match)*
+- `[vc8]` **`push 2; jmp; push 3` in front of ONE call is the whole call
+  written in both arms** (`if (c) A()->P(2); else A()->P(3);`); the
+  ternary argument gives `mov eax,K; push eax`. *(match)*
+- `[vc8]` **Word-by-word copies into stack temporaries followed by
+  dword + word stores are small records passed BY VALUE (a member-wise
+  copy constructor) to an inline setter that assigns them.** *(match)*
+- `[vc8]` **An inline helper whose image reads its arguments AFTER its
+  own first statements has reference parameters** (`void Push(const
+  float &nx, const float &ny)`). *(match)*
+- `[vc8]` **`fld [p+8]; add eax,8; fld [eax+4]` is a pointer to the
+  member** (`float *o = &a->x; *o, o[1]`). *(match)*
