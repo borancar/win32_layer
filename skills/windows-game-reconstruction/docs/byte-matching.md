@@ -5394,3 +5394,35 @@ mostly header-less, so the lever is what else is defined in the unit.
   *(match)*
 - `[vc8]` **One `||` condition gives one shared `return 0` tail at the
   end**; separate `if`s place the tail behind the first test. *(match)*
+- `[vc8]` **Float differences in two adjacent slots, a scratch slot, then
+  the third (`dx, dy, t, dz`)** are the constructor arguments of an inline
+  vector `operator-` (`V d = a - b;`), the 2D length through an inline
+  taking the vector by reference, and the scratch is the root's. Scalars
+  and a hand-filled record both give other frames. *(match)*
+- `[vc8]` **`fld x; fld k; fld st(0); fmulp st(2),st; fld e; faddp
+  st(2),st` for a scaled-and-offset point** is ONE inline returning a
+  temporary, `d = Mix(d, k, e)` with `V(a.x * k + b.x, ...)`; three
+  statements or two operators (`d * k + e`) store the products first.
+  *(match)*
+- `[vc8]` **The same vector with its address taken once** (a member call
+  in one branch) shows the constructor slots plus a named copy: write the
+  copy (`V dd = a - b; V d(dd);`), compute on `dd`, call on `d`. *(match)*
+- `[vc8]` **A jump table with more entries than live cases** has the dead
+  cases written out (`case 0: k = 0.0f; break;`). *(match)*
+- `[vc8]` **`lea ecx,[local]; call X` where the port zeroes a record by
+  hand**: the record has an out-of-line constructor; declare it under that
+  class. A record copied with integer moves and one float member written
+  after it is `q.p = p; q.p.z = p.z + K;`. *(match)*
+- `[vc8]` **Records built by an inline constructor show as stores in
+  member-constructor order interleaved with the first statements** (floats
+  zeroed last element first, pointers cleared, then the caller's own
+  stores): move the zeroing into a constructor of a local subclass.
+  *(match)*
+- `[vc8]` **`x ? x->m ? x->m : x : x` compiled as `cmp; je L; mov r,[x+m];
+  cmp; jne M; L: mov r,x`** is an inline with a local: `{ T *v; if (!b ||
+  !(v = b->m)) v = b; return v; }`. *(match)*
+- `[vc8]` **Open (a family of ~14 functions):** the image stores a run of
+  ones (`mov eax,1; mov [m],eax ...`), then computes `flag == 0` in `eax`,
+  then loads the next constant into `eax`; ours computes the test in `ecx`
+  in front of the ones for every statement order, spelling, chained
+  assignment, helper or local tried. *(open)*
