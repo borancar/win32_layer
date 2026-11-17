@@ -5955,3 +5955,58 @@ mostly header-less, so the lever is what else is defined in the unit.
   ways. It finds forwarders the port skipped (the port called the
   leaf), callees the port has in line from any file, and wrong
   callees; a tail call (`jmp`) is a call. *(scan, three matches)*
+- `[vc8]` **A helper called WITHOUT the jump-thunk table is a static
+  of the caller's original file** (incremental-link images: every
+  external call goes through a thunk). Scan every unmatched function
+  for direct call targets; put the helper and ALL its callers in one
+  file, the helper `static`. Two `/GL`-parked helpers matched this way
+  once their callers shared the file, and five callers with them; the
+  naked register wrappers disappear. With only some callers in the file
+  the convention differs (a parameter in `ebx` instead of `esi`) and
+  the callers get worse: all or nothing. *(match, seven functions)*
+- `[vc8]` **The register parameter of a static is found by permuting
+  its parameter list against one caller**: six orders of three
+  parameters, one loop of the variant tester; here the LAST pointer
+  took the register. *(match)*
+- `[vc8]` **`sub esp,N; mov ecx,esp; push src; call copy-ctor` in
+  front of a call is a class passed BY VALUE**; with the result's
+  address in `esi` the callee is a static. Changing `const T &` to
+  `T` matched the helper and three callers. *(match)*
+- `[vc8]` **A functional cast around a call that returns a class
+  builds the temporary and copies it** (`return T(p->Get(i));` gives
+  `call Get; push eax; call copy-ctor`): a named local passes `lea`,
+  a reference or a cast to `const &` is elided. The copy constructor
+  must be DECLARED (an implicit one is copied in line). *(match, two)*
+- `[vc8]` **A destructor's body port is the real destructor**: unwind
+  states N..1 at the top are the members' and the base's destructors;
+  write `T::~T()` with only the statements. An inline member destructor
+  whose stand-in class name differs from the RTTI name stores the vptr
+  explicitly, or the object carries a differing vtable. *(match)*
+- `[vc8]` **A fall-through case laid out BEHIND its target (`cmp; je
+  exit; jmp body`) is the body written twice** and tail-merged; the
+  fall-through spelling puts the test in front, and a `goto` into the
+  other case folds back to that. *(match)*
+- `[vc8]` **`xor r,r` at the top, `mov eax,r` at one epilogue and
+  `mov eax,1` at another is one `return result;` behind a label**
+  with the other value assigned on its path; two `return` statements
+  fold the constant. *(match)*
+- `[vc8]` **A callee whose result the image reads through `eax` after
+  a tail call inside it returns that value**: a `void` port that
+  repeats the callee's body hides it; the callee-set scan finds it.
+  *(match)*
+- `[vc8]` **`/GS` sorts `char` arrays above other locals**: a find
+  buffer below the path arrays is a struct, not `char[0x140]`; and a
+  frame 0xb0 short of ours is a path array of 0x50, not 0x100. *(match)*
+- `[vc8]` **A scalar's dead slot is reused, a record's is not**: a
+  frame four bytes larger with the scratch in its own slot is a record
+  for the three differences. *(match)*
+- `[vc8]` **`js`/`jns` after `test r,r` is `h & 0x80000000`**, `h <
+  0` gives `jl`/`jge`. *(match, two)*
+- `[tool]` **`__forceinline` on an out-of-class definition leaves no
+  symbol under clang**, and a native build that resolves missing names
+  to the original code hides it: count those fallbacks before and
+  after. Use a `static __forceinline` helper that the real function
+  forwards to; that also keeps a caller that CALLS it matched.
+- `[tool]` **A disassembly diff that masks addresses does not compare
+  constants** (`0.1` against the double of `0.1f` showed no
+  difference): confirm with the byte comparison. *(near miss)*
