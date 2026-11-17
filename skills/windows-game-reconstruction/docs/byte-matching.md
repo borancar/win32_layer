@@ -5490,7 +5490,7 @@ mostly header-less, so the lever is what else is defined in the unit.
   provided its registers come out as the image's; when they do not (the
   convention follows the callee's body, not the parameter order), the
   callers wait. Helpers that only matched under `/GL` matched as plain
-  statics once their callers shared the file. *(18 matches in one round)*
+  statics once their callers shared the file. *(14 matches in one round)*
 - `[vc8]` **A parameter fed with a temporary is a `const T &`.** `call
   Make; mov edi,eax; call F; mov edi,eax; <destructor>; test edi,edi`: the
   temporary dies at the end of the statement that calls `F`, before the
