@@ -6285,3 +6285,34 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **A member reloaded for the return right behind stores that
   made it known is the function's common `return m;` copied into the
   arm**; a `return m;` written in the arm folds to the constant.
+- `[vc8]` **A port that calls its own `static` helper two or three times
+  where the original is several times longer has the helper's body in
+  line: write it as the matched sisters' macro.** The instruction-count
+  ratio is the tell (111 against 25). Per block, grid the few spellings
+  the sisters show: the plain member store against the inline setter
+  that takes a one-word record by value; the global read in front of
+  the member's re-read (`{ T *t = g->tabla; m->F(t->Datos(n)); }`)
+  against the chained call; a parameter read in front of the `new`
+  (`const char *nm = nombre;` first). Two blocks of one function may
+  use different spellings. *(4 matches)*
+- `[vc8]` **A constructor whose zero sits in a callee-saved register
+  through the body, with the EH state store scheduled late, has real
+  members with default constructors**, not stores through
+  `(char *)this + off`. Zeros then ones stored in the order y, x, w, h
+  is a box of two base records (`Pos() { y = 0; x = 0; }`, `Tam() { w =
+  1; h = 1; }`); one four-store constructor schedules the ones first.
+  A record returned by value and stored field by field through `eax`
+  is the assignment straight from the call, not a named local.
+- `[vc8]` **A switch head laid out twice with shared case bodies is an
+  inline written with every case complete (`case 0: if (!c()) act();
+  break; case 1: act(); break;`) and inlined twice, the caller's zero
+  case last** (`if (v != 0) { ...; step(); return; } act();`). A
+  fall-through switch merges the two heads in every caller form.
+- `[vc8]` **A `/GS` cookie ours has and the original lacks**: a record
+  holding `char c[32]` (use `int w[8]` with a `char *c()` accessor) or
+  a `char[4]` initialiser list (assign a `char[3]` element by element).
+- `[vc8]` **A deleting destructor that inlines the destructor WITH an
+  EH frame while the standalone destructor has none** was reproduced
+  only one way at a time (`__forceinline` without `throw()` plus a
+  `throw()` `operator delete` for the first, `throw()` for the second):
+  check both symbols before applying either. **open**
