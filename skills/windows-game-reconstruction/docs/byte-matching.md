@@ -6649,3 +6649,29 @@ mostly header-less, so the lever is what else is defined in the unit.
   name the member directly; a reference local (`T *&a = member`) pins
   each store where it is written. Small arrays each handed to one call
   go in a block with that call (the frame is 4 bytes smaller).
+- `[method]` **Rank the unmatched ports by how seldom the notes mention
+  them, integer-only first.** Ports written "from the control flow
+  only" that nobody reopened match once the body follows the image's
+  block order: the arm that lies first is the `if`'s first arm, the
+  early-exit case comes first with a `return`, a pointer loaded behind
+  the guard's jump is initialised inside the `if`.
+- `[vc8]` **A branch into the middle of another arm is `||`:**
+  `jne B; ...; cmp m,0; je skip; B:` is `if (j != i || m) {B}`; two
+  arms with the same body compile to two copies. `jbe` in front of a
+  loop is a `for` with an unsigned bound, `je` is `if (n) do ... while`.
+- `[vc8]` **A sum stored once and used twice is a variable** (`int tam
+  = n + m;`): the frame then has the image's slot count.
+- `[vc8]` **No EH state restore in front of the last destructor call:**
+  the destructor is `throw()` there (the function sits in the class's
+  own file). Declare it so for that one file through a macro; other
+  files' matched functions need the plain declaration. A potentially
+  throwing call behind the destructor (an `operator delete` without
+  `throw()`) keeps the restore.
+- `[vc8]` **A vector difference stored, copied, and its slots reused by
+  later floats:** the difference is the temporary of an inline
+  `operator-`, copied by a user copy constructor (`Vec v(a - b);`).
+  Two limit tests with the value kept on the x87 stack are `if (l < 0
+  && g > 0) ... else if (l > 0 && g < 0) ...`, not nested `if`s.
+- `[vc8]` **Stores in front of a constructor's `mov BYTE [state],N`
+  are member initialisers** (scalars `m(arg)` and members with inline
+  default constructors); body stores come behind it.
