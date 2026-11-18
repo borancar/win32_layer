@@ -6722,3 +6722,28 @@ mostly header-less, so the lever is what else is defined in the unit.
   `ebx`, a path in `eax`: whole-program optimisation of file-local
   functions) put their callers out of reach as well: check a port's
   callees for such a convention before spending forms on it.
+- `[vc8]` **A port whose object code is a handful of lines while the
+  image has hundreds is a forwarder** to a free function that holds the
+  body (`void C::F() { F_impl((char *)this); }`). Make the body the
+  member itself; such rows show up in a length scan (ours against the
+  image) and often match at once after the move.
+- `[vc8]` **A table and a loop in the port, N copies in the image, each
+  with its own EH state number**: the original wrote the fields out.
+  Write them out too (a local macro per field keeps it readable).
+- `[vc8]` **A block built from a literal whose address is formed again
+  with `lea` behind its constructor, in a slot of its own** is the
+  temporary of an implicit conversion (`f(0, "POLY")` over a `const T
+  &` parameter). The functional cast `T("POLY")` pushes the
+  constructor's `eax`; a named block shares the other named blocks'
+  slot.
+- `[vc8]` **A `switch` lays the `case` bodies out behind the default
+  body** even when they are written first (their EH state numbers stay
+  in source order), **and the locals of its arms do not share stack
+  slots**; sibling blocks of an `if`/`else` do. A frame that holds every
+  arm's objects side by side, with the lower-state arm at the end of the
+  function, is a `switch`.
+- `[vc8]` **SDK macros expand in place**: `ListView_SetItemText` is a
+  block `{ LVITEM it; it.iSubItem = ..; it.pszText = ..; SendMessage(..,
+  &it); }` whose stores are scheduled between the pushes; an inline
+  function with parameters loads the handle first and gives another
+  order.
