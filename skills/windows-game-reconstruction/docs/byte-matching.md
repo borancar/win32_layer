@@ -6599,3 +6599,20 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **Every early exit ends in `mov eax,REG` and none in
   `or eax,-1`:** the function has one `return result;` behind an
   if/else nest; early `return -1;` statements free the register.
+- `[vc8]` **An 8-byte record built at the address a 4-byte local had a
+  few lines earlier, in a frame 4 bytes smaller than two scoped
+  variables give:** one local used twice (`float d[2]`: `d[0]` first, the
+  pair later). The compiler packs a block local with whatever neighbour
+  is free (a call's returned temporary), and no placement of braces
+  moves it; read a slot two "locals" share as one local before trying
+  scopes.
+- `[vc8]` **The receiver in `eax`, another member in `ecx`, then
+  `mov ecx,eax` in front of the virtual call:** the receiver is not a
+  named local; the member is tested, and written out again at the call
+  and in the other arm. A local takes `ecx` at once.
+- `[vc8]` **A window procedure whose default call sits behind every
+  case, with one exit loading a frame slot nothing wrote:** `int r; int
+  handled = 1; switch (m) { case ...: r = ...; break; default: handled =
+  0; } if (!handled) r = DefWindowProc(...); return r;` with one case
+  leaving `r` unset. Returns inside the cases or a `default:` that calls
+  put the default body in the middle whatever the case order.
