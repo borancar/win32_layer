@@ -6747,3 +6747,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   &it); }` whose stores are scheduled between the pushes; an inline
   function with parameters loads the handle first and gives another
   order.
+- `[vc8]` **A call that bypasses the incremental-link thunk table is a
+  call to a `static` of the same original file.** A port whose image
+  calls such a target can only match in the file that holds the static
+  (and all its other callers): the static gets a register convention of
+  its own. Sweep the unmatched ports for direct call targets that live
+  in another object of yours and move the static next to its callers
+  instead of matching it alone behind a keeper function.
+- `[vc8]` **Which register a static's argument arrives in follows the
+  argument's type**: a window or tree-item handle declared `int` came in
+  another register (or was loaded later in the caller) than the same
+  argument declared as a pointer. Handles are pointer-typed.
+- `[vc8]` **A record local sits below the `char` arrays in the frame**:
+  an API's data block written as `char buf[N]` lands among the buffers,
+  as a struct of its fields below them (`WIN32_FIND_DATA`).
+- `[vc8]` **`test eax,eax; setne BYTE [flag]; ~T; cmp BYTE [flag],0`**
+  is a temporary's result compared explicitly (`if (f().Count() != 0)`);
+  the bare `if (f().Count())` keeps the value in a register across the
+  destructor.
+- `[vc8]` **Every converted literal in a slot of its own inside a
+  `switch` arm, its address formed again with `lea`** says the callee's
+  parameter is a `const &` and the call site relies on the implicit
+  conversion; fix the declaration (the mangled name changes) instead of
+  writing named blocks.
+- `[tools]` **Compare the EH tables too.** A function with the image's
+  code bytes can still differ in its unwind table (one state more or
+  less): the comparison has to follow `__ehfuncinfo`/`__unwindtable`,
+  and a tool that derives function ends from a list of starts gives
+  absurd distances where the list misses a start.
