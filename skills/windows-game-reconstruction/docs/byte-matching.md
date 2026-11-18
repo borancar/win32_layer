@@ -6701,3 +6701,24 @@ mostly header-less, so the lever is what else is defined in the unit.
   names it references** (a constructor of a stand-in class names the
   stand-in's vtable and RTTI record): run the comparison after dropping
   the port marker and read the count before committing.
+- `[vc8]` **Remove the porter's cached pointers first.** A port that
+  starts with `T *d = (T *)member;`, `Row *r = &table[i];` or `G *g =
+  global;` and uses it throughout differs from an image that re-reads
+  the member, re-indexes the table or re-reads the global at each use
+  (`mov ecx,[esi+0x5c]` in front of every call). Write the expression at
+  each use (a macro in front of the function) and let the compiler do
+  its own CSE: it gives the image's registers and load points.
+- `[vc8]` **Same-size locals of disjoint scopes share a slot, buffers
+  and objects alike.** A frame smaller than the sum of the port's
+  buffers means the buffers are block locals of sibling blocks (one
+  `char t[0x20]` per arm or per loop body), each sized by its own use;
+  a `lea` at a second offset for the last calls is a second, smaller
+  buffer the port merged into the first.
+- `[vc8]` **A tester that masks relocation targets cannot see a wrong
+  string literal.** Run the full comparison (with symbol resolution)
+  before dropping a marker: a default key `""` compared equal to the
+  image's `"TIP"` in the masked listing.
+- `[vc8]` **Static helpers with register arguments** (a buffer in
+  `ebx`, a path in `eax`: whole-program optimisation of file-local
+  functions) put their callers out of reach as well: check a port's
+  callees for such a convention before spending forms on it.
