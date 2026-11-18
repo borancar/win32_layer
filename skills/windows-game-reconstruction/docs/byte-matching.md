@@ -6675,3 +6675,29 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **Stores in front of a constructor's `mov BYTE [state],N`
   are member initialisers** (scalars `m(arg)` and members with inline
   default constructors); body stores come behind it.
+- `[vc8]` **Four distances per port, not one** (raw, registers masked,
+  `esp` offsets masked, both): a port that is equal once `esp` offsets
+  are masked has a wrong buffer size or a buffer too many. Read each
+  array's extent from the `lea`s and the cookie (minus the pushes in
+  front). A second small buffer the image lacks is the first one used
+  again; a spare `char t[8]` shows as `and esp,-8` in ours.
+- `[vc8]` **Every scratch register turned by one from some call on,
+  nothing else different:** name the value read at the first turned
+  instruction as a block local (`{ int l = m_lista; Send(hwnd, l, ...);
+  }`, `T *g = guardian; if (g->tipo == 2) ...`). The rotation runs to
+  the end of the function, so fix the first turned load; a local added
+  upstream turns everything downstream the other way.
+- `[vc8]` **`mov ecx,eax` from a by-value call into the next member
+  call:** the value is used as a temporary (`v.Valor("X").CopiarA(t,
+  n);`), not through a named local (`lea ecx,[local]`). Two such calls
+  kept in callee-saved registers and used in reverse order are two
+  temporaries in one argument list. A flag zeroed at the top and tested
+  behind a `new` is a temporary inside the new-expression's arguments.
+- `[vc8]` **An argument computed before the `push` of a constant that
+  precedes it** is a call through an inline whose parameters were
+  evaluated first; a virtual called by address is a qualified call
+  (`Clase::v13();`).
+- `[vc8]` **A matched function can still count as different through the
+  names it references** (a constructor of a stand-in class names the
+  stand-in's vtable and RTTI record): run the comparison after dropping
+  the port marker and read the count before committing.
