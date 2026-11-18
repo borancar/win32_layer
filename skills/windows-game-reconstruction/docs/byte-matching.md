@@ -6775,3 +6775,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   less): the comparison has to follow `__ehfuncinfo`/`__unwindtable`,
   and a tool that derives function ends from a list of starts gives
   absurd distances where the list misses a start.
+- `[vc8]` **An original two to five times larger than the port is a
+  helper it has in line.** VC8 never inlines the port's `static`
+  helper; list the ports whose object calls a same-object function that
+  has no address in the image, force those helpers (`__forceinline`, or
+  the body as a macro where the two expansions differ in operand order)
+  and then rewrite the caller from the listing: the helper alone is
+  seldom enough.
+- `[vc8]` **Four copies of a loop body behind `cmp n,4; jl`, the bound
+  as `add r,-3`,** is VC8 unrolling a plain counted loop (`for (i = 0;
+  i < n; i++)` over an inline getter, the count in a local). A port
+  with the loop in a helper, a comma expression in the condition or an
+  index computed by hand does not unroll.
+- `[vc8]` **A member stored and loaded again in the next instruction**
+  is an inline member function working on `this` (`p.Negate()`), and
+  `mov r,[a]; add [b],r; mov r2,[a+4]; add [b+4],r2` is an inline
+  `operator+=(const T &)`; the same statements written at the call site
+  forward the stored values.
+- `[vc8]` **`call new; xor r,r; cmp eax,r; je; ...stores...; mov r,eax`**
+  is `new T(args)` with an inline constructor (its body is the store
+  order), `test p,p; je; mov [p],vtable; ...; call delete` is `delete p`
+  with an inline destructor. A hand-written `operator new(n)` plus
+  field stores keeps one register and never matches.
+- `[vc8]` **`jmp callee` at the end of a cdecl function that has stack
+  arguments:** the callee takes none. VC8 does not turn a call that
+  pushes into a jump.
+- `[vc8]` **`cmp x,1; je; cmp x,3; jbe; cmp x,5; ja`** is a `switch`
+  with cases 1, 4, 5; the jump table's targets in address order are the
+  source order of the `case` labels.
