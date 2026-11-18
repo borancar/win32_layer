@@ -6616,3 +6616,31 @@ mostly header-less, so the lever is what else is defined in the unit.
   0; } if (!handled) r = DefWindowProc(...); return r;` with one case
   leaving `r` unset. Returns inside the cases or a `default:` that calls
   put the default body in the middle whatever the case order.
+- `[vc8]` **Write a stubborn port from the image's frame, slot by
+  slot.** List every store, load and `lea` of each frame offset
+  (normalised by the pushes in front) and name one variable per slot;
+  a slot with two roles, a slot in the argument area and a slot inside
+  another object's bytes each name an idiom below. Rank the unmatched
+  ports by `sub esp,N` differing from the image's: that list is where
+  these apply.
+- `[vc8]` **Address-taken scalars are laid out by reference count,
+  highest first, ties by first use;** declaration order does nothing.
+  A local that lies lower in the image than its count allows is two
+  variables.
+- `[vc8]` **A plain local kept in memory shares the slot of an
+  address-taken local of an earlier block:** `{ int a = 0; i = f(&a);
+  ... } int v = m;` puts `v` in `a`'s slot (stored once, reloaded at
+  each use). Only real braces do it; one variable for both roles gives
+  the frame size and the wrong order. The same for a `float` behind a
+  by-value temporary of the enclosing block.
+- `[vc8]` **A local in a parameter's home slot** (zeroed there, its
+  address passed out, the parameter itself in a register): the source
+  reuses the parameter (`T *el = e; *(int *)&e = 0; g(el, (int *)&e)`).
+- `[vc8]` **A jump landing between `mov ecx,this` and the pushes of a
+  call:** the call is written out in both arms and merged; an early
+  `return` form stores on both paths and moves the exit to the end.
+- `[vc8]` **An aligned frame (`and esp,-8`) whose `ebp` is pushed again
+  and used as a variable:** the aligned local is aligned by a member
+  (`__int64` in a union), not by `__declspec(align(8))`, which keeps
+  `ebp` out of the allocator. A stale "not matched" marker is found by
+  comparing with every marker dropped.
