@@ -6577,3 +6577,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   whose `this` is still in `ecx`** (a `static __stdcall` under the
   original compiler, the member under the native one) is not needed:
   the plain member calls its sister without a `mov ecx` and matches.
+- `[vc8]` **An inline function that the compiler saw but did not inline
+  (a COMDAT that is called) hands its callers its memory effects and the
+  fact that it cannot re-enter them, but not its clobber set.** Sign: a
+  value such as the caller's static-guard word stays in a callee-saved
+  register across the small callee and is loaded again behind every
+  unknown call, while `this` is still loaded into `ecx` from a
+  callee-saved register in front of it. Write the callee's body in the
+  class view with `__declspec(noinline)`; an ordinary definition in the
+  file also hands over the registers, a bare declaration nothing. It is
+  per caller: give that caller its own view of the callee, and list the
+  view's name at the callee's real address (not its thunk). A sweep with
+  stub bodies only proves something when the port becomes identical;
+  "closer" is noise.
+- `[vc8]` **The receiver held in `eax` across the argument pushes
+  (`mov ecx,eax` last)** is a named local, and the object one step in
+  front of it may be one too; the second local can move the
+  callee-saved registers of the whole function. A constant hoisted to
+  the entry where the image rematerialises it (`or r,-1` in both arms of
+  the first guard) is register pressure from such a local further down.
+- `[vc8]` **Every early exit ends in `mov eax,REG` and none in
+  `or eax,-1`:** the function has one `return result;` behind an
+  if/else nest; early `return -1;` statements free the register.
