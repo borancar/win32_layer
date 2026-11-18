@@ -6644,3 +6644,8 @@ mostly header-less, so the lever is what else is defined in the unit.
   (`__int64` in a union), not by `__declspec(align(8))`, which keeps
   `ebp` out of the allocator. A stale "not matched" marker is found by
   comparing with every marker dropped.
+- `[vc8]` **A port that differs only in where stores to a member are
+  scheduled** (the image sinks them behind the next call's first push):
+  name the member directly; a reference local (`T *&a = member`) pins
+  each store where it is written. Small arrays each handed to one call
+  go in a block with that call (the frame is 4 bytes smaller).
