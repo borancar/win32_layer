@@ -7071,3 +7071,26 @@ mostly header-less, so the lever is what else is defined in the unit.
   ports by size against how often the notes mention them; the ones
   written straight from the decompiler (no locals, `if` chains, compare
   directions reversed) fall in a few edits.
+- **x87 intermediates spilled through one slot are casts, not locals:**
+  `fstp [t]; fld [t]` several times inside one expression means the
+  source had `(float)(a - b)` operands (or float parameters of an
+  inline) and no named float locals; a `fstp QWORD` hoisted behind a
+  loop guard is an invariant subexpression written inside the loop
+  body, not a `double` local declared in front of it.
+- **A `<<` pack that VC8 turns into `lea; xor; and; xor`** (a bit-field
+  merge) is avoided by writing the pack with multiplications
+  (`(r >> 3) * 64 | ...`) or by shifting in separate statements; the
+  plain `sar; and; shl; or` sequence in the image says one of the two.
+- **`fcomp DWORD [const]` against a constant the port loads first:** the
+  constant is a literal in the source (`q < 1.0f`), not an `extern
+  const float` standing for its address; externs are loaded like
+  variables and hoisted.
+- **Two parameters in each other's callee-saved register plus a scratch
+  rotation one step off:** a record built at the call site was built
+  by an inline constructor taking those parameters.
+- **A frame four bytes too small** with otherwise equal code: a
+  two-float local is a three-float record whose last field is never
+  written; a later eight-byte value shares its twelve bytes.
+- **A member re-read in front of every statement** (`mov eax,[this+8]`
+  ten times) is the member spelled at each use; a decompiler-written
+  port caches it in a local and loses every reload.
