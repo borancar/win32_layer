@@ -137,3 +137,18 @@ game name a build error (exempt only import entries and an allowlist file whose 
 each one from the image: alias the name to the function `??_G` calls, define the body where the image inlines it, or fix a declaration
 that invented a virtual destructor (read slot 0 of the vtable from the exe; it is often a message handler or an accessor). Do not
 exempt `??1` and `??_` names to quiet the list.
+
+## One name, several layouts: per-file class views meet at the native link
+Byte matching compiles every source on its own, so each file declares the view of a class it needs (a stand-in with the fields it
+touches, a full local class for a constructor match). The native link merges same-named symbols: one constructor, one destructor,
+one `??_G` for all views. Two checks, both cheap, after every round that adds a local class with a real constructor:
+- **Functions**: list every symbol defined by more than one object and compare the bodies (the first in link order wins among weak
+  copies, so run it in link order and in any other order: a result that depends on the order is a bug waiting for a new file name).
+  The usual offender is a constructor view that leaves the virtual destructor implicit: its `??_G` calls the base's destructor and
+  skips the class's own. Declaring `virtual ~T();` in the view is byte-neutral for the constructor.
+- **Types**: dump the record layouts per source (`clang -Xclang -fdump-record-layouts`) and compare them per name. Most differences
+  are harmless partial views, so rank by what can overflow: read the image's `push SIZE; call operator new` in front of each
+  `call constructor` (a base constructor inlined into a derived one reports the derived size: take the smallest) and flag a plain
+  `new T` whose view is smaller than that, and a *ported* constructor whose view is larger. Two different types that merely share a
+  name (a path point and a route point) get distinct names. The image's sizes are also a matching aid: a view larger than the
+  allocation has a wrong tail.
