@@ -7555,3 +7555,30 @@ What the rewrites needed, in the order they paid:
 - **Check for patched bytes** (`nop`s between two `cmp`s, a `jmp` where
   a conditional jump belongs) before working on a port: a patched
   image function cannot be matched by any source.
+- `[vc8]` **Explicit returns are shared, jumps to one exit are copied.**
+  The same `{ log(this, "..."); return 0; }` written at many places
+  comes out as `push str; jmp TAIL` everywhere but one; the copy that
+  stays is the function's last return block in source order (the first
+  case's in a `switch` whose every case ends in `x = 1; return;`), so
+  the END of the function must be the image's (a nested success path
+  with the failure returns behind it). A `break` to one statement
+  behind a `switch`, a nested `if/else` pyramid without `return`, and a
+  `goto error` are all copied into every arm (the base call and the
+  epilogue once per arm). Scan: count `ret` instructions per function,
+  image against yours; more in the image = the source jumped to one
+  exit, fewer = it wrote separate returns. **held** *(match, six
+  functions)*.
+- `[vc8]` **A result variable in a stack slot, reloaded at every exit**
+  is `int r = 1;` with nested ifs and one `return r;` in a function
+  whose registers are all taken; early returns fold it into constants.
+  The same code behind two arms with each arm keeping another half in
+  line is that code written in both arms with opposite `if` polarity.
+- **A masked diff hides jump distances.** An empty or table-only diff
+  with different lengths is a short jump against a near one (another
+  epilogue chosen for an early `return`): read the raw byte compare. A
+  `case A: f(); case B: return 0;` fall-through makes B jump into A's
+  tail.
+- **An `ebp` frame in a function of a frame-pointer-free build** means
+  an inline assembly block of the original inside a C function (a loop
+  with `dec ecx` where the compiler writes `sub ecx,1`): it cannot be
+  matched from C alone.
