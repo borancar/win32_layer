@@ -6822,3 +6822,33 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **`cmp x,1; je; cmp x,3; jbe; cmp x,5; ja`** is a `switch`
   with cases 1, 4, 5; the jump table's targets in address order are the
   source order of the `case` labels.
+- `[vc8]` **A 16-bit parameter handed on to a 16-bit parameter is pushed
+  as the whole dword of its slot** (`mov edx,[esp+8]; push edx`), so a
+  virtual handler whose image loads words (`mov ax,[esp+N]`, `mov
+  di,[esp+N]; movzx eax,di`) has 16-bit parameters in the WHOLE
+  hierarchy (`OnCommand(WORD code, WORD id, ...)`), and so have the
+  helpers it forwards them to. Change every declaration and symbol at
+  once; the matched overrides keep matching.
+- `[vc8]` **A dialog procedure**: `xor eax,eax` in front of the first
+  range test is `int r = 0;`, nested `switch`es, `r = 1; break;` for arms
+  that share the `mov eax,1` exit and `return 1;` for arms with their
+  own. `LOWORD`/`HIWORD` are `(unsigned short)w` and `(unsigned
+  short)((unsigned)w >> 16)`: the plain shift compares against the
+  masked dword.
+- `[vc8]` **A returned constant formed as `lea eax,[r+K]` behind a
+  compare of `r`, every arm with its own epilogue:** the function has
+  one exit (`r = 1;` in each arm, `return r;` at the bottom). VC8 copies
+  the exit into the arms and reuses the known register; `return 1;` per
+  arm gives `mov eax,1` and one shared tail.
+- `[vc8]` **A flag word tested bit by bit around destructor calls behind
+  a constructor call** (`mov ebx,7; test bl,4; je; and ebx,-5`): the
+  temporaries are written inside the `new T(...)` expression (chained
+  getters returning by value, a `?:` between two such calls). A pointer
+  argument computed into its own register in front of the others is a
+  base-class conversion with its null test (`this ? (char *)this + N :
+  0`).
+- `[vc8]` **`xor eax,eax; cmp [m],eax; setne al; test eax,eax` in one
+  arm while the other arms call the tester:** the tester is in line at
+  that call; no expression at the call site gives the `setne`. A frame
+  4 bytes larger than the image's with every slot equal can be the
+  temporary of an intrinsic `strlen`.
