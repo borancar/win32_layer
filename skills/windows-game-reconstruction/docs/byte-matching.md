@@ -7136,3 +7136,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   whole `lea reg,[esp+N]` sequence of image and port before anything
   else in a function with many EH objects; the order of same-sized
   slots is not the declaration order and moves with any edit.
+- **A null test without the zero register the function uses later
+  (`add eax,[tbl]; je`, the `xor` only behind the next call):** the
+  lookup is written out in the function with a pointer that starts
+  null (`T *b = 0; for (...) if (...) { b = &t[i]; break; } if (b)`);
+  an inline helper returning the pointer gives the early zero.
+- **A vector loaded by `fld/fstp` into a slot and stored by `mov`,
+  with an int store among the `mov`s:** a class with a float copy
+  constructor and default assignment, the copy a named local and the
+  int statement between copy and assignment (`V t(src); flag = 1;
+  dst = t;`).
+- **An operand order of a sum of products that no spelling moves:**
+  put the whole test in an inline `bool` helper taking the floats by
+  value; a helper returning the float does not do it.
+- **`p[n - 1]` read as `[p+n*8-8]` then `lea [p+n*8]; [-4]`:** the
+  index expression is written at each access (reference parameters of
+  an inline), not passed as an index.
+- **Two calls with side effects in one argument list:** the compiler
+  under test and the native compiler may evaluate them in opposite
+  orders; write them as locals in the image's order (same bytes).
