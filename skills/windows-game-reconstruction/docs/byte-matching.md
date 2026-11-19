@@ -7094,3 +7094,23 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A member re-read in front of every statement** (`mov eax,[this+8]`
   ten times) is the member spelled at each use; a decompiler-written
   port caches it in a local and loses every reload.
+- **A masked diff of zero lines that still does not match:** compare the
+  LENGTHS. A conditional jump with a 32-bit displacement to the last
+  copy of a duplicated tail (ours: 8-bit to the nearest copy) is a
+  `goto` to the function's single `return`; every later byte is equal
+  and only the displacements over the gap differ.
+- **`mov ecx,esp; fstp [ecx]; fstp [ecx+4]; ...` for float arguments** is
+  a record with a copy constructor passed by value; plain float
+  arguments are stored `fstp [esp+N]` after one `sub esp`. Both can
+  stand in one call.
+- **The caller reloads `this` from a slot behind a call although the
+  callee is in the same file:** the callee clobbers `ecx` (often a
+  result variable, `xor ecx,ecx` at its top and `mov eax,ecx` at the
+  failing exits). A port of the callee that leaves `ecx` alone makes
+  the caller keep using it; match the callee first.
+- **One callee-saved register exchanged between a handle and a sum:**
+  the handle variable was reused for an earlier value
+  (`h = Create(); Close(h); h = Open();`); the longer life wins the
+  first register and moves its `push` in front of the first call.
+- **A scratch rotation one step off behind a call:** try an inline
+  getter on one of the call's ARGUMENTS, not only on the receiver.
