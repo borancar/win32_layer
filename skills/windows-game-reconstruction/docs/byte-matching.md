@@ -7202,3 +7202,33 @@ mostly header-less, so the lever is what else is defined in the unit.
   it, the relocations do not. Arms are laid out in source order.
 - **A `void` handler whose image ends `mov eax,[flag]; test eax,eax`**
   returns `int`: check the vtable slot's other overrides.
+- **A flag and a parameter compete for one callee-saved register and
+  yours has the wrong winner:** declare the flag `bool` for the
+  experiments. It cannot be registered, the parameter takes the
+  register, and the diff shows what else is wrong in every block. Fix
+  those, then go back to `int`: the allocation usually stays.
+- **A named local the image does not have costs a scratch rotation
+  like a missing one.** When a rotation starts at one statement try
+  removing a local as well as adding one.
+- **All arguments of a call in registers in front of the first push**
+  with a callee-saved constant clobbered and reloaded behind the
+  call: named locals for exactly the values loaded first, in the
+  image's order; or the call goes through an inline wrapper that
+  takes the arguments.
+- **An argument loaded in front of a null test of the receiver's
+  member** (`cmp [o+N],0; mov edx,[this+M]; je`): the call is an
+  inline member that tests and forwards; its arguments are evaluated
+  in front of the test.
+- **A callee-saved register skipped** (the image pushes `ebx, ebp,
+  esi`, yours `ebx, ebp, edi`): a variable the optimizer removes
+  still takes its turn in the allocation, e.g. a result variable
+  (`int res = 0; ... res = 1; ... return res;`).
+- **A file-local `static inline` left as a call with a register
+  argument** has a private convention; if the image has it in line,
+  force it (`__forceinline`).
+- **`fld [m]; fstp [t]; fld [x]; fsub [t]`:** the operand comes
+  through an inline function returning `float` (the returned value
+  is rounded through a slot).
+- **Only the order of the register reloads behind a block differs:**
+  the block's test is nested `if`s, not one `&&` chain (or the other
+  way round).
