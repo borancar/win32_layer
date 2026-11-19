@@ -6947,3 +6947,17 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **Int stores interleaved with the float stores of the member
   constructed in front of them** (instead of sunk behind): the
   initialised fields are pointers, the zero one included.
+- `[vc8]` **A field read back from memory right behind its own store**
+  (`mov [esi+0x2c],eax; mov [esi+0x30],ecx; mov ecx,[esi+0x2c]; push
+  ecx`): the two fields were assigned as one aggregate (`*(Tam *)&ancho
+  = Tam(a, b);`). The values of an aggregate copy are not forwarded to a
+  later field read; two scalar stores are.
+- `[vc8]` **A member store in front of a pointer load and its test,
+  where yours sinks behind the test** (`mov [esi+0x80],edi; mov
+  eax,[esi+0x74]; cmp eax,edi`): the test and what follows are an inline
+  member of the sub-object (`void Marcar() { if (paso) paso->listo = 1;
+  activo = 1; }`), the store is a plain statement in front of the call.
+  One member holding all three statements is not the same.
+- Keep the diff of every unmatched function in one directory and search
+  it for an idiom's signature (a reload behind a store, a pure reorder
+  of stores) before opening functions one by one.
