@@ -7232,3 +7232,48 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Only the order of the register reloads behind a block differs:**
   the block's test is nested `if`s, not one `&&` chain (or the other
   way round).
+
+### Statics with internal linkage: where the guard test and a flag word's load may go
+
+- **A function static's guard test in front of stores that precede it
+  in the source (`test [guard],m; mov [a],r; mov [b],r; jne`, yours
+  the stores first):** the static's function has internal linkage or
+  is a plain (not `inline`) function, so nothing else can address the
+  guard word and the compiler moves its load over the stores. An
+  `inline` member's statics are COMDAT data: the load stays behind
+  the stores. Two spellings: a plain member defined in the caller's
+  file that `/O2` (`/Ob2`) expands on its own (check that both the
+  expansion and the out-of-line copy match), or a `static
+  __forceinline` free function when a plain one stays a call.
+- **A global tested in front of stores through pointer parameters
+  (`test [g],4; ...; mov [edx],eax; ...; je`):** the global is a
+  `static` of the original's file. Declare it `static` for the
+  matching compiler only (a macro that is `extern` for the native
+  build keeps the one object).
+- **The guard bits of a function's statics are assigned in source
+  order:** in a `switch` they give the order the `case`s were written
+  in (the jump table is by value either way); the EH state numbers
+  say the same.
+- **Dead EH states between a function's own statics:** count them in
+  units of the setter's statics: each unit is one expansion of the
+  setter with a constant whose `switch` arm is empty. Blocks a port
+  wrote out by hand (`clear(); state = k;`) are those calls.
+- **`push k; jmp` to one shared `mov ecx,esi; call setter`:** the
+  setter is called at each place (`Set(9); break;`), not through a
+  `next` variable with one call behind the `switch`.
+- **A handler's epilogue behind the info path with the base call's
+  block after it:** the tail is two flag tests (`if (!done && id ==
+  idInfo) { done = 1; Info(); } if (!done) { res = 1; Base(); }`),
+  not a nested `if / else`: same instructions, another block order.
+- **A base-class slot that takes a `float` where the class declares
+  the virtual with `int`:** declare a second, non-virtual member with
+  the float signature bound to the same address and pass `*(float
+  *)&arg`; no override's name changes.
+- **A constant in a callee-saved register from the top of a function
+  and an immediate at the exit:** a result variable set at the top
+  (`int r = 1; if (bad) r = 0; else {...} return r;`). The reverse
+  (yours registers a constant, the image uses immediates): look for
+  early returns that are really one exit (`if / else if` with one
+  statement behind it).
+- **Float constants loaded from `.rdata` in front of integer stores**
+  are literals; an `extern float` is reloaded and cannot move.
