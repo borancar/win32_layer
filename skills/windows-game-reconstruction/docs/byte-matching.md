@@ -6852,3 +6852,29 @@ mostly header-less, so the lever is what else is defined in the unit.
   that call; no expression at the call site gives the `setne`. A frame
   4 bytes larger than the image's with every slot equal can be the
   temporary of an intrinsic `strlen`.
+- `[vc8]` **`xor eax,eax` in front of the first test and refusing exits
+  that load nothing** is `int r = 0;` with the work inside the
+  `if`/`switch` arm and one `return r`; a search loop is `for (...) { if
+  (hit) { work; r = 1; break; } } return r;`. `sub eax,K; je; sub
+  eax,K2; jne` is a `switch`, not two comparisons.
+- `[vc8]` **A null-tested send whose last argument is loaded in front of
+  the jump** (`cmp [obj+N],0; mov edx,[this+M]; je`) is an inline member
+  of the object (`void Motor(a, b, c, d) { if (motor) motor->Mensaje(a,
+  b, c, d); }`); the test written at the call site loads the arguments
+  behind it. Scan the ports for `if (X) X->M(` written by hand.
+- `[vc8]` **`add r,8` behind the first `fsub [r+8]`, the next fields at
+  `[r+4]`:** the vector is reached through a pointer local (`float *a =
+  &actor->x; d[0] - a[0]`). Three differences stored and then copied are
+  an inline `operator-` returning by value.
+- `[vc8]` **A float local with a slot of its own while its sibling takes
+  a dead parameter's slot:** both were filled through an inline with
+  out-pointers. A copy of one of them (`float qy = py;`) used in the
+  loop exchanges the order of two products without moving the hoisted
+  loads.
+- `[vc8]` **`fabs` between two store/load pairs** is an inline `float
+  Abs(float v) { return (float)fabs(v); }` applied to the expression.
+- `[tool]` A variant runner that replaces a declaration line must keep
+  the trailing address comment on that declaration when the generator
+  reads addresses from comments. Functions whose image reads an
+  uninitialised slot stay unmatched when the port must zero it: note
+  them once and stop.
