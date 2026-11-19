@@ -7180,3 +7180,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   expression:** the expression is an inline helper taking pointers.
 - **A member vector copied by integer moves through a `lea` that is
   also the next call's receiver:** a pointer local to the member.
+- **Scratch registers rotated by one from a statement to the end of
+  the function (`eax, ecx, edx` against `eax, eax, ecx`):** the load
+  at that statement is a named local or an inline getter with another
+  statement between load and store (`int v = estado; pasar = 1;
+  anterior = v;`). Fix that one statement before trying anything
+  else; every scratch choice behind it follows.
+- **Repeated written-out state blocks in a handler** are one setter
+  member expanded with constants. If `inline` leaves `push k; call`,
+  the image has no out-of-line copy: force it in line. A setter that
+  is expanded at one site and called at another is plain `inline`.
+- **Two EH states without code between two expansions of an inline
+  with statics:** the source calls it twice in a row with the same
+  constant; the second expansion folds away and leaves its statics'
+  states.
+- **A receiver computed into `eax` in front of the argument pushes
+  and moved to `ecx` behind them** is a chain of inline getters, not
+  a pointer local.
+- **"0 bytes differ" but the string literals are reported different:**
+  the `switch` arms are in another source order; the jump table hides
+  it, the relocations do not. Arms are laid out in source order.
+- **A `void` handler whose image ends `mov eax,[flag]; test eax,eax`**
+  returns `int`: check the vtable slot's other overrides.
