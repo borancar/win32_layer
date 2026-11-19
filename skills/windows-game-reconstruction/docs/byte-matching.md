@@ -7338,3 +7338,41 @@ mostly header-less, so the lever is what else is defined in the unit.
   whose pointer types differed). Compare the identical set after
   each header; leave a copy where two files need different
   spellings of a shared base class or record to match.
+
+### The unwind state count is a scan: what the front end saw and the code no longer shows
+
+- **Compare the image's `maxState` with your object's for every
+  port** (the FuncInfo behind the handler stub; in the object the
+  `__ehfuncinfo$NAME` symbol, dword +4), and print the image's
+  unwind map with each funclet's target: it names every object
+  the original source had, by address and destructor. States are
+  assigned from the source before inlining and dead-code removal,
+  so they survive where the instructions do not.
+- **One state more, whose funclet destroys the base part of the
+  result or of `this` (`mov ecx,[ebp+N]; jmp ~Base`), with no
+  store of that state anywhere in the code:** an out-of-line
+  constructor whose body can throw is defined in the class header
+  and expanded at a call with a constant argument that folds the
+  body away (`T(owner, 0)` expanded, `T(owner, &x)` a call of the
+  same constructor). A hand-written one-argument constructor with
+  the same stores gives equal code bytes and no state: functions
+  whose code is byte-equal and whose `__ehfuncinfo` differs are
+  this. An inline setter, a member with a constructor or an
+  intermediate base do NOT make the state; only a call the front
+  end cannot see through does.
+- **A state with a null action** is a static local of an inline
+  expansion whose initialisation is dead for the constant
+  arguments; count them to get the number of expansions. Not the
+  cause: `try`, empty inline destructors, placement `new`.
+- **A funclet on a parameter slot (`lea ecx,[ebp+4]`)** is a
+  local object packed into the dead parameter's home, not a
+  by-value parameter: write a local class with an inline
+  destructor and let the compiler place it.
+- **A named local with a destructor at the end of a function
+  takes one slot too many** when a temporary of the same type
+  precedes it at function scope: put the tail in a block
+  (`{ T v = f(); ... }`) and the two share the image's slots.
+- **Classify every remaining port by its first differing hunk**
+  before choosing work (prologue/frame, EH, register exchange,
+  order, constants): the class sizes show where one idea closes
+  many, and which classes are the residue of every earlier round.
