@@ -7438,3 +7438,53 @@ mostly header-less, so the lever is what else is defined in the unit.
   named locals per branch, not an inline builder called six times.
 - **A virtual call on `this` in a constructor is devirtualised**;
   a `call [vtable+n]` there went through a pointer local.
+
+### Ports that never had the image's structure: rank by the mnemonic sequence, then rewrite from the listing
+
+After many rounds of register work the remaining ports fall into
+two populations that a line diff cannot tell apart (a frame of
+another size moves every `[esp+N]`). Diff the MNEMONIC sequences
+alone (first token of each instruction, registers, offsets and
+constants dropped) and divide by the image's length:
+
+- **a ratio near or above 1, no x87, few mentions in the notes** is
+  a port written from a prose description: caches the image does not
+  have, early returns, hand-expanded helpers. Nobody tried register
+  forms on it because no form was close. Read the image's listing
+  and write the function again in its block order; these match in a
+  handful of compiles (five of five tried in one round).
+- **a ratio below 0.3** is register residue; leave it to the idiom
+  lists.
+
+What the rewrites needed, in the order they paid:
+
+- **Read members through the object at every use** where the image
+  reloads them (`panel->menus[i]->x` five times, `buffer[i]` in every
+  arm). A cached local is the description-port's habit.
+- **One `return` and the parameter in memory**: arms that end
+  `mov eax,[param]; pop; ret` are `break`s in front of one
+  `return c;`; an early `return c;` in a first `if` block puts the
+  parameter in a callee-saved register for the whole function. Write
+  `if (...) {...} else switch (c) {...} return c;`.
+- **A load placed in FRONT of the previous statement's store** (the
+  image `mov ecx,[this+0x28]; mov [this+0x30],1`, yours the store
+  first): the stored field is reached through a cast or a reference
+  to a cast (`int &cursor = *(int *)(pad + 4)`), which the compiler
+  must assume aliases the load. Declare the fields as real members.
+- **A switch laid out `cmp 2; jle B; cmp 4; jne out; A; B`** is
+  `switch { case 4: A; break; case 1: case 2: B; break; }`: the
+  blocks are in source order, the tests are not.
+- **Dead zero stores of a member's default constructor that survive
+  in front of the real values** (`mov [eax+4],0; mov [eax],0; mov
+  [eax],esi`): the values arrive by an aggregate assignment from a
+  NAMED record (`caja = k;`), which the dead-store pass does not see
+  through; member-wise assignments are cleaned up.
+- **By-value records pushed with `mov [esp+N],esp` in front** have a
+  constructor and a copy constructor; without the copy constructor
+  the temporaries are built in the frame.
+- **The box from a position and a size**: by value, by const
+  reference, or by value with a named copy of the position give
+  three different load orders. Try all three before anything else.
+- **`push ebp; mov ebp,esp` in an /O2 function with `dec ecx` loops**
+  is an inline `__asm` block of the original inside a C function;
+  it is not a C loop to be matched.
