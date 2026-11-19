@@ -7114,3 +7114,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   first register and moves its `push` in front of the first call.
 - **A scratch rotation one step off behind a call:** try an inline
   getter on one of the call's ARGUMENTS, not only on the receiver.
+- **Hand-written calls of the `eh vector` constructor/destructor
+  iterators, or a placement `new (operator new(N)) T(...)`, in a port:**
+  write `delete[] p; p = new T[n];` and a plain `new T(...)` on a class
+  with a declared destructor. The placement form hides a class view
+  that is shorter than the size the image pushes; fix the view.
+- **A receiver loaded BEHIND the call that makes its argument**
+  (`call Token; mov ecx,[this+N]; mov edx,[ecx]; push eax; call [edx+M]`):
+  the argument is a temporary in the call (`obj->Read(&v.Token(1))`),
+  not a named local in a block.
+- **One destructor call in the port, two in the image at `[x]` and
+  `[x+N]`:** the record's destructor is inline (a base and a member
+  with out-of-line destructors, `__forceinline ~T() {}`).
+- **A compare against a memory operand with every later scratch
+  register one step on:** read the operand through an inline getter,
+  after the other operand has been put in a local
+  (`unsigned d = cur - beg; if (d < Count(l)) ...`): the getter's
+  temporary takes a rotation step and is then folded into the `cmp`.
+- **Disjoint-scope buffers that do not share a slot, frame larger by a
+  buffer:** declare the big buffers at function level. Compare the
+  whole `lea reg,[esp+N]` sequence of image and port before anything
+  else in a function with many EH objects; the order of same-sized
+  slots is not the declaration order and moves with any edit.
