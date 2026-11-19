@@ -7488,3 +7488,30 @@ What the rewrites needed, in the order they paid:
 - **`push ebp; mov ebp,esp` in an /O2 function with `dec ecx` loops**
   is an inline `__asm` block of the original inside a C function;
   it is not a C loop to be matched.
+- **Switch arms that jump into one shared call tail** (`mov ecx,ebx;
+  jmp tail` in some arms, a second entry that loads other arguments
+  and falls into the same pushes): the arms only assign variables and
+  the call is written once behind the switch (`default: goto fin;`).
+  A call per arm with a `return` never merges that way.
+- **Nested inline members and the width of their parameters**: a
+  16-bit value widened once (`movzx edi,cx`) and reused by two inlined
+  bit operations means the inner inlines take `unsigned`, the outer
+  one the 16-bit type. The same width at both levels redoes the
+  widening and changes which value is spilled.
+- **An element's field reached as `lea r,[i*8]` plus a later `add
+  base,r`** is an inline MEMBER of the element (`tabla[i].Tiene(v)`),
+  not a field access spelled out at the call site.
+- **VC8 does not unswitch loops**: an invariant flag tested once in
+  front of two loop copies is two loops in the source. `do { ...; n--;
+  ... } while (n)` behind `if (n)` keeps the count's register; `while
+  (n--)` moves it.
+- **A search loop with `xor eax,eax; push eax` as the 'previous'
+  argument and `mov eax,ebp` at the bottom** has two variables (the
+  previous one and the found one), not one reused.
+- **A dead `lea eax,[...]` behind each `add`/`and` on a member** is an
+  inline getter that returns a reference; `x = x + 1` through it keeps
+  the immediate where `x++` hoists the constant 1 into a register.
+- **A frame 4 bytes larger than the image's with every instruction
+  equal** can be a `new` temporary that shares an address-taken
+  local's slot in the image: record it and move on if blocks and
+  inlines do not give it.
