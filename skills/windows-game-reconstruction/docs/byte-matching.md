@@ -7405,3 +7405,36 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A static function's register convention follows the order
   of its local declarations**; try reordering them before
   anything else when only the incoming register differs.
+
+### Hand-built pieces that were language constructs: static arrays, by-value records, calls kept out of line
+
+- **A flag test, a row of placement constructions and an `atexit`
+  call** are a function-static array with brace initialisers:
+  write it as one (`static T a[N] = { T(...), ... };`) and the
+  guard word, one unwind state per element and the exit destructor
+  come from the compiler. The element view needs its real
+  destructor.
+- **A box (or any record) built from two smaller records passed BY
+  VALUE** evaluates the second record's operands first, then the
+  first's; one constructor with four scalars, field assignments in
+  any order and locals for the operands all load the first field
+  first. When four stores match and only the order of their loads
+  does not, try `Box(Pos(x, y), Size(w, h))` with by-value
+  parameters.
+- **A record pushed by value whose trailing words come from a fresh
+  zero register** while the leading ones use the function's zero
+  register has a member with its own constructor behind plain
+  words.
+- **The image calls a member your build expands**: the frame is
+  larger by the expansion's temporaries and hundreds of lines
+  differ. Mark the member `noinline` before reading anything else.
+- **A member loaded behind the construction of a temporary
+  argument** (constant, `lea tmp`, `push`, stores, then the member
+  load) is read through an inline getter; the plain member
+  expression is loaded first and every scratch register after it
+  rotates.
+- **Sibling blocks share stack slots, expansions of one inline do
+  too**: six objects in two branches at three slot sets are three
+  named locals per branch, not an inline builder called six times.
+- **A virtual call on `this` in a constructor is devirtualised**;
+  a `call [vtable+n]` there went through a pointer local.
