@@ -7515,3 +7515,20 @@ What the rewrites needed, in the order they paid:
   equal** can be a `new` temporary that shares an address-taken
   local's slot in the image: record it and move on if blocks and
   inlines do not give it.
+- **The same short store at the bottom of every `switch` arm, the
+  default jumping into the last arm's copy** is ONE statement behind
+  the switch (`switch (m) { case ...: p = &a; break; ... } *p = 0;`):
+  VC8 copies a short tail into each arm. A port that guards it (`if
+  (p)`) differs from the image, which writes through whatever the
+  default left in the pointer: check the callers' values and record it.
+- **One slot for every point and box of a painter** is one
+  function-level record set again for each call, not a temporary per
+  call (those get a slot per type); a position that is loaded whole and
+  then adjusted in registers is a by-value copy with `+=`/`-=`, not a
+  constructor from two sums (that evaluates the second sum first).
+- **A post-increment inside an index** (`p[y++ * w + x]`) leaves a
+  register copy in front of the multiply; the increment as its own
+  statement does not.
+- **A variants harness pays off quickly**: a script that takes named
+  `(old, new)` text replacements, builds and diffs each and restores
+  the source lets one try six spellings per compile round.
