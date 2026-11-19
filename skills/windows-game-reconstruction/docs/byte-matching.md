@@ -6878,3 +6878,28 @@ mostly header-less, so the lever is what else is defined in the unit.
   reads addresses from comments. Functions whose image reads an
   uninitialised slot stay unmatched when the port must zero it: note
   them once and stop.
+- `[vc8]` **A constructor port whose image has more EH states than the
+  port is a real constructor in every piece.** `mov [state],0` behind
+  the first constructor call is a base (or first member) with a
+  destructor; a state byte around each `operator new` + constructor is
+  `new T(args)` with a declared constructor. Read the unwind funclets in
+  front of the handler address for which destructor each state runs.
+  No vtable store behind that first call means the "base" is the first
+  member. Rank the remaining constructor ports and rewrite them this
+  way: most match at the first or second build.
+- `[vc8]` **Int stores that lag behind the float stores that follow
+  them in the source are stores to pointer fields** (`void *a; a = 0;`
+  against `int a`). The type of a zeroed field moves its store.
+- `[vc8]` **A field reloaded and tested right after it was stored**
+  (where the port folds the load): a store in between goes through a
+  pointer local (`int *q = &m.c10; q[0] = 0; q[1] = d;`), which VC8
+  treats as a possible alias. An inline member or a reference does not.
+- `[vc8]` **A constant loaded into a register early while its stores
+  come last:** the assignments stand early in the source; VC8 sinks the
+  stores and leaves the load at the statement's place.
+- `[vc8]` **A zero in a register of its own used for one field twice**
+  is a named default-constructed local assigned twice, not two
+  temporaries. A compare on a field in memory followed by a second load
+  for the copy means the copy is a record assignment.
+- `[vc8]` **A virtual call on a member object** goes through a pointer
+  local (`T *t = &m; t->F()`); on the member itself VC8 calls directly.
