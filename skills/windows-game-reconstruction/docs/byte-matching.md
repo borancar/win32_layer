@@ -2262,6 +2262,25 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` A bounds-checked getter with the bound compared twice and a register
   copy in front of the element load: the list is a sub-object with inline
   members of its own, and the owner forwards to them.
+- `[vc8]` Read the order in which values, temporaries and buffers take their
+  frame slots (`lea ecx,[esp+N]` in listing order) and compare it with ours
+  before changing anything else. A text buffer declared beside its value
+  (`{ Block v = ...; char s[32]; if (v.Count()) ... }`) and one declared
+  inside the `if` give different slot sharing for every LATER value and
+  temporary of the function; the frame size says which the original had.
+- `[vc8]` `movsx eax,cx` ... `shr ecx,16; movsx eax,cx` on one int "parameter"
+  followed by a 16-bit one, and locals coloured into the homes of the other
+  parameters only: the two are one small record passed by value
+  (`struct { short r, g, b; }`). The stack layout is the same, so callers
+  through other declarations do not change.
+- `[vc8]` A row loop that ends `sub [slot],1; jne` with the per-row skip
+  spilled in front of the count was written counting up with the skip
+  computed in the body; a hand-written count-down stores the two the other
+  way round. Signed masks (`(int)0xffff07ff`) keep `sar` behind an `and`.
+- `[vc8]` A scratch-register rotation that is one step off from a field
+  read onward: read the field through an inline getter, or do the whole
+  replace-a-string sequence in an inline member (`delete p; p = new
+  char[strlen(t) + 1]; strcpy(p, t);`).
 
 ## 12. Known not to exist, and still open
 
