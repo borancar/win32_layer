@@ -7376,3 +7376,32 @@ mostly header-less, so the lever is what else is defined in the unit.
   before choosing work (prologue/frame, EH, register exchange,
   order, constants): the class sizes show where one idea closes
   many, and which classes are the residue of every earlier round.
+- **A deleting destructor with an EH frame over a destructor
+  without one**: the destructor's body calls a helper declared
+  `throw()` (`~T() { Unload(); }`). The destructor needs no
+  frame; the compiler-generated `??_G` expands both and keeps
+  the state that destroys the base. Delete any hand-written
+  "destroy and free" port and let the compiler emit `??_G`.
+- **Declare `operator delete` / `operator delete[]` as
+  `throw()`** in a file where the image has no state store
+  (`mov [state],-1`) in front of an inline destructor's delete.
+  A diff that is only state stores is a wrong `throw()` on a
+  callee or on delete.
+- **An explicit "destroy" call at a function's tail is a
+  missing unwind state**: make it the class's destructor (an
+  inline one in a header when the image expands it; its
+  out-of-line copy is what the funclets call). A record with no
+  destructor of its own but members that have one gets a state
+  per member while the implicit destructor runs.
+- **/GS shadow-copies pointer parameters, not integers**: in a
+  function with a cookie, a frame one slot short plus a missing
+  `mov [esp+N],reg` at the top is a parameter typed `int` that
+  is a pointer. A `char` array inside a class view makes the
+  cookie itself: pad views with `int`.
+- **Name the value that survives a call**: a check word or a
+  receiver pointer in a named local takes a callee-saved
+  register; as an expression it takes a scratch register and
+  rotates every scratch choice after it.
+- **A static function's register convention follows the order
+  of its local declarations**; try reordering them before
+  anything else when only the incoming register differs.
