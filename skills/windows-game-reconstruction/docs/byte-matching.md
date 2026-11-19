@@ -7306,3 +7306,24 @@ mostly header-less, so the lever is what else is defined in the unit.
   the `if`.
 - **A store hoisted in front of a branch:** the same store written in
   both arms, not once in front.
+- **Count the unwind states before adding expansions:** read
+  `maxState` from the function's FuncInfo (the handler stub's
+  `mov eax, offset`). An inline with N statics takes N states per
+  expansion, reached or not, in source order; the count tells how
+  many expansions the original has and rules out a dead one that
+  merely happens to fix the registers.
+- **An inline member with statics that several files expand belongs
+  in the class header, defined once:** two token-identical copies
+  over two class views merge silently and are an ODR trap. Try the
+  header `inline` and compare the identical set; ports in other
+  files then turn out to hold its expansions written by hand.
+- **A small record read by value and a message block of the same
+  shape in one frame slot:** the block is the same local, written
+  again and passed by address, not a second array.
+- **In-memory `or`/`and` on an array element, or a repeated test the
+  original drops inside an expansion:** index the element at each
+  use; a reference to the element makes VC8 load, combine and store
+  once and keeps the test.
+- **A loop's induction base at a member that is not the first one
+  read:** a pointer local to the neighbouring sub-object
+  (`P *p = &a[i].pos;`), the other members by index.
