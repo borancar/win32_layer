@@ -1068,6 +1068,13 @@ an item says otherwise.
   also differ for a NaN (0x45d1b0, 0x4644c0, 0x463050). **held** *(match)*.
 
 
+- `[vc8]` **A parameter kept in a register and a local in a slot, where ours spills the parameter into a new
+  slot**: the parameter is copied into a local in front of the loop (`unsigned char *d = dst; ... *d++ = v;`)
+  (0x569da0). **An element indexed at each use inside a `new` expression's arguments** computes its address in the
+  non-null arm (`new T(a[i].x, a[i].y)`); a pointer local is computed in front of `operator new` (0x5213d0).
+  **The vtable loaded in front of an `or`/`add` on a field of `this`**: the field is named at each use; through a
+  pointer local the store is a fence (0x4234c0). **held** *(match)*.
+
 ## 5. Structures, types and parameters
 
 - **A stubborn mismatch is usually a stub struct.** `[vc6]` **held.** Typed
@@ -1897,6 +1904,24 @@ an item says otherwise.
   (`{ V v(buf); t.Cambiar("XYZ", v); } t.Guardar();`); the value as a temporary argument is 65 bytes off
   (0x4c8590). **held** *(match)*.
 
+
+- `[vc8]` **Two EH objects in one stack slot**: each stands in a block of its own (`{ V o = t.Valor("A"); ... }
+  { V x = t.Valor("B"); ... }`); objects whose destructors all run at the function's end (states only count up)
+  are not in blocks. **The first object in the higher slot, the loop's object below it**: the body stands under
+  `if (n) { ... }`; `if (!n) return;` in front exchanges the two slots and nothing else (0x4d8040). **held**
+  *(match)*.
+- `[vc8]` **A byte-loop `strcpy` from a literal** (`mov al,[edi]; mov [ecx+edi],al; add edi,1; test al,al; jne`,
+  where a literal written at the call gives dword moves): the literal is the argument of a callee expanded in
+  line; an out-of-line member defined earlier in the same file is expanded too when called with constants
+  (`Empezar("CAMUFLARSE", 4, 1, 0);`, 0x4234c0). **held** *(match)*.
+- `[vc8]` **Three `fld [m]; fstp [eax+N]` straight into the argument area**: a vector passed through its
+  user-written copy constructor (`f(i, o, *(V *)&campo)`); a three-float constructor call builds a stack temporary
+  first (0x427bd0). **Two same-sized results, the second copied from `eax`**: `Caja c = Area(); *(Caja *)(t + N)
+  = Area();`, a dead named local in front of the assigned temporary; a discarded call shares the slot
+  (0x60b5c0). **held** *(match)*.
+- `[vc8]` **A COMDAT constructor or destructor our object defines is compared with the bytes at the image's call
+  target**: when the image calls an out-of-line one through a thunk, declare both without bodies and bind the two
+  names to the thunk addresses in the symbol table (0x56b2d0). **held** *(match)*.
 
 ## 7. Register allocation: the measured model
 
