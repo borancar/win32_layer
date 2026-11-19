@@ -7532,3 +7532,26 @@ What the rewrites needed, in the order they paid:
 - **A variants harness pays off quickly**: a script that takes named
   `(old, new)` text replacements, builds and diffs each and restores
   the source lets one try six spellings per compile round.
+- **Time-box each port** (six compiles or variant batches; stop when
+  the diff has not halved after three): a round that opens twelve ports
+  this way matches more than one that spends itself on a single
+  register question. Save the try, restore the source, move on.
+- **Compare frame sizes across all unmatched ports**: a frame larger
+  than the image's by a multiple of a class's size means named locals
+  where the image has temporaries (`a.Get("K").CopyTo(buf)`, an
+  address-of-temporary argument); a smaller one means a block-scoped
+  local that the image keeps at function level.
+- **The same null-checked load twice in a row for one object** is an
+  inline getter of a typed object called twice through `this->member`,
+  not a helper taking a cached pointer.
+- **A member reloaded between a store and the next load of the same
+  element** means no element pointer local: index through the base at
+  every use (`base[r].v[i].x`). The opposite, a pointer held in a
+  register over several calls where yours reloads the member, is an
+  inline helper taking that pointer as a parameter.
+- **A pair returned by value and copied through the returned pointer**
+  is an assignment to the member from the call (inline `operator=`),
+  not a named local copied field by field.
+- **Check for patched bytes** (`nop`s between two `cmp`s, a `jmp` where
+  a conditional jump belongs) before working on a port: a patched
+  image function cannot be matched by any source.
