@@ -7277,3 +7277,32 @@ mostly header-less, so the lever is what else is defined in the unit.
   statement behind it).
 - **Float constants loaded from `.rdata` in front of integer stores**
   are literals; an `extern float` is reloaded and cannot move.
+
+### A guard word shared between functions names an inline; the scratch rotation is global
+
+- **A function static whose guard word is not the function's own
+  (one static tests `[A]`, the others `[B]`, and its EH state still
+  sits in the function's numbering):** it belongs to an inline member
+  expanded there (COMDAT data: one guard word for the out-of-line
+  copy and every expansion). Search the image for every instruction
+  that sets that word (`or [G],bit`): the users are the inline's body
+  and all its expansions, and the body shows what a port wrote out by
+  hand. Scan all ports for guard words with more than one user.
+- **The inline must be one definition:** move the caller into the
+  file that defines it, or repeat the definition token for token.
+  With it in scope the compiler chooses the image's mix of calls and
+  expansions by itself.
+- **Scratch registers (`eax/ecx/edx`) permuted all the way down a
+  long function:** the allocation rotates through the function, so
+  one extra or missing temporary near the top shifts everything
+  behind it. Work on the first differing line only (a named copy of
+  a member, a flag stored on both paths of a test) and rescore; the
+  difference count of a rotated function says nothing.
+- **Code equal, the function's unwind table one state longer:** a
+  second expansion of a setter whose static is dead (a plain store in
+  your source was `Set(1, 0)`).
+- **The same tail twice with two frame slots for a by-value result:**
+  one forced inline called in both branches, not shared code behind
+  the `if`.
+- **A store hoisted in front of a branch:** the same store written in
+  both arms, not once in front.
