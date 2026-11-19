@@ -6930,3 +6930,20 @@ mostly header-less, so the lever is what else is defined in the unit.
 - `[vc8]` **A temporary two bytes larger than the member it is copied
   to** (frame 4 bytes bigger, a dword reload at an odd offset): the
   temporary is a derived or larger record sliced on assignment.
+- `[vc8]` **A store through a pointer is a fence.** When ours hoists
+  something over a run of member stores that the image keeps behind
+  them (the EH state store, the next call's `mov ecx,..`, an argument
+  push, a constant kept in a register), one of the stores in the run
+  goes through a pointer: a pointer local (`int *p = &b; *p = 0;`) or,
+  more often, the induction pointer of a small loop the compiler
+  unrolls (`int c[4]; for (i = 0; i < 4; i++) c[i] = 0;`, descending
+  for stores in descending order). Four scalar fields and four
+  `c[i] = 0` statements are not the same thing as the loop. Look for
+  runs of equal stores to adjacent offsets: they are arrays.
+- `[vc8]` **Two ints converted (`fild`) from the slots of a later
+  temporary instead of dead parameter slots:** they were taken as a
+  pair by value from an inline getter (`Tam t = dev->Tam();`), not
+  read into two int locals.
+- `[vc8]` **Int stores interleaved with the float stores of the member
+  constructed in front of them** (instead of sunk behind): the
+  initialised fields are pointers, the zero one included.
