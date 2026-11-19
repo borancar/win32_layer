@@ -7155,3 +7155,28 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **Two calls with side effects in one argument list:** the compiler
   under test and the native compiler may evaluate them in opposite
   orders; write them as locals in the image's order (same bytes).
+- **A constant kept in a callee-saved register for the whole function
+  where the image writes immediates (and a parameter spilled to its
+  home slot):** not a spelling of the constant. Read the whole function
+  against the decompiler and give every block the image's shape (locals
+  declared in the branch that uses them, a default plus an `if` for a
+  selection, the tail's flag tests as the image has them); the
+  allocation follows once the structure is right, and single fixes can
+  move the score the wrong way on the way there.
+- **Skipped EH state numbers (unwind-table entries with a null
+  action):** an `inline` member with function statics was expanded with
+  a constant argument and its static initialisers died; they keep their
+  state numbers. Decode the table (the handler's `mov eax,FuncInfo`,
+  then `maxState` pairs of toState/action), find the class's setter
+  with that many statics, declare it `inline` and write the expansion
+  as a call. Two initialisers testing the same guard bit in one
+  function are the same inline's static expanded twice.
+- **A message handler's tail:** `mov reg,1; call Base; mov eax,reg` is
+  a result variable set in front of the base call; `mov eax,[flag];
+  test eax,eax; je end` with no `xor eax,eax` is the base's answer
+  assigned to the flag and returned; `sete al; setne cl; and eax,ecx`
+  is a bitwise `&` of two tests.
+- **One integer store scheduled ahead of the first float load of an
+  expression:** the expression is an inline helper taking pointers.
+- **A member vector copied by integer moves through a `lea` that is
+  also the next call's receiver:** a pointer local to the member.
