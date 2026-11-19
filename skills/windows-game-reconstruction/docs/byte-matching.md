@@ -6903,3 +6903,30 @@ mostly header-less, so the lever is what else is defined in the unit.
   for the copy means the copy is a record assignment.
 - `[vc8]` **A virtual call on a member object** goes through a pointer
   local (`T *t = &m; t->F()`); on the member itself VC8 calls directly.
+- `[vc8]` **A struct assignment from a float temporary is hoisted above
+  the int stores written in front of it.** The image shows the
+  `fst [tmp]; mov r,[tmp]` pairs and most member stores right behind
+  the previous call, a constant loaded between them, and the LAST dword
+  store behind a run of unrelated int stores. The source order is the
+  int stores' order, with the assignment standing where that last store
+  is. Scan the split point (how many int statements stand in front)
+  instead of permuting statements.
+- `[vc8]` **A pointer member loaded early and loaded again behind a
+  call** is the member read at each use, not a pointer local; the local
+  also swaps registers at a later virtual call.
+- `[vc8]` **`cmp [m+N],0; je; mov r,[m+N]` where the port loads once
+  and compares the register:** the test is an inline `bool` getter
+  (`bool Hay() { return p != 0; }`) and the use a pointer getter. Two
+  spellings of the field, a local, nested `if`s or an int-typed test
+  all load once.
+- `[vc8]` **Same-valued constant stores grouped where the image keeps
+  them interleaved:** VC8 pulls the stores of the SECOND constant it
+  meets to the front; write the table in its natural (row by row)
+  order, not in the image's store order.
+- `[vc8]` **An inline library constructor whose stores come in another
+  order at one site** may be a different class with its own constructor
+  (a template instance); changing the shared header loses the matched
+  out-of-line copies. Keep the variant local to the file.
+- `[vc8]` **A temporary two bytes larger than the member it is copied
+  to** (frame 4 bytes bigger, a dword reload at an odd offset): the
+  temporary is a derived or larger record sliced on assignment.
