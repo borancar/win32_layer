@@ -7004,3 +7004,26 @@ mostly header-less, so the lever is what else is defined in the unit.
   the branch holding that static folds away. A higher state than yours
   says how many times the inline was expanded (two separate `if` arms
   each calling it, not one `||`).
+- **A bare `cmp; jmp` into a shared `je` (two tests ending in one
+  conditional jump) is a `switch` with repeated arms**, not a `?:`:
+  `switch (k) { case A: if (f()) X else Y; break; case B: Y; break;
+  default: X; }`. The compiler merges the equal bodies; every `?:`
+  spelling materialises a flag (`setne`, `neg; sbb; neg`).
+- **Two copies of one body, one entered behind `fstp st(0)` and one by
+  falling through behind `fcomp`, are ONE `if (a || b)`** whose
+  operands leave different x87 stack depths: the body is copied per
+  stack state. Two `else if` arms with the same body stand in source
+  order instead.
+- **With a memory operand the zero is loaded and the memory compared**
+  (`x < 0.0f` = `fldz; fcom [x]; test ah,0x41; jne`), and the zero stays
+  for the next compare; with the zero written on the left the operand
+  is loaded first. Read the load order before trusting a decompiler's
+  operand order.
+- **A constant not folded into a scaled index (`add eax,2; lea
+  edx,[eax+eax*2]`) says the index came out of an inline helper** taking
+  it by value (`inline int Sel(int i) { return (unsigned)i < 5 ? i : 0;
+  }`, `rows[Sel(i) + 2]`).
+- **Ports nobody opened beat ports everybody tuned:** rank the remaining
+  ports by size against how often the notes mention them; the ones
+  written straight from the decompiler (no locals, `if` chains, compare
+  directions reversed) fall in a few edits.
