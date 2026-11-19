@@ -6961,3 +6961,27 @@ mostly header-less, so the lever is what else is defined in the unit.
 - Keep the diff of every unmatched function in one directory and search
   it for an idiom's signature (a reload behind a store, a pure reorder
   of stores) before opening functions one by one.
+- `[vc8]` **Vector copies by `fld/fst`, vector assignments by three
+  `mov`:** the values are objects of a vector class with a float copy
+  constructor and the default assignment, not float locals. Then: three
+  `fstp` into a temporary and three `mov` back into the vector the
+  difference was taken from = the result is assigned back (`q = q -
+  pos;`), no second variable; `lea eax,[tmp]; mov ecx,[eax]; mov
+  edx,[eax+4]; mov eax,[eax+8]` in two arms = a ternary of two
+  temporaries written at the assignment (`v = m ? a - m->off : V(0, 0,
+  0);`), not an inline returning it (one more float copy) and not
+  `if/else`; `cdq; xor eax,edx; sub eax,edx` = `abs()`; a zero stored
+  into a pointer parameter's home while the parameter lives in a
+  register = an int local, not a write to the parameter.
+- `[vc8]` **`(cur - base) >> 2` recomputed and compared with the count
+  in every pass** (yours keeps an index): the walk is an iterator record
+  with an inline test (`x = *cur; return x != (T *)-1 && (unsigned)(cur
+  - beg) < n;`), not a hand-written loop.
+- A function that shrinks when its callee's arity is fixed can become
+  inlinable into a caller in the same file and cost that caller's
+  match: move it to the file of its address neighbours.
+- A diff tool that masks jump targets and constants shows nothing for a
+  function that differs only there: keep a raw byte comparison at hand,
+  and build the diff directory from the objects' symbols (a marker line
+  whose first name no object defines hides the function from a
+  name-driven scan).
