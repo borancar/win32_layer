@@ -7327,3 +7327,14 @@ mostly header-less, so the lever is what else is defined in the unit.
 - **A loop's induction base at a member that is not the first one
   read:** a pointer local to the neighbouring sub-object
   (`P *p = &a[i].pos;`), the other members by index.
+- **Inline members copied into several files are found from the
+  native objects, not from the sources:** every weak function
+  symbol defined by two or more objects whose class has more than
+  one source definition is a candidate (the ODR check only shows
+  the copies whose bodies differ). Token-identical copies go into
+  one header with `#pragma once`, included at the old place;
+  copies over different class views need the union view first
+  (same offsets, every file's member names, casts at the uses
+  whose pointer types differed). Compare the identical set after
+  each header; leave a copy where two files need different
+  spellings of a shared base class or record to match.
