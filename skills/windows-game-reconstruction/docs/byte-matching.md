@@ -6985,3 +6985,22 @@ mostly header-less, so the lever is what else is defined in the unit.
   and build the diff directory from the objects' symbols (a marker line
   whose first name no object defines hides the function from a
   name-driven scan).
+- `[vc8]` **Read the direction of every float compare off the load
+  order and the mask before anything else.** `a > b` is `fld a; fld b;
+  fcompp; test ah,0x5; jp`, `a < b` is `fld a; fld b; fcompp; test
+  ah,0x41; jne`; `x > 0.0f` is `fldz; fcomp st(1); test ah,0x5`, while
+  an int zero (`0 < x`) or `0.0f < x` compares with a double constant
+  in memory. A port taken from a decompiler has the operands swapped:
+  same behaviour, other bytes. `fabs` in the original against a
+  compare-and-`fchs` in yours is the intrinsic `fabs()`, not a ternary.
+- `[vc8]` **A store that the original has in both arms of an `if/else`,
+  behind each arm's constant load, where yours stores once in front:**
+  the statement is written behind the `if/else`; arms that end in
+  separate returns each get a copy. In front, or in both arms, it is
+  hoisted.
+- `[vc8]` **The EH state stored in front of a function-local static's
+  initialiser counts the inline expansions in front of it:** every
+  expansion of an inline that owns a static takes a state, even when
+  the branch holding that static folds away. A higher state than yours
+  says how many times the inline was expanded (two separate `if` arms
+  each calling it, not one `||`).
