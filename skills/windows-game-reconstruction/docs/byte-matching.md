@@ -2218,6 +2218,25 @@ mostly header-less, so the lever is what else is defined in the unit.
   must map to the image's slot target.
 - `[vc8]` An RTTI name always wins over a guessed one; rename the guess, do not
   split files around the clash.
+- `[vc8]` A destructor declared in a shared header and defined out of line in
+  ONE file is inlined into that file's scalar deleting destructor and called
+  by every other file. The image shows it as a `??_G` with the body in line
+  beside derived destructors that call `??1`; a body in the class would
+  inline it everywhere and cost the derived destructors.
+- `[vc8]` A record array indexed at every use (`campos[i].id`, reached
+  through `this`, the member loaded again per use) keeps the index in memory
+  and multiplies it per pass; a cached row pointer or a running byte offset
+  strength-reduces and rotates the scratch registers. A local copy of the
+  object pointer swaps base and index of the address (`[idx+ptr]` against
+  `[ptr+idx]`). Remove the cached row and object pointers first.
+- `[vc8]` `mov ax,[esp+N]` for a parameter means the parameter is 16 bits
+  wide; an `int` narrowed in the body loads the dword. Callers that pass
+  `int`s compile the same, so a stand-in's signature can change.
+- `[vc8]` Every frame slot N bytes higher than ours with an equal `sub esp`:
+  a buffer N bytes smaller, not a missing local.
+- `[vc8]` A bounds-checked getter with the bound compared twice and a register
+  copy in front of the element load: the list is a sub-object with inline
+  members of its own, and the owner forwards to them.
 
 ## 12. Known not to exist, and still open
 
