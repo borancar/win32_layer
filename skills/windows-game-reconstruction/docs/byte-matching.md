@@ -7760,3 +7760,26 @@ What the rewrites needed, in the order they paid:
   argument-home temporaries** (tried on two float ports: identical code to the
   plain form); the dead-home layout comes from writing the values through
   `*(float *)&arg` (see above). **failed**.
+- `[vc8]` **Write an x87 bound comparison with the value on the LEFT when the
+  image loads it first**: `if (x < xmin) xmin = x; if (x > xmax) xmax = x;` gives
+  `fld [x]; fld [xmin]; fcompp` with the image's `test ah,0x41` / `test ah,5`;
+  `if (xmin > x)` reverses the loads. Direct FLOAT member operands in a
+  projection, `(xmin - f48) * f50 + f4c`, give `fld [bound]; fld st0; fsub [f48];
+  fmul [f50]; fadd [f4c]`, where cached locals or explicit `double` factors give
+  stack arithmetic. **partial** *(169 -> 74 lines on a port with a different
+  frame)*.
+- `[vc8]` **A two-int record keeps dimensions that scalar locals rematerialise**:
+  fill `d.y`, load the screen, then fill `d.x` through an explicit `int *t =
+  &obj->ancho` (`add eax,0x20`, early height load, retained width); owner
+  accessors and the record took 60 -> 12 lines. **partial**.
+- `[vc8]` **Repeated zero stores select a retained zero register**: two guarded
+  assignments that repeat an inline constructor's `canal = 0; pausado = 0` make VC8
+  keep zero in `ebp` for all tests and stores (19 -> 6 lines); one repeat is not
+  enough, and a constructor-local zero or explicit null tests fold back. A
+  `volatile` SECOND load of a list slot (`T * volatile c = *p`) restored a whole
+  loop allocation (103 -> 60) on a port that stayed unmatched, so it was not kept.
+  **partial**.
+- `[vc8]` **Ports to exclude at once** (uninitialised reads, found three times in
+  one round): a table slot read before any write, a loop over uninitialised stack
+  slots, and extrema read on the zero-count path. A deterministic-zero rule cannot
+  match them; do not spend compiles.
