@@ -159,6 +159,7 @@ Read the file for the stage you are in.
 | What the first full port taught (four builds, differential testing, signatures, layouts, drift checks) | `docs/armymen2-lessons.md` |
 | Running the original compiler on Linux (VC8 `cl.exe`, `link.exe`) | `docs/original-compiler.md` |
 | Byte matching: ideas with their survival status, per compiler | `docs/byte-matching.md` |
+| Typing the structs a matched port still reaches by raw offset, without losing a match (method, pitfalls, field naming) | `docs/typing-structs.md` |
 | Register allocation, per compiler | `docs/vc6-regalloc.md`, `docs/vc8-regalloc.md` |
 
 ### Native build: the original code is never run

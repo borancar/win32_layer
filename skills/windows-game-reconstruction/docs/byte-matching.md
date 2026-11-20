@@ -7582,3 +7582,166 @@ What the rewrites needed, in the order they paid:
   an inline assembly block of the original inside a C function (a loop
   with `dec ecx` where the compiler writes `sub ecx,1`): it cannot be
   matched from C alone.
+- `[vc8]` **An unrotated search with the success exit before the exhaustion
+  exit** is `int i = 0; int r = 0; while (!r) { if (i >= n) break; if (hit(i))
+  return 1; else i++; } return 0;`: `while (!r)` keeps the head test and the
+  backward jump, `break` and the explicit `return 1` put the two constant exits
+  in the image's order. Assigning the predicate to `r` and returning it folds
+  the exits into the wrong shape. **held** *(match, two functions)*.
+- `[vc8]` **A count guard that is one `test; jbe` with no second loop-entry
+  guard** is `unsigned i = 0; if (i < cuenta) { do { ...; i++; } while (i <
+  cuenta); }` with the count member re-read at every use (`if (cuenta)` gives
+  `je`, and a `for` inside it adds a second guard). The signed twin, `int i = 0;
+  if (i < n) { do { ... } while (i < n); }`, keeps one signed `jle` entry guard
+  (84 -> 4 lines on an unmatched port). **held** *(match)*.
+- `[vc8]` **In an unrolled search the frame slot can be a FOUND FLAG, not the
+  counter**: `int hallado = 0; for (unsigned n = 0; n < 16 && !hallado; n++) {
+  if (occupied) hallado = 1; else { c = c + 1; c &= 0xf; } }`, with the type and
+  the cell address re-formed at every use (a cached base merges the increment and
+  the mask, the image keeps them as separate memory operations). **held**
+  *(match)*.
+- `[vc8]` **`if (a && x + 1 < v) x++; else if (c) y++;` swaps the roles of the
+  constant 1 and the count; the goto form with the incremented value in a local
+  gives the image**: `if (a) { unsigned n = x + 1; if (n < v) { x = n; goto fin;
+  } } if (c) y++; fin:`. **held** *(match)*.
+- `[vc8]` **A two-state `if`/`else if` whose image tests the LATER case first is
+  a `switch` with its cases in the image's block order** (case 3 before case 2):
+  look at the image's block order, not the source's natural one, for every
+  `if (fase == K) ... else if (fase == L)` chain. Pair it with an explicit local
+  for a member that is loaded and tested (`int ocupado = c->ocupado; if
+  (ocupado)` gives `mov; test`, where `if (c->ocupado)` gives `cmp [m],0`).
+  **held** *(match)*.
+- `[vc8]` **A two-sided test whose image keeps a redundant SECOND mode test**
+  (`test mode; ...; test mode`): read both members directly at every use, no
+  locals: `if ((!carp && !(a & 0x10)) || (carp && (a & 0x10)))`. A local copy of
+  the mode lets the compiler delete the second test. **held** *(match)*.
+- `[vc8]` **Write the member store from the source read, not through a named
+  temporary**: `y = s->f4; x = b; z = 0; w = 0;` puts the pointer load before
+  the by-value argument load and the `xor` between the two stores, where `int t
+  = s->f4; x = b; y = t;` loads the argument first. **held** *(match, two
+  names)*.
+- `[vc8]` **A pointer local to an array defeats strength reduction**: `for (i =
+  0; i < l->cuenta; i++) if (l->v[i] == x)` walks a pointer (`add edx,8; cmp
+  [edx],edi`), the image indexes (`cmp [edx+ecx*4+8],edi`). `int *v = l->v;`
+  before the loop and `v[i]` in it gives the indexed form. **held** *(match)*.
+- `[vc8]` **`volatile` on the re-read use means "load again here"**, and is a
+  legitimate LAST step to a match when it reads the same member as before:
+  (a) the second read of an array element, `Notar(((volatile int *)r[1])[i])`
+  (the image reads the element twice; volatile on the first read or on the
+  pointer is worse); (b) an inline getter through `T * volatile` plus a local
+  receiver gives the null test, the member read again and the receiver kept in
+  `eax` behind the pushes; (c) `Cambiar(*(T * volatile *)&cuerpo)` loads the last
+  pushed pointer fresh in `eax` where the plain read picks `edx`; (d) an
+  argument's second use `indice = *(volatile int *)&nombre;` selects the
+  argument's stack home instead of a retained register; (e) a member read into a
+  local, `int e = *(volatile int *)&espera;`, selects the other scratch register
+  without adding a load. Rules that kept it honest: keep the volatile only in a
+  function that ends up MATCHED (it never helped a port that stayed unmatched, in
+  many tries), with a one-line comment, and never where it changes what
+  is read. **held** *(match, six functions)*.
+- `[vc8]` **A result variable that lives in memory with a zero register held
+  through the whole function**: `volatile int ok = 1;` gives the `xor ebp,ebp` at
+  entry that a plain `int ok` folds away (`ok = 0` once before the cleanup arm,
+  `return 0` inside the `if (e)` cleanup, `return ok` after it). Zeroing
+  constructors on a local derived struct (`struct N : T { N() { a = 0; b = 0; }
+  }` and `new N`) give the `test eax; je; mov [eax+4],0; mov [eax],0` shape; a
+  success test written `int fin; if (e && (fin = ok))` is what puts `this` in
+  `ebx`; the called member must be `__declspec(noinline)`. **partial** *(79 ->
+  16 lines)*.
+- `[vc8]` **Three floats copied as THREE INTEGER words**: where the image copies
+  a point through `mov`, not `fld/fstp`, cast both sides to a three-int record
+  (`*(V3i *)v = *(V3i *)p`, `struct V3i { int x, y, z; }`). A local float record
+  filled in x/y/z order and then copied to a float global through the int record
+  gives the local `fld/fstp` and the global's integer loads and stores; a zeroed
+  local copied the same way gives the image's stack temporary plus three int
+  stores. A memberwise-copied second record restores a copy the plain assignment
+  drops. **held** *(match, two functions; 57 -> 8, 79 -> 27 on others)*.
+- `[vc8]` **A named pointer to an embedded record can be REQUIRED, and it is a
+  raw-offset cast**: `S *s = (S *)((char *)actor + 0x194); s->animando = 1;` gives
+  `mov eax,[this+actor]; add eax,0x194`, where the typed member
+  `&actor->suscrito` folds into a direct `+0x1a0` store and the schedule of the
+  whole function moves; the same cast inside an inline accessor of a derived view
+  (`struct A : Base { float Angulo() { return ((O *)((char *)this + 0x44))->
+  Angulo(); } };`) gives the repeated `mov eax,[actor]; lea ecx,[eax+0x44]`. When
+  a typing pass would remove the cast, keep it in functions that match.
+  Conversely, `*(int *)((char *)actor + 0x194)` and `+ 0x19c` can hide ONE
+  embedded object: `struct L { N *primero; int f4, f8; }; L *l = (L *)((char
+  *)actor + 0x194);` gave `x = l->primero; if (x) x->f8 = 1; l->f8 = 1;` and the
+  whole function's register roles (21 -> 0). **held** *(match, three functions)*.
+- `[vc8]` **An owner accessor plus a WHOLE by-value addition inline** gives the
+  repeated `lea` receiver and the float rounding store after a call: unique inline
+  methods on a derived actor view for the read and the write, and `static
+  __forceinline float Sumar(float a, float b) { return a + b; }` between them:
+  `mov eax,[actor]; lea ecx,[eax+0x44]; call; fstp [t]; fld [t]; mov eax,[actor];
+  fadd; ... lea ecx,[eax+0x44]`. Direct raw casts give `add ecx,0x44` and no
+  spill; splitting the assignment from the addition is optimised away. It is NOT a
+  generic x87 lever: it did nothing for three other float ports. In the same
+  function test and re-read a member directly (`if (*(T **)(...)) (*(T **)(...))
+  ->Orden(...)`, no local) to get the image's virtual-call sequence. **held**
+  *(match)*.
+- `[vc8]` **A by-value result used through a reference uses the hidden result
+  pointer** (`Par &q = REF_TEMPORAL(Par, camara->Proyectar(p));` gives `add
+  reg,[eax]` / `add reg,[eax+4]` instead of reloading both words from the named
+  result's slot); direct receivers (`conexion.colas->Cerrar()` twice) can be
+  closer than a retained pair pointer. **partial** *(192 -> 87, 55 -> 21)*.
+- `[vc8]` **A float intermediate used only to CHOOSE AN ARM is a `double`**:
+  `double medio = h * 0.5 + base;` keeps the midpoint on the x87 stack as the
+  image does; the `float` cast adds an `fstp/fld` pair and displaces the next
+  locals. In the dot product that follows, naming the FIRST product as a `double`
+  (`double dx = (x - p0x) * tx; float s = (float)(dx + (y - p0y) * ty);`)
+  restores the image's x-before-y evaluation and stack depth. Either alone is not
+  a match. Look for it where the first differing hunk is an `fstp dword; fld
+  dword` pair the image does not have. **held** *(match)*.
+- `[vc8]` **Float details that moved x87 code**: a `float` FIRST factor gives
+  `fild; fimul; fild; fidiv` where explicit `double` casts on every factor give
+  `fmulp/fdivp`; `(float)nivel`, not `(double)nivel`, gives the dword 2^32
+  correction of an unsigned-to-float conversion and `(unsigned)((double)x * f)`
+  removes the conversion-helper call; `abs(int)` needs `<stdlib.h>` and gives `cdq;
+  xor; sub`; plain float arithmetic with a float local for a squared length and
+  in-place divides beat `long double` casts (34 -> 11); the values of a
+  frame-less function live in the DEAD HOMES of pointer arguments, so write
+  `*(float *)&pa = ...` on every path including the null defaults, and compare
+  through those addresses (`pa > pb`, not `pb < pa`, gives `fcompp; test ah,5; jp`).
+  **held** *(match, two functions; partial on the rest)*.
+- `[vc8]` **A constant compared in an equivalent spelling can change the
+  register allocation of the whole function**: `if (nivel <= 2) return;` against
+  `if (nivel < 3) return` changes `cmp eax,3; jl` into `cmp eax,2; jle` and fixes
+  the saved registers of the prologue (33 -> 13 lines on an unmatched port); try
+  both spellings of every compare against a small constant. **partial**.
+- `[vc8]` **A box built into a local needs a reference to one member**: `Caja c;
+  int &cy = c.y; c.x = x; cy = y; c.ancho = ancho; c.alto = alto; return
+  c.Dentro(px, py);` constrains which operand VC8 picks as the sum's destination
+  (`add y,alto`, not `add alto,y`). **Two truncations whose first result must stay
+  in a register** while the second runs are written through a two-int array
+  first (`int p[2]; p[0] = (int)..; p[1] = (int)..; int x = p[0], y = p[1];`), the
+  rectangle filled afterwards. **held** *(match, two functions)*.
+- `[vc8]` **A three-short ARRAY adds a /GS cookie a three-field short RECORD
+  does not** (`struct { short a, b, c; }` with a zeroing constructor restores the
+  image's frame); a `char` array in a class view is a /GS buffer and creates a
+  cookie too (pad views with `int`). **held**.
+- `[vc8]` **Frame slots are not steerable by scopes or declaration splitting**:
+  two ports kept their exact instruction stream with reversed slots under scoped,
+  plain-record, default- and direct-constructor, address-taken, split-declaration
+  and array forms. Stop at the second such form.
+- `[vc8]` **Two EH states with no code between them** are the same inline
+  setter called twice; **an unwind state count that differs** is a scan of its
+  own (`ehscan`: compare the image's `maxState` with the compiler's).
+- **Tooling trap: a signature-changing variant prints a false zero** when the old
+  mangled symbol disappears, because the differ finds nothing to compare:
+  rebuild and compare under the NEW mangled name before trusting it.
+- **Compile-identical, do not retry**: `(float)(float)sin`, an implicit
+  double-to-float, inline float wrappers for sin/cos, `float` against `(double)`
+  arithmetic in a rotation, reordering `n &= ~2; hechos = 0; n |= 1`, `f - i`
+  against `f - (float)i`, the `e |= f()` forms (goto, switch, inverted if), a
+  named point temporary against the plain assignment, `bool` for a flag that is a
+  stack slot, a cached `n = count` before a loop whose image re-reads it.
+- **What the loop learned about yield** (rounds 225-241: eleven Kimi and six Sonnet
+  rounds, about 330 ports opened, 21 matched addresses): a round matches 0-4
+  ports; breadth alone did not pay (a round with 38 big ports matched none, the
+  next, sorted ascending by image size, matched 3); the productive rounds opened
+  SMALL ports (image up to ~150 instructions) whose first differing hunk was one
+  of the idioms above and spent up to 12 compiles on a port already within 15
+  lines; grep this file for the instruction pattern of the first hunk before
+  rewriting; ports whose image reads an UNSET slot cannot match under a
+  deterministic-zero rule, and ports with patched bytes or an inline assembly
+  block cannot match from C at all.
