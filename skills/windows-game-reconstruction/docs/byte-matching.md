@@ -7745,3 +7745,18 @@ What the rewrites needed, in the order they paid:
   rewriting; ports whose image reads an UNSET slot cannot match under a
   deterministic-zero rule, and ports with patched bytes or an inline assembly
   block cannot match from C at all.
+- `[vc8]` **Name an indexed embedded record only for the loads that need it**:
+  `E *e = (E *)((char *)this + 0xd38) + i; casa = e->casa; ficha = e->ficha;` for
+  the initial loads, with the later `ENT[i].x` accesses left direct, gives the
+  image's register allocation; using the pointer everywhere adds register pressure
+  and removes `ebx`. **held** *(match; the cast is again the matching form)*.
+- `[vc8]` **Different `switch` arms can need different copy forms for the same
+  struct**: in a colour setter the red arm needs a by-value inline helper that
+  copies the first two shorts as one record and stores the third separately
+  (`*(Par *)d = *(Par *)&t; d->b = t.b;`), while the blue arm must keep the plain
+  full assignment to get `mov ax,0x64` and the right store schedule. Do not unify
+  the arms. **held** *(match)*.
+- `[vc8]` **By-value inline parameters are not a general way to get dead
+  argument-home temporaries** (tried on two float ports: identical code to the
+  plain form); the dead-home layout comes from writing the values through
+  `*(float *)&arg` (see above). **failed**.
