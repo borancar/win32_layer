@@ -7839,3 +7839,19 @@ What the rewrites needed, in the order they paid:
   the class (declare it in the class, and give the helper's address a same-address
   member alias in the symbol table); a free function leaves the `mov` out.
   **held** *(match)*.
+- `[vc8]` **A NAMED volatile reload on a member's second use can repair a whole
+  arm's register allocation, not just force a load**: `int c = *(volatile int
+  *)&g_recursos->c8;` (a resource member read a second time after a call) and
+  `T *id = *(T * volatile *)r;` (the second use of a record's id) each closed a
+  function; plain locals and inline getters did not. Same rules as before: keep it
+  only in the function that ends up matched, one-line comment, same member read.
+  **held** *(match, two functions)*.
+- `[vc8]` **Frame-slot reuse for a dead argument**: access the argument through a
+  reference (`float &tx = *(float *)&a;`) while the other two coordinates live in
+  a two-float record, and name the first product of the squared length `double`
+  (`double dx2 = (double)t.z * t.z; float cuadrado = (float)(dx2 + (double)tx *
+  tx);`): the dead home takes the third coordinate and the comparison keeps its
+  shape. **held** *(match)*.
+- `[vc8]` **An iterator difference computed only on the non-sentinel path with a
+  comma assignment** keeps the branch order and fixes the scratch rotation of a
+  list walk (58 -> 22 lines on a port that stayed unmatched). **partial**.
