@@ -7813,3 +7813,16 @@ What the rewrites needed, in the order they paid:
   frame size short by 4 is a missing member, not a missing local. Pure float matrix
   expressions (no `double` intermediates) keep the shared x87 vector across two
   coordinate conversions. **partial** *(19 lines, 81 on a projection stream)*.
+- `[vc8]` **Pass the image's own `extern float` defaults BY POINTER through a
+  double conditional** (`static inline double F(Block &v, const float *d) { float r
+  = (float)(!v.Cuenta() ? (double)*d : (double)(float)v.Numero()); return r; }`
+  called with `&K_6ebd90`): the default arm keeps `fld DWORD`, and the join keeps
+  its store/reload; a literal default becomes `fld QWORD`, a by-value global is
+  loaded too early, a plain float ternary loses the join store. A zero default is
+  its own helper with `0.0`. Declare the constants `extern const float` (the values
+  come from the image, not the source). **held** *(match)*.
+- `[vc8]` **When an unrelated change flips an x87 addition, a free per-axis inline
+  add with a pointer destination restores the first component's order**
+  (`p->x = p->x + o.x; p->y = o.y + p->y; p->z = o.z + p->z;`): write each
+  component's operand order as the image loads it, one helper for all three, and
+  the other components do not move. **held** *(match)*.
