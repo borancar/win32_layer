@@ -7951,3 +7951,23 @@ What the rewrites needed, in the order they paid:
   are repeats. Stop and switch the effort (a different compiler flag set, an
   unmatched-port typing pass, the structural ports) when three consecutive rounds
   find nothing.
+- `[vc8]` **BIGGER PORTS PAY WHEN THE BUDGET MATCHES THEIR SIZE** (round 257: four
+  ports of 20-200 diff lines, up to 40 compile batches each; two matched, 98 -> 0 and
+  124 -> 0, after three barren rounds of 12-compile near-miss attempts): fix the FIRST
+  differing hunk at each step, the prologue/frame and register-role hunks first (a
+  `push` or frame mismatch decides every later register), keep the new best source in a
+  file and continue from it. The small-port loop stops finding things; the large-port
+  loop finds idioms that the small residues never expose.
+- `[vc8]` **Direct reads of a GLOBAL pointer give different register roles than a named
+  local**: `g_p->x` at each use (not `T *p = g_p;`) fixed a display/background-width
+  allocation, and combined with the right independent-statement order repaired the
+  frame, prologue and query scheduling of a 90-instruction function. **held** *(match,
+  two functions)*.
+- `[vc8]` **An inline accessor for an EMBEDDED receiver keeps a late global load and
+  changes the literal-zero argument from `push ecx` to `push 0`** (the zero no longer
+  reuses `ecx`): `inline List *Rayos() { return &rayos; }`. **held** *(match)*.
+- `[vc8]` **Naming the first float addend `double` reverses an x87 operand order
+  without adding a store** (`b.z` loaded before the sum), the same shape as the
+  midpoint idiom above. In place normalisation of a turn value and reuse of a dead
+  argument home repaired every later frame slot of a heading routine (23 -> 5 lines)
+  but not the initial squared-length x87 order. **held** *(match)* / **partial**.
