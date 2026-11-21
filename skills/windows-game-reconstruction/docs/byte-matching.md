@@ -8041,3 +8041,17 @@ What the rewrites needed, in the order they paid:
   front counts were all necessary together for its closest form; plain `inline` stays out
   of line and an `__forceinline` expansion over-unrolls (`0x610e40`); the intrinsic
   `fabs` took one 361-line port to 346. **partial**.
+- **A matched source can still be wrong in the NATIVE build: never copy adjacent SEPARATE
+  locals through the address of the first** (`float x, y, z; ...; *(V3i *)dst = *(V3i *)&x;`).
+  VC8 laid the three floats out contiguously and in order, so the bytes matched; clang
+  orders and spaces the locals differently, so the native build copied garbage (soldiers
+  at y = -1, 3,582 sightings against 296). Declare ONE record local (`struct { float x, y, z;
+  } p;`) and cast that. The class members of a declared layout are safe; locals are not.
+  The matcher cannot see it (the VC8 bytes are identical): after a match that rewrites a
+  copy as integer words, rerun a behaviour log of the function's callers in both builds
+  (call log of a hot callee, names and state, hybrid against native).
+- **A key built from a name must truncate where the image truncates**: a NUL stored into a
+  stack buffer right before the call (`mov byte ptr [esp+..],0` after a `sprintf`) is a
+  `buf[4] = 0;` and it decides the result of the callee (a four-character tag): a
+  byte-matched callee returned 0 for the six-character name, and every creature of a mission
+  got key 0. Read the instructions AROUND a call to a matched function, not only the callee.
