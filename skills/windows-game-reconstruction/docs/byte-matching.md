@@ -7914,3 +7914,14 @@ What the rewrites needed, in the order they paid:
   matched none of 19; the 2-line leads (a `push` placement, a constant's placement,
   a null test before a virtual `delete`) are the residues that no idiom here has
   moved yet.
+- `[vc8]` **Compile-identical or inert, do not retry** (round of 19 near-miss
+  ports, no match): inline OR helpers fold a known-zero `or edi,eax` into `mov`;
+  unsigned-byte locals and inline restore helpers do not force a `movzx`;
+  `volatile` null-path and member accesses reproduce single instructions but disturb
+  the surrounding layout; a constructor body that stores `c4` before `c0` brings a
+  copy constructor to 2 lines but no temporary or volatile anchor puts an integer
+  load inside an x87 `fld`/`fstp` pair.
+- **Tooling trap, again: a signature-changing variant (`QAEI@Z` -> `QAEXI@Z`)
+  printed zero twice** because the differ could not find the old mangled name; two
+  "wins" were false zeros. Always rebuild and diff under the NEW mangled name from the
+  object (`nm`) before believing a zero.
