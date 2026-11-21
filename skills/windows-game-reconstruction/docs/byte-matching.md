@@ -7826,3 +7826,16 @@ What the rewrites needed, in the order they paid:
   (`p->x = p->x + o.x; p->y = o.y + p->y; p->z = o.z + p->z;`): write each
   component's operand order as the image loads it, one helper for all three, and
   the other components do not move. **held** *(match)*.
+- `[vc8]` **One variable for the zero failure result AND the best element**
+  (`mejor` in a nearest-segment search that returns null on failure): using one
+  variable for both corrected the count/best register allocation, and combining the
+  null and count guards then fixed the failure-exit order. **held** *(match)*.
+- `[vc8]` **An outer guard plus ONE shared exit label retains a result variable and
+  removes duplicated epilogues**: `if (n < 10) { ...; goto fin; } fin: return ok;`
+  with every arm of the `switch` jumping to `fin` (a `goto fin` in each failure
+  arm), where early `return ok` statements copy the epilogue. **held** *(match)*.
+- `[vc8]` **A dead-`this` member call explains a redundant `mov ecx,esi`**: a helper
+  that never reads `this` but is called with the receiver in `ecx` is a MEMBER of
+  the class (declare it in the class, and give the helper's address a same-address
+  member alias in the symbol table); a free function leaves the `mov` out.
+  **held** *(match)*.
