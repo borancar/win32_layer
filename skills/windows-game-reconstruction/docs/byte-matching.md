@@ -7797,3 +7797,19 @@ What the rewrites needed, in the order they paid:
   instead of choosing between them. An unwind table entry that points at a member
   destructor (`+0x588` list, data at `+0x58c`) names the member's real type even
   when the wrapper forms do not reproduce the third state. **partial**.
+- `[vc8]` **An explicit inline copy constructor on an embedded base-like record
+  moves the zero initialisation of the next embedded member into the image's
+  schedule** (`struct R { int w, h; R() { w = 1; h = 1; } R(int a, int b) {...}
+  R(const R &o) { w = o.w; h = o.h; } };`, 0x6327f0 `Rect::Rect`): the implicit
+  copy lets the next member's zeroing float away from the copy. **held** *(match)*.
+- `[vc8]` **A FOLDED pointer tautology inside a real condition keeps an address
+  computation ahead of the branch without emitting a pointer test**:
+  `if (bpp == 8 && (c || !c))` holds the palette address computed before the
+  `bpp` test where `if (bpp == 8)` computes it inside; `&& c` emits an unwanted
+  `test`. Try it where the image takes an address (a `lea`) before a mode test and
+  ours takes it inside. **held** *(match)*.
+- `[vc8]` **A three-float local with an UNUSED third member reproduces a frame
+  word the image reserves** (a 12-byte slot whose third float is never read): a
+  frame size short by 4 is a missing member, not a missing local. Pure float matrix
+  expressions (no `double` intermediates) keep the shared x87 vector across two
+  coordinate conversions. **partial** *(19 lines, 81 on a projection stream)*.
