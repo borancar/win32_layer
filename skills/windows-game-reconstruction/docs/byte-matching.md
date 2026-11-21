@@ -7783,3 +7783,17 @@ What the rewrites needed, in the order they paid:
   one round): a table slot read before any write, a loop over uninitialised stack
   slots, and extrema read on the zero-count path. A deterministic-zero rule cannot
   match them; do not spend compiles.
+- `[vc8]` **An owner local before `atan2` plus an inline owner orientation
+  accessor** restores the retained-owner `edi` and the `lea` addressing of a
+  vehicle-heading routine (45 -> 23 lines); a discarded float comparison is kept
+  only when its flag takes part in an UNROTATED loop condition, and walking both
+  pointers (not an index) took one loop 79 -> 32. **partial**.
+- `[vc8]` **`Vista v = {0};` on a 72-byte local still emits a `memset` call**; the
+  image's unrolled float/word stores come from an inline constructor with explicit
+  member assignments (174 -> 139 on a port with a different frame). **partial**.
+- `[vc8]` **A signed pointer-parameter inline changes the frame by one slot** (0x74
+  -> 0x68) but the unsigned spellings that restore the right `fistp` restore the
+  larger frame too: the frame and the conversion are coupled, look for a third form
+  instead of choosing between them. An unwind table entry that points at a member
+  destructor (`+0x588` list, data at `+0x58c`) names the member's real type even
+  when the wrapper forms do not reproduce the third state. **partial**.
