@@ -7893,3 +7893,12 @@ What the rewrites needed, in the order they paid:
   was the next obstacle, and an explicit actor local reached 32. The opposite of the
   three-integer-word idiom above: read the image to see which one it does.
   **partial**.
+- `[vc8]` **A round of 19 mid-sized ports (50-600 diff lines) matched nothing and
+  found no new idiom**: yield comes from ports already within ~15 lines, not from
+  breadth (see the yield note above). Useful negatives: a three-float record
+  restores a frame and a value-left comparison fixes an x87 mask, but borrowing the
+  dead argument home for a float disturbs the surrounding allocation; moving or
+  assigning a flag inside a guard loses its required stack home and disrupts the
+  EH state allocation; shrinking text buffers improves the score but is a behaviour
+  change (reject it); a named table pointer is necessary for an image's early table
+  load and vptr preservation (a direct receiver is worse, 32 -> 42).
