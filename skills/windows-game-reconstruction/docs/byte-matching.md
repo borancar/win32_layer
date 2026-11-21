@@ -7936,3 +7936,18 @@ What the rewrites needed, in the order they paid:
   image has a memory compare. **partial** *(no match in the round; the 2-line
   residues, a `push` placement, a constant's placement and a reset/save order,
   survived every form)*.
+- `[vc8]` **`const_cast<int &>(ok)` on a cleanup read gives the image's `mov
+  eax,ebp`** (the zero register returned as the result) but leaves the scratch
+  rotation of the rest of the function; an early declaration plus a typed
+  zero-destination reference brought one port to a single missing global reload (the
+  second load is common-subexpression-eliminated, and volatile, alias, inline-getter
+  and reassignment forms restore the load but delay a `push`); a local second operand
+  plus a forced-inline second `memcmp` improves a comparison but not its inlined
+  byte-load order. **partial**.
+- **Where the small-port method stands** (rounds 254-256, 43 near-miss ports, no
+  match): the surviving residues are one-line differences (a SIB encoding order, a
+  `movzx` against `mov al`, a CSE'd second global load, a `push` placement). They are
+  the class no source form in this file has moved; further rounds on the same ports
+  are repeats. Stop and switch the effort (a different compiler flag set, an
+  unmatched-port typing pass, the structural ports) when three consecutive rounds
+  find nothing.
