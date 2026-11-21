@@ -8026,3 +8026,18 @@ What the rewrites needed, in the order they paid:
   `make match` after every volatile try). A sweep of all parked markers after the round
   found none already identical. Bigger-port rounds so far (257-261): 5 matches in 5
   rounds, so the barren round is part of the rate, not a signal to stop.
+- `[vc8]` **A `switch` whose source order follows STATIC GUARD BITS, not the emitted block
+  order** (a handler with three cases, `0x53c350`): write the cases in the order 2, 0, 1
+  (the order the image's dispatch tests the bits), with six function-scope position
+  records, the `strcmp` intrinsic, and an integer-word tail vector copy; together they
+  repaired the frame and the global register allocation. Check the image's compare chain
+  first: its test order, not the block order, is the source order. **held** *(match)*.
+- `[vc8]` **A duplicated 16-bit colour can need TWO STORES**: `dst = Pack(c) << 16; dst
+  += Pack(c);` preserves the recomputation and the retained high word; `dst = Pack(c) *
+  0x10001` lets VC8 CSE the expansion into one `imul`. Matched a ten-argument colour
+  setter in one compile. **held** *(match)*.
+- `[vc8]` **Notes on a 706 -> 144 line wave-front port (`0x489430`, unmatched)**: direct
+  member table access, incrementing the wave at the loop top, and separate current/new
+  front counts were all necessary together for its closest form; plain `inline` stays out
+  of line and an `__forceinline` expansion over-unrolls (`0x610e40`); the intrinsic
+  `fabs` took one 361-line port to 346. **partial**.
