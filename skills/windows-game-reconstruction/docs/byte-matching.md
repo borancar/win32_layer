@@ -7880,3 +7880,16 @@ What the rewrites needed, in the order they paid:
   reference-to-pointer idiom above is not a general lever. Before spending compiles,
   scan the PARKED ports after every typing or header change (`all-markers`): none
   became identical on its own.
+- `[vc8]` **A row-copy loop with a contiguous and a strided arm** (a blit of an
+  image into a surface): write the NON-contiguous arm first so the contiguous arm
+  lands last; compute the derived stride (`bytes = paso * 2`) only inside the arm
+  that uses it; decrement the row count BEFORE the copy call when the image does
+  (`do { filas--; Copiar(d, ancho); d += bytes; } while (filas);`, not `while
+  (--filas)`); and declaration order (destination, width, row count) fixed the whole
+  `ebx`/`ebp`/`edi` allocation. **held** *(match)*.
+- `[vc8]` **An explicit memberwise float copy constructor on a by-value point**
+  turns VC8's integer-word copy into the image's x87 copy (124 -> 36 lines on a
+  port that stayed unmatched); the retained local that stole the `this` register
+  was the next obstacle, and an explicit actor local reached 32. The opposite of the
+  three-integer-word idiom above: read the image to see which one it does.
+  **partial**.
