@@ -7971,3 +7971,19 @@ What the rewrites needed, in the order they paid:
   midpoint idiom above. In place normalisation of a turn value and reuse of a dead
   argument home repaired every later frame slot of a heading routine (23 -> 5 lines)
   but not the initial squared-length x87 order. **held** *(match)* / **partial**.
+- `[vc8]` **Two changes that only work TOGETHER** (a heading routine, 5 lines -> 0):
+  reversed named `double` operands give the image's load-both-then-square x87
+  sequence, and reusing the DEAD argument home for the next temporary
+  (`*(volatile float *)&atras = (float)(giro + 180.0);`, a volatile STORE into the
+  dead home) repairs every shifted frame slot. Either one alone leaves the diff where it
+  was; when a hunk resists, try the pair of a value-order change and a slot change.
+  **held** *(match)*.
+- `[vc8]` **A six-float local record declared in IMAGE OFFSET ORDER restores a frame**
+  (a bounding-box routine: 74 -> 6 lines), with four-int conversion and destination
+  records restoring `ebp`, the conversion order and the rectangle stores; in a
+  two-pointer comparison loop, the matrix/view declaration order and `v++; q++; i++;`
+  select the matrix-pointer walk and the pointer-difference addressing (32 -> 6).
+  **partial**.
+- `[vc8]` **A port whose image reads an uninitialised iterator cursor** (the null path
+  skips the cursor/start initialisation of a three-slot iterator) is excluded by the
+  zero-initialisation rule; check it before spending the 40 compiles.
