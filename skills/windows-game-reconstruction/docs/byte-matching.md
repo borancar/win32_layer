@@ -7855,3 +7855,17 @@ What the rewrites needed, in the order they paid:
 - `[vc8]` **An iterator difference computed only on the non-sentinel path with a
   comma assignment** keeps the branch order and fixes the scratch rotation of a
   list walk (58 -> 22 lines on a port that stayed unmatched). **partial**.
+- `[vc8]` **A named REFERENCE to a pointer member schedules its receiver load
+  inside a by-value float copy**: `BuscadorPuntoAPunto *&b = buscador; return
+  b->BuscarDesde(destino, modo, 0);` where a plain pointer local, an accessor or a
+  helper did not reproduce the image's load position. **held** *(match)*.
+- `[vc8]` **A named reference to an OUTPUT POINTER argument keeps the stores in
+  source order**: `int *&p = o; p[1] = y; p[0] = x; p[2] = w; p[3] = h;` where
+  direct stores, a whole-record copy, and even a plain pointer local are reordered
+  by the scheduler. Try it where the image stores a record's words in a non-memory
+  order. **held** *(match)*.
+- `[vc8]` **Notes from ten restored near misses**: a width local must be
+  address-taken so `fild` reads its stack home, and a colour sum needs its operands
+  commuted (0x557430, 8 lines); an iterator whose 12-byte home the image reserves
+  but never uses cannot be reproduced by pointer or reference access (16 lines);
+  epilogue gotos and argument references were inert on branch-byte-only residues.
