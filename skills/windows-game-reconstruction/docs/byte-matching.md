@@ -7869,3 +7869,14 @@ What the rewrites needed, in the order they paid:
   commuted (0x557430, 8 lines); an iterator whose 12-byte home the image reserves
   but never uses cannot be reproduced by pointer or reference access (16 lines);
   epilogue gotos and argument references were inert on branch-byte-only residues.
+- `[vc8]` **Per-arm local colour records copied WHOLE reproduce the image's stack
+  temporaries and its dword-plus-word copies** (a marker loop that builds a colour
+  in each `switch` arm); address-taken scalar float/int temporaries kept both
+  conversions and restored a function's frame and arithmetic, where equivalent
+  two-field records overshot the frame; the image rounds both source floats before
+  the conversion and uses float products. **partial** *(173 -> 114 lines)*.
+- `[vc8]` **Named references were inert** across the global, handle, list, count,
+  text, engine and track schedules tried in one round (18 ports, no match): the
+  reference-to-pointer idiom above is not a general lever. Before spending compiles,
+  scan the PARKED ports after every typing or header change (`all-markers`): none
+  became identical on its own.
