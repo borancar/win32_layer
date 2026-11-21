@@ -7987,3 +7987,17 @@ What the rewrites needed, in the order they paid:
 - `[vc8]` **A port whose image reads an uninitialised iterator cursor** (the null path
   skips the cursor/start initialisation of a three-slot iterator) is excluded by the
   zero-initialisation rule; check it before spending the 40 compiles.
+- `[vc8]` **Walk a TYPED fixed-size element directly as `e`, not through a second
+  byte-pointer cursor** (a bounding-box loop over 0x58-byte elements: `struct E {
+  char c00[4]; float x, y; char c0c[0x4c]; }; E *e = ...; do { ...; e++; } while
+  (n)`): the typed `e` restores the early element-base load and the loop addressing;
+  a typed `e` PLUS a separate `q` cursor was not enough. Combined with the six-float
+  local record in offset order and the four-int conversion/destination records, this
+  closed a 74-line port in three compile batches after the two prior rounds had
+  left it at 6. **held** *(match; the layout of the element is declared, so check its
+  size against the image's stride)*.
+- `[vc8]` **Partial findings from a 111 -> 66 line port**: copying `p` before reusing
+  its argument home for `d2` repairs a float home; integer-word position copies, an
+  actor-position pointer and a guarded pointer scan (`if (i < n)`, the unsigned
+  zero-index guard, not `if (n)`) improved the same port; an inline iterator `Count()`
+  fixed a loop-foot reload order (20 -> 15). **partial**.
