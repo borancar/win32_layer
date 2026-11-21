@@ -8017,3 +8017,12 @@ What the rewrites needed, in the order they paid:
   temporary between the first read and a loop's value read where ours allocates a
   third; explicit blocks, direct owner reads and a shared inline read helper did not
   remove the extra slot (an editor placement routine). **partial**.
+- `[vc8]` **Negatives from a bigger-port round that matched nothing** (12 ports, closest
+  4 bytes and 6 lines): reusing a slot with a `double` old value fixes ratio homes but
+  disturbs the dimensions and a maximum join; nested capacity guards fold identically to
+  the conjunction; loop `goto`/`for`/`while` variants do not remove an extra join; an
+  arm-local shared constant (`int uno = 1`) is folded away instead of producing the
+  image's retained register; volatile probes broke an already matched neighbour (re-run
+  `make match` after every volatile try). A sweep of all parked markers after the round
+  found none already identical. Bigger-port rounds so far (257-261): 5 matches in 5
+  rounds, so the barren round is part of the rate, not a signal to stop.
