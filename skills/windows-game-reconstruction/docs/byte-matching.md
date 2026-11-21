@@ -7902,3 +7902,15 @@ What the rewrites needed, in the order they paid:
   EH state allocation; shrinking text buffers improves the score but is a behaviour
   change (reject it); a named table pointer is necessary for an image's early table
   load and vptr preservation (a direct receiver is worse, 32 -> 42).
+- `[vc8]` **A pointer member compared IN MEMORY and reloaded for EACH store**
+  (`cmp [this+rect],0; je; mov eax,[this+rect]; mov [eax+..],..; mov eax,[this+rect];
+  mov [eax+..],..`): keep the plain guard and read through `T * volatile` at each
+  store: `if (rect) { (*(Rect * volatile *)&rect)->ancho = ancho; (*(Rect *
+  volatile *)&rect)->alto = alto; }`. This preserves the memory compare and both
+  reloads; each access reads the same member. The same volatile-on-the-re-read rule
+  as above (matched function only, one-line comment). **held** *(match)*.
+- `[vc8]` **Yield note**: the round that told the matcher to open ONLY ports within
+  ~15 diff lines (and 12 compiles each) matched one of 15 after the breadth round
+  matched none of 19; the 2-line leads (a `push` placement, a constant's placement,
+  a null test before a virtual `delete`) are the residues that no idiom here has
+  moved yet.
