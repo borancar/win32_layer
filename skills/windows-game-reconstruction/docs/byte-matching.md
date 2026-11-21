@@ -8001,3 +8001,19 @@ What the rewrites needed, in the order they paid:
   actor-position pointer and a guarded pointer scan (`if (i < n)`, the unsigned
   zero-index guard, not `if (n)`) improved the same port; an inline iterator `Count()`
   fixed a loop-foot reload order (20 -> 15). **partial**.
+- `[vc8]` **A receiver formed DIRECTLY in each `switch` case, not retained across the
+  switch**: in cases that all call a method on the same computed receiver (a burst
+  object), write the receiver expression in each case instead of one local before the
+  switch; and copy a vector through a NAMED pointer to a member sub-record
+  (`T *a = actor + 2;`-style), which restores the load/test schedule of an aim copy.
+  **held** *(match)*.
+- `[vc8]` **Float trig overloads (`cos(float)`, `sin(float)`) restore the missing
+  call-result stores** of a dot/cross-product routine but add a frame word of their own;
+  pair them with removing the padding word and restoring the copy to the record base
+  (a 42-line port). Naming the first product of each dot/cross expression `double` is
+  the documented lever for the remaining x87 stack order. **partial**.
+- `[vc8]` **A frame that is 32 bytes larger than the image's means temporary
+  script-block (or other object) slots**, not register noise: the image shares ONE
+  temporary between the first read and a loop's value read where ours allocates a
+  third; explicit blocks, direct owner reads and a shared inline read helper did not
+  remove the extra slot (an editor placement routine). **partial**.
