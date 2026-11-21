@@ -7925,3 +7925,14 @@ What the rewrites needed, in the order they paid:
   printed zero twice** because the differ could not find the old mangled name; two
   "wins" were false zeros. Always rebuild and diff under the NEW mangled name from the
   object (`nm`) before believing a zero.
+- `[vc8]` **Three iterator slots of a list walk** are the standard
+  `RecorridoLista<T> { x, cur, beg }` record with a SEPARATE list local (a
+  16-byte formatting buffer beside it); an inline prefix that returns its result
+  can keep the allocation while moving a constant between branches; named zero
+  temporaries and typed destination references each change zero-store scheduling
+  and shrink-wrapped saves; interleaved member copies can coalesce source and
+  destination frame slots and remove intended integer-word copies; a volatile
+  argument read preserves a comparison but may give a register compare where the
+  image has a memory compare. **partial** *(no match in the round; the 2-line
+  residues, a `push` placement, a constant's placement and a reset/save order,
+  survived every form)*.
