@@ -8135,3 +8135,10 @@ What the rewrites needed, in the order they paid:
   Plain copies of the argument fold away; a volatile copy of a LOCAL (`b`) on a port whose
   residue was a register-role swap (`b=ebx, ok=ebp`) made it worse. **held** *(match, one
   batch)*.
+- **The shared volatile argument did NOT generalise** (round 278, five residues whose image
+  keeps an argument in a register from entry: 2 -> 32, 4 -> 18, 2 -> 99 lines, two inert): it
+  matched a window procedure whose argument reaches three calls; check the image prologue for
+  the argument loaded once at the top and reused across SEVERAL calls before trying it.
+  `bool ok` on a register-role swap recovered one role but brought byte storage, `setne` and
+  another swap (59 -> 38 lines, not kept). Constructor initialisers, switch-base subtraction,
+  one-word records and by-value helpers were inert on the others. **failed**.
