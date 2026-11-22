@@ -8090,3 +8090,12 @@ What the rewrites needed, in the order they paid:
   order (`t` before `a3`) improved an x87 layout. Inert: unlink helpers with reference or
   predicate results, reset-and-difference helpers, comma-result cell stores. **partial**
   *(174 -> 44 and 133 -> 46 lines on two ports)*.
+- `[vc8]` **Idioms that took a wall-sweep port from 46 to 9 lines**: a queue of a fixed
+  number of entries (`0x3ff`) plus a CACHED count reproduces the frame and offsets; recompute
+  the second arm's `d*d` where the first arm's is a named value (it avoids an unwanted x87
+  CSE); mirror the first squared-distance comparison to restore the product order; write
+  a range test as `!(d >= r)` for the image's ordered-compare mask (`jnp`); an inline helper
+  taking `this` and reading `actor` internally reproduces both by-value vector arguments.
+  The last residues were the order of the initialisation stores, which of the outer and the
+  inner loops is the ALIGNED block (a `do` loop with a single count test equalised the
+  instruction count but moved the constant reloads), and one `jnp`/`jne`. **partial**.
