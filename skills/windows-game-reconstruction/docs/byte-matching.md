@@ -8060,3 +8060,11 @@ What the rewrites needed, in the order they paid:
   with no edit of its own (`Hoja5ab7e0` after the callees of `CrearObjeto5ac1a0` were
   rewritten: the marker was all that was left). Run the all-markers comparison (every
   `~` name compared as if matched) after each match that touches shared helpers.
+- `[vc8]` **A SIB operand order (`[ebx+eax+4]` against `[eax+ebx+4]`) follows which element
+  is a TYPED pointer**: form ONLY the element used for the first access as a typed pointer
+  (`LineaMuerte *e = (LineaMuerte *)lineas + k;`) and keep the scaled byte-offset
+  expression (`(char *)lineas + off`, `off` built by three doublings of `k + k * 4`) for the
+  later access; typing both gives the wrong register order and an array index gives
+  another. A loop whose index must stay in a register is `int i = 0; if (i < n) { do { ... i++; }
+  while (i < n); }`. `k` set in the loop and read only after `if (!hallada) return;` is not an
+  uninitialised read. **held** *(match, after 21 batches on six 1-2 line residues)*.
