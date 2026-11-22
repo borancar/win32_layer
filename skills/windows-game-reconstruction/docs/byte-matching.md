@@ -8081,3 +8081,12 @@ What the rewrites needed, in the order they paid:
   Name a double for one product of an x87 dot product (`double t = x; t *= factor;`) and the
   second product is fixed (6 -> 4 lines); compound and inline dot-product forms did not fix
   the first product's operand order. **partial**.
+- `[vc8]` **An outer-loop termination flag may have to appear in the loop CONDITION**:
+  `for (; !hallado && i < cuenta; i++)` where a flag set inside and tested after the loop
+  otherwise lets VC8 delete the flag and its frame slot. Empty and successful early returns
+  become one shared return through an outer input guard and a nested failure arm. A by-value
+  point passed as `*(Punto3DCopia *)p` (a record copy of an existing record) can remove a
+  named argument temporary and its frame space; two wall expressions written in the image's
+  order (`t` before `a3`) improved an x87 layout. Inert: unlink helpers with reference or
+  predicate results, reset-and-difference helpers, comma-result cell stores. **partial**
+  *(174 -> 44 and 133 -> 46 lines on two ports)*.
