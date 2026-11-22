@@ -8142,3 +8142,12 @@ What the rewrites needed, in the order they paid:
   `bool ok` on a register-role swap recovered one role but brought byte storage, `setne` and
   another swap (59 -> 38 lines, not kept). Constructor initialisers, switch-base subtraction,
   one-word records and by-value helpers were inert on the others. **failed**.
+- **A SURVEY of every parked port by real diff lines (round 279, 627 bodies)** shows where the
+  work is: after the 1-60 line ports were either matched or tried exhaustively, NONE untried
+  was under 60 lines; the remaining pool is 300+ line functions (best fresh results in 30
+  batches: 364 -> 120 and 392 -> 242). Build the survey once (compare every `~` name as if
+  matched, count REAL differing lines excluding jump-table data and masked noise, sort) and
+  re-run it after a round that changes shared helpers; it replaces the hand-kept lists of
+  near misses. Useful on the big ones: pair-wise countdown zero loops, a float projection as
+  a parameter, a direct existing by-value point record, direct owner reloads, a guarded `do`
+  loop to stop VC8 peeling a second copy of a `for (;;)`. **partial**.
