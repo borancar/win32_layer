@@ -8099,3 +8099,12 @@ What the rewrites needed, in the order they paid:
   The last residues were the order of the initialisation stores, which of the outer and the
   inner loops is the ALIGNED block (a `do` loop with a single count test equalised the
   instruction count but moved the constant reloads), and one `jnp`/`jne`. **partial**.
+- `[vc8]` **The DECLARATION ORDER of independent locals decides the initialisation-store
+  order AND which loop is the aligned block**: four independent locals (`int i = 0; int
+  cuenta; Zona *lista[0]; int hallado = 0;`) declared in the image's order closed the last two
+  residues of a 9-line port (4 batches). For a residue that is a store order or a block
+  alignment, PERMUTE the declaration order of the independent locals SYSTEMATICALLY (all
+  orders of up to five; one batch each) before trying any other form. For an image `test
+  ah,0x41; jne` the direct ordered `sum < r*r` gives `jne`, `!(sum >= r*r)` gives `jnp`
+  (and they differ for NaN: the compiled image's behaviour is the reference). **held**
+  *(match)*.
