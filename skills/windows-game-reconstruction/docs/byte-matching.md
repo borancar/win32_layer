@@ -8160,3 +8160,9 @@ What the rewrites needed, in the order they paid:
   reference live across the iterations (43 -> 38). Big ports keep paying with budgets of
   30-60 batches per round, three rounds in a row, each starting from the saved best.
   **partial**.
+- **A port that stopped moving**: `0x63c580` stayed at 14 lines through 60 further batches
+  (pointer/store schedules and two exchanged stack homes) and `0x48daa0` at 208 through 30 (all
+  variants byte-inert: result slot reused by a float temporary, early `ok`, scoped `a`):
+  stop after about 30 batches without a changed line count and leave the saved best for a
+  later idea. Assigning an index BEFORE the `-1` test fixed one schedule (38 -> 36).
+  **partial**.
