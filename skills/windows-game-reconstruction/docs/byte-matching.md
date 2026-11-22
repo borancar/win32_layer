@@ -8108,3 +8108,11 @@ What the rewrites needed, in the order they paid:
   ah,0x41; jne` the direct ordered `sum < r*r` gives `jne`, `!(sum >= r*r)` gives `jnp`
   (and they differ for NaN: the compiled image's behaviour is the reference). **held**
   *(match)*.
+- **Declaration-order permutations are INERT on most small residues** (round 275: all
+  orders of the independent locals of twelve 1-4 line ports, 102 batches, no match): the
+  lever worked on a port whose residue was the initialisation-store order and a loop's
+  alignment (`0x439510`); a residue that is a branch target, a `movzx`, a returned-box
+  store schedule or a block layout does not move with it. Named key and line locals made
+  a two-branch-byte port much worse; an early state initialisation worsened another.
+  A residue unmoved after the permutations, the typed-element, volatile-per-use and
+  named-temporary forms, and several rounds is a candidate to leave. **failed**.
