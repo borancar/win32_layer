@@ -8116,3 +8116,14 @@ What the rewrites needed, in the order they paid:
   a two-branch-byte port much worse; an early state initialisation worsened another.
   A residue unmoved after the permutations, the typed-element, volatile-per-use and
   named-temporary forms, and several rounds is a candidate to leave. **failed**.
+- `[vc8]` **A volatile read of the image's own float constant keeps it on the x87 stack across
+  two expressions**: `double c = *(volatile double *)&g_6dcdb8;` (the 0.5 constant at its
+  address, declared `extern double`) shared by both formation calculations, instead of the
+  literal `0.5` in each (the literal is folded into two separate loads); `c += f64;` for
+  the second use. **held** *(match; the volatile is in the matched function only)*.
+- `[vc8]` **An inline null-tested store on an EMBEDDED owner field preserves a store order**:
+  `((AvisoCampo *)((char *)this + 0xb8))->Hecho();` with `void Hecho() { if (aviso) aviso->hecho
+  = 1; }` where the plain `if (aviso) aviso->hecho = 1;` on the member reorders the store
+  against its neighbours. The same family as the named pointer to an embedded record.
+  **held** *(match)*. Strict comparison note: a function with a jump table can report
+  `d3` lines that are table DATA, not code; `make match` is authoritative.
