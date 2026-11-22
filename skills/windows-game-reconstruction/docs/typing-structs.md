@@ -97,3 +97,7 @@ none dropped a match) from 645 scalar offset-named members in headers; most of t
 are scratch fields reused for several purposes (a union), flags set in one function and
 read in another, or have no use at all, and need the owning class's methods read first.
 Keep a table (class, offset, old, new, type, evidence) so a wrong name can be audited.
+
+## A pass that replaces raw offsets must refuse an alias with an index term
+
+`char *reg = (char *)this + e * 0xdc;` is not an alias of `this`: `*(int *)(reg + 0x7c)` is the member of record `e`, and the fixed member `this + 0x7c` is only record 0. The typing tool matched `(char *)this` and ignored what followed, typed 109 files' worth of accesses and changed one function's behaviour for every record but the first. The VC8 bytes of a MATCHED function cannot show it and `make match` stayed unchanged; it showed only in a sweep of full missions (frames of the original against the port, 40,000 pumps of play each), where seven missions diverged late. Require the alias declaration to end right after `this` (`;`), and run the mission sweep after every typing batch, then bisect (commits, then the files of the commit) if it diverges. Same family: reading several separate locals through the address of the first (see byte-matching.md).
