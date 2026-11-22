@@ -8055,3 +8055,8 @@ What the rewrites needed, in the order they paid:
   `buf[4] = 0;` and it decides the result of the callee (a four-character tag): a
   byte-matched callee returned 0 for the six-character name, and every creature of a mission
   got key 0. Read the instructions AROUND a call to a matched function, not only the callee.
+- **After changing a static callee, recheck the PARKED SIBLINGS that call it**: a port that
+  was one hunk off because its callee's convention or body differed can become identical
+  with no edit of its own (`Hoja5ab7e0` after the callees of `CrearObjeto5ac1a0` were
+  rewritten: the marker was all that was left). Run the all-markers comparison (every
+  `~` name compared as if matched) after each match that touches shared helpers.
