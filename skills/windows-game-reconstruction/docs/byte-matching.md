@@ -8151,3 +8151,12 @@ What the rewrites needed, in the order they paid:
   near misses. Useful on the big ones: pair-wise countdown zero loops, a float projection as
   a parameter, a direct existing by-value point record, direct owner reloads, a guarded `do`
   loop to stop VC8 peeling a second copy of a `for (;;)`. **partial**.
+- `[vc8]` **A 364-line port reached 14 lines in 90 batches over three rounds** (a floor arc,
+  `0x63c580`): fan-point RECORDS (one record per fan, not loose floats), a two-int projection
+  result copied with an intrinsic `memcpy`, an inline centre-copy helper, and the order of the
+  first fan's angle and pointer updates; owner receivers owned by inline NOTIFICATION
+  helpers improved another (242 -> 208); restricting owner reloads to the exact instructions
+  the image shows (41 lines); an UNNAMED script-block temporary plus a tile pointer or
+  reference live across the iterations (43 -> 38). Big ports keep paying with budgets of
+  30-60 batches per round, three rounds in a row, each starting from the saved best.
+  **partial**.
