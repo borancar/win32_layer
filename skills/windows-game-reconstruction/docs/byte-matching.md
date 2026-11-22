@@ -8127,3 +8127,11 @@ What the rewrites needed, in the order they paid:
   against its neighbours. The same family as the named pointer to an embedded record.
   **held** *(match)*. Strict comparison note: a function with a jump table can report
   `d3` lines that are table DATA, not code; `make match` is authoritative.
+- `[vc8]` **A VOLATILE read of an ARGUMENT into one local shared by every call keeps it live
+  from function entry** (a window procedure whose image loads `l` into `ecx` at the entry
+  and reuses it for `Crear`, `Comando` and `DefWindowProcA`): `int lv = *(volatile int *)&l;`
+  and `lv` at every use, in place of `l` and of a per-arm `VistaVentana *v = this` local. The
+  value is the same; the volatile is in the matched function only, with one comment.
+  Plain copies of the argument fold away; a volatile copy of a LOCAL (`b`) on a port whose
+  residue was a register-role swap (`b=ebx, ok=ebp`) made it worse. **held** *(match, one
+  batch)*.
