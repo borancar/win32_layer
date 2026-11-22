@@ -8068,3 +8068,16 @@ What the rewrites needed, in the order they paid:
   another. A loop whose index must stay in a register is `int i = 0; if (i < n) { do { ... i++; }
   while (i < n); }`. `k` set in the loop and read only after `if (!hallada) return;` is not an
   uninitialised read. **held** *(match, after 21 batches on six 1-2 line residues)*.
+- `[vc8]` **Decouple a `memcmp` call's operands from its guard's**: with both operands read
+  from members, `if (o->tabla2 && tabla2) r = memcmp(o->tabla2, tabla2, 0x200)` moves a
+  load ahead of the first null jump or reverses the byte-load order of the inlined
+  comparison; a LOCAL for the second operand only (`unsigned char *a2 = tabla2; if (o->tabla2 &&
+  a2) r = memcmp(o->tabla2, a2, 0x200);`, the guard and the first operand read directly
+  from the member) keeps both the branch load schedule and the intrinsic's byte-load
+  order (a round 234 note recorded each half separately). **held** *(match)*.
+- **A masked instruction diff can be a FALSE ZERO**: `0x536f50` reached instruction-for-
+  instruction equality with one branch-target displacement still different (call targets
+  and displacements are masked); `make match` / the strict comparison is authoritative.
+  Name a double for one product of an x87 dot product (`double t = x; t *= factor;`) and the
+  second product is fixed (6 -> 4 lines); compound and inline dot-product forms did not fix
+  the first product's operand order. **partial**.
