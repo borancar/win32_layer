@@ -8185,3 +8185,31 @@ What the rewrites needed, in the order they paid:
   `s07()` before the point stores took one port 63 -> 32; ordered near/far clamps, an
   intrinsic origin `memcpy` and one shared trigonometric temporary took another 99 -> 69.
   **held** *(match)* / **partial**.
+- **PARALLEL AGENTS (round of 2026-11-23, three Opus agents + Kimi, four matches in about two
+  hours)**: give each agent its OWN git worktree (a sibling directory: the VC8 toolchain is
+  found relatively), its OWN single function from a survey, and no right to commit or to edit
+  the shared docs; verify each result in an integration worktree (apply the agents' patches
+  there, rebuild any object copied from a tree that had work in progress, `make match`
+  must show baseline + the matches and the same name set) before the main tree. Pitfalls met:
+  two agents given the same function (the lists overlapped: keep ONE source of truth for the
+  assignments), objects copied from a tree with an experiment in progress (one stale object
+  looked like a regression), a symbols.tsv line that changes with a signature (the old name
+  looks lost, the new one gained).
+- `[vc8]` **A callback that the image calls with its point as ONE class by value** (user copy
+  constructor: 0x6125a0): declare the callback type and the callback with the same by-value
+  class so no function-pointer cast is needed; `float, float, float` parameters change the
+  frame and a plain record makes VC8 use a temporary. Under the MSVC ABI of the native build
+  the three dwords sit on the stack after the other arguments, the caller pops, and the callee
+  reads them in place (check the asm). Several float products stay exact when two terms of ONE
+  addition are swapped. **held** *(match)*.
+- `[vc8]` **A colour-mix loop (0x575ae0)**: reuse ONE pixel variable (`int p = *a; ...; p = *b;`)
+  or VC8 folds the first pixel's single-use products into the final expression; the statement
+  order picks the registers (1 of 720 orders); pointer increments in the `for` header give the
+  shared `mov esi,4`. A polyline (0x5eeba0): copy order sets operand order across the whole
+  function (x,y,z 33 lines, y,x,z 14, an inline stores helper 8). A ternary stored to a float
+  gives one `fstp`; `unsigned rad` stops a spill; `a = 1 - a;` gives `neg; add 1`.
+  **held** *(three matches)*.
+- **Ports whose image holds inline `__asm` (an ebp frame, instructions VC8 does not
+  generate from C) cannot be matched under the asm rule; check the image prologue and the
+  source for `__asm` BEFORE spending a batch** (six particle painters of 0x4869f0..0x4878b0 were
+  in the survey's eligible pool). **failed**.
