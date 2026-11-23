@@ -8213,3 +8213,18 @@ What the rewrites needed, in the order they paid:
   generate from C) cannot be matched under the asm rule; check the image prologue and the
   source for `__asm` BEFORE spending a batch** (six particle painters of 0x4869f0..0x4878b0 were
   in the survey's eligible pool). **failed**.
+- **Round of 2026-11-23, continued (24 more matches by Opus agents and Kimi; the gates)**: (1) A BYTE-IDENTICAL function can
+  still break the native run: round 287's `Construir` matched with `memcpy(&ox, origen, 0xc)` (a 12-byte copy through the
+  address of ONE float member: UB) plus float math overloads and passed `make match`, but 11 of 35 lockstep scenarios diverged;
+  reverting ANY ONE of its five changes passed (codegen-dependent). `make match` is necessary, the native smoke is the gate:
+  run it on every integrated batch, bisect by file then by hunk (a work tree + `NOBUILD=1` reruns take ~2 minutes), fix
+  forward. (2) `#include <math.h>` makes the float overloads visible to every function in the file: declare ONE local
+  `inline float sqrt(float)` instead. (3) Parallel agents: keep ONE assignment list (two agents matched the same functions);
+  worktrees must be reset to master after each integration; patches from different worktrees that touch the same
+  file merge with `git apply` (different functions), and symbols.tsv hunks are applied BY CONTENT (the index mismatch refuses
+  the second patch). (4) Idioms: `d++; p++;` at the loop body's end with only `i++` in the header; two identical defaults are
+  merged where the LATER one stands (`goto` a label at the end); `__restrict` on a record-member source copied into a local
+  array lets the loads run ahead; `int x;` with no initialiser when it is only read after the assignment that guards it; a
+  non-rotated read loop `do { r = f(); if (!r) break; ... } while (r);`; the masked instruction diff HIDES jump-table targets
+  (confirm with `make match`/`firstdiff.py`); a switch lowered to a compare tree ignores the case-label order. **held**
+  *(six matches)*.
