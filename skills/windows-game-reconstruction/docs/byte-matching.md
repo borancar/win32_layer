@@ -8166,3 +8166,12 @@ What the rewrites needed, in the order they paid:
   stop after about 30 batches without a changed line count and leave the saved best for a
   later idea. Assigning an index BEFORE the `-1` test fixed one schedule (38 -> 36).
   **partial**.
+- `[vc8]` **Closest point on a segment (a 66-line port, 21 batches)**: load the segment's `p1` into
+  a local BEFORE `p0`, compute `ex` before `ey`, keep ONE shared result variable (`int resultado
+  = 0; if (l2 > 0.0f) { resultado = 1; ... } return resultado;`, not two returns), write the
+  clamp's upper test as `t > 1.0f` (not `1.0f < t`), and name the y numerator `double ny`
+  before adding the x term: the dot-product order and the success-result schedule follow.
+  Also on three other mid-size ports: a name routine called with `ecx = this` in the image
+  is a MEMBER (the free `__stdcall` declaration gave the wrong frame: 93 -> 75 -> 32 -> 19
+  lines), and a direct `tabla[ruta].puntos` access cut a route search by 40 lines.
+  **held** *(match)* / **partial**.
