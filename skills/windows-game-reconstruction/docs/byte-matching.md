@@ -8175,3 +8175,13 @@ What the rewrites needed, in the order they paid:
   is a MEMBER (the free `__stdcall` declaration gave the wrong frame: 93 -> 75 -> 32 -> 19
   lines), and a direct `tabla[ruta].puntos` access cut a route search by 40 lines.
   **held** *(match)* / **partial**.
+- `[vc8]` **A script reader (104 lines, 31 batches): when the instruction STREAM is already the
+  image's and the diff is script-TEMPORARY SLOT assignments, change the SCOPES**: scoping the
+  position block (`vPos`) through the final visibility decision (an extra `{ }`) repaired
+  nearly every shared slot (104 -> 2); the last two lines were a `mov ecx, esi` before the
+  wrong store: raw-address ONLY the embedded `visible` store
+  (`*(int *)((char *)this + 0x144) = 1;`) and write the next store through a REFERENCE to the
+  embedded object (`ClassOrientador &po = orientador; po.activo = 1;`). Also: evaluating
+  `s07()` before the point stores took one port 63 -> 32; ordered near/far clamps, an
+  intrinsic origin `memcpy` and one shared trigonometric temporary took another 99 -> 69.
+  **held** *(match)* / **partial**.
