@@ -79,3 +79,16 @@ section 1).
 - `[vc8]` A search loop that reloads the array pointer every iteration and jumps from the failed
   first test to the increment is `do { if (o->At(i)) return i; i++; } while (i < o->n);` with an
   inline bounds-checked accessor; a `for` loop with the outer test strength-reduces instead.
+
+## The scratch rotation and live-range split, measured (rounds K10, G2)
+
+`[vc8]` The `eax -> ecx -> edx` rotation of VC6 (`vc6-regalloc.md`) holds on VC8 with these clauses, each predicted before its micro-experiment ran (four of four right); the model is **partial**: it does not explain callee-saved colouring, frame allocation, spill reload order or EH states. Applied in `byte-matching.md`, section 13, last subsections.
+
+- **Shared multi-use values do not follow the one-use rotation.** An index used only for addressing allocates separate index and store-source temporaries and advances the cycle twice; the same value as both index and store source takes ONE register and the next choice does not advance. Repeat a shared sum directly in a clamp conditional (`w = a + b >= 100 ? 100 : a + b;`) when the image keeps its addend in its own scratch register. **held** *(0x525100)*.
+- **Two independent arm stores and a joined local are different objects**: direct stores in two exclusive arms consume one rotation step per arm at the join; a local assigned in both arms and stored once after the join shares a web and does not advance the cycle.
+- **Values promoted to callee-saved registers across calls do not advance the cycle; shared base-pointer temporaries do** (a temporary caching a parameter used as a common member-access base consumes a rotating register). This is not a universal lever: a base-pointer alias did not transfer to a constant-record-copy context.
+- **Fixed-register instructions**: `div`/`mod` force `eax`/`edx` without advancing; a variable shift advances once for the shifted value and not for `cl`; a materialised `setcc` counts the compared input and the boolean result.
+- **For a destructive `add`, a dying call-result scratch is preferred over a callee-saved operand** (`add eax,edi`); there is no general destination toggle when both operands already sit in the desired registers (the forms that flip it also change the spill webs: **no effect** on `add ebx,edx` vs `add edx,ebx` ties).
+- **A post-switch deferred-action flag sets the rotation phase** for the cases after the last tail-duplicated one (`byte-matching.md`, 'Scratch-register phase').
+- **Live-range splitting through a branch-local shadow variable** (`short *c = col; ... col = c;`, skipping the store on the unchanged arm) lowers `col`'s outer priority below `texto`'s, so `texto` gets `ebp` and `col` is homed in a stack slot (0x630d00, 148 -> 57 lines). Computing `x` and `y` into scalars before an `int c1 = ...; Punto p(x, y);` keeps `x` in `ecx` across `c1` (a constructor delays the stack stores and frees `ecx`). **held.**
+- **Persistent constants race by use count**: the image keeps a constant (EH state 5, or a zero) in a callee-saved register chosen by the number of uses of each; one use more or fewer in our source flips the choice. Guard-mask setups (`mov ebx,2` once, against 1, 4, 0x20 rematerialised) are the same race. A real extra call flips it at the cost of instructions: **partial**, none closed.
