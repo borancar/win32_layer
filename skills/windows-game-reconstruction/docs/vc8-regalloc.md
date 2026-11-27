@@ -97,7 +97,7 @@ section 1).
 
 **held** *(DeepSeek D3 micro-experiments with the exact `/O2 /Gy /GR /EHsc` harness)*. [vc8]
 
-- **A constant is kept in a callee-saved register only at four or more uses across calls.** At two or three uses it is an immediate store each time (`mov [state],5`); from four it is hoisted (`mov bl,5`, or `xor bl,bl` for zero) and reused. Zero is not special at equal counts. Two constants used in sequential regions share one register; two constants with interleaved uses are held by neither.
+- **A constant is kept in a callee-saved register only at four or more uses across calls** (first measurement; the threshold depends on the context: 'The held-constant table' below replaces this figure). At two or three uses it is an immediate store each time (`mov [state],5`); from four it is hoisted (`mov bl,5`, or `xor bl,bl` for zero) and reused. Zero is not special at equal counts. Two constants used in sequential regions share one register; two constants with interleaved uses are held by neither.
 - **A held constant is reused everywhere, which extends its live range and can lock the register.** `push ebx` (1 byte) replaces `push 0` (2 bytes), so a zero held for the EH-state stores of one region is reused as a `Token(0)` index argument in the next region and blocks the register from holding the other constant. This, not a bare use count, decides which constant wins (zero against 5 in a function with two blocks of state stores: the shape that holds zero is 'the discarded read in one block only'; symmetric blocks, or the dead read in the other block, hold 5). Use it to predict which value must be held, and look for an immediate where ours has a register push.
 - **The callee-saved allocation order is fixed: esi, edi, ebx, ebp.** `this` (ecx on entry) takes the first free one (esi) unless another value is allocated before it. `this` in ebp or ebx in the image means some constant or value out-prioritised it: the `this` choice is the persistent-constant choice applied to `this`. Constants 0 and -1 used once are pushed as immediates and take no register.
 - **`and esp,-8` does not come from a plain `double` or `__int64` local.** MSVC x86 gives those alignment 4, so the frame is `sub esp,N` with no alignment. The alignment comes from `__declspec(align(8))`, `__m64`, or, as a secondary trigger, from 8-byte QWORD temporaries spilled by high x87 pressure in long float-matrix expressions. For a port whose image has a plain frame while ours is aligned, change the spelling of the projection expression (fewer `(double)` casts or different temporaries), not the declared types of the locals.
@@ -115,3 +115,40 @@ section 1).
 - **The shape of ONE loop decides the persistent constants of the whole function.** An indexed loop (`for (k < 9) new (t + 0x7c + k*0xdc) T`) against the same loop as a running-pointer down-counter changed which registers hold 0, 1, -1 and -2 across a separate, unrolled table loop (`esi`, `ebx`, `eax`, `edx` in the image). When explicit blocks have the right shapes and every held constant is in the wrong register, rewrite the sibling loops before touching the blocks. **partial** *(0x603da0, 1329 -> 220)*.
 - **A forced-inline helper's return value keeps its own register after the expansions join**: an extra `mov eax,ecx` at the join means the helper returns the value; an out-parameter or shared local has no such copy. **held** *(0x5467c0)*.
 - **Ties with no source lever found**: a single zero store that gets its own `xor reg,reg` where ours reuses a held zero, or the reverse (nine spellings on three ports); `add reg,reg` commutation; the operand order of a loop-top `cmp`; the jump-table index in `ecx` against `edx` when `this` stays in `ecx` across the dispatch. **no effect.**
+
+## The held-constant table (round K31)
+
+`[vc8]` **held** *(a matrix of 1,568 generated functions plus 57 focused controls, compiled with the exact `/O2 /Gy /GR /EHsc` harness)*. 'Held' means the constant is set once in a register (`xor reg,reg`, `mov reg,K`) and reused; 'immediate' means each use encodes it (`mov [m],0`, `push 0`). The flat 'four uses across calls' of the earlier section is one cell of this table.
+
+| # | context | immediate up to | held from |
+|---|---|---|---|
+| 1 | straight-line stores to members, no call between them | 2 uses | 3 uses, in the caller-saved `eax` |
+| 2 | stores ACROSS CALLS to an OFFSET-ZERO member (`[reg]`) | 4 uses | 5 uses, callee-saved |
+| 3 | stores across calls to NONZERO-offset members (pointer and enum destinations included) | 3 uses | 4 uses, callee-saved |
+| 3a | row 3 with even ONE offset-zero store among them | 4 uses | 5 uses |
+| 5 | uses only as CALL ARGUMENTS or COMPARISONS | 8 uses (the sweep's limit) | never seen |
+
+Rules around the table, numbered as measured:
+
+- **(4) Spelling is inert.** The literal `0`, `int z = 0;` and `const int z = 0;` compile IDENTICALLY over every swept cell; `NULL` equals a pointer zero; an enum spelling stored into an integer member changes nothing. A named zero is not a lever, in either direction.
+- **(5) A named local does not promote an argument-only or compare-only zero**: it stays immediate (row 5).
+- **(6) First-use order.** Three stores FOLLOWED by a zero argument create a held zero that the argument then reuses (`push reg`); the argument FIRST, or only two stores before it, stays immediate even when more stores follow. So the same use count gives two results depending on what the first three uses are.
+- **(7) Two competing constants.** In SEQUENTIAL regions they share one register in source order (also at three uses each); ALTERNATING three-use regions hold neither; at four or five uses each the SECOND constant wins the register. Zero, 1 and -1 behave alike.
+- **(8) High register pressure** (four genuinely live pointers plus `this`): no callee-saved constant at all; immediates across calls, and a fresh caller-saved setup (`xor eax,eax`) for each adjacent run of stores.
+- **(9) Dead-store elimination invalidates the textual count.** Repeated stores to the SAME member count only when they survive (a call between them); count the stores of the final code, not of the source.
+- **(10) Loops differ from straight-line code.** A loop whose body is one zero store becomes `rep stosd`; larger bodies hold the register, or re-emit `xor eax,eax` at the back edge under pressure. Do not carry a straight-line count into a loop.
+
+Reading it against a port: count the image's uses by kind (rows 1-5), check which was first (6), and compare with ours; a differing choice at equal counts is pressure (8) or a dead store one side keeps (9), which is a statement about the objects and stores of the function, not about how the zero is spelled. On the ports tried, pointer-hoisting forms, loop-local zeros, type changes and inline clears all canonicalised to the same code: the table predicts the image and has not yet closed a port. **partial** as a lever.
+
+## Whole-function levers found in ports (rounds K29-K31, Q3-Q18)
+
+`[vc8]` Observations from full ports; the rules they belong to are in `byte-matching.md`, section 13, last subsection.
+
+- **A cached owner-pointer local against a re-read at each use reallocates the whole function**: with the re-read (`#define A ((Derived *)owner)`) the image's `this` register and held-zero register both appeared before any other fix. Only for member reads the image reloads across calls; a re-read of a parameter cast is forwarded and inert. **partial** *(three ports)*.
+- **A named preset local for a ternary argument** (`int v = B; if (c) v = A; f(v);` against `f(c ? A : B)`) flipped the callee-saved roles of `this` and the result variable for the whole function, besides giving a push per arm. **partial.**
+- **A loop bound loaded at function scope** moves the allocation enough to close a 4-byte frame gap; the declaration alone, with the load later, does not.
+- **A down-counter loop** (`for (i = n; i > 0; i--, p++)`) gives a `sub reg,1` latch and its register; on a port whose image counts up it is worse.
+- **Store order follows declaration birth order** for independent stores: reorder the declarations, not the statements (statement reorders cascade through the register web).
+- **A named pointer to a record before copying it** (`T *d = o->m; T v = *d;`) frees one scratch-rotation step.
+- **x87 operand order is a schedule, not a spelling**: aggregate and global operands load in descending address order, scalar stack homes ascending, a commutative sum's terms in load order, a subtraction in source order (`byte-matching.md`, rules X1-X6).
+- **Ties these rounds confirmed with no source lever**: index-first against count-first load order before a register compare (a named count local forces count-first, removing it forces a memory compare; reorders cascade 2 -> 20 lines); the load direction of an iterator's constructor; `this` in one callee-saved register against another under a uniform rename; a zero the image rematerialises (`push 0`) where ours holds one and spills `this`; the addressing fold `sub reg,4` tied to the register web. **no effect.**
